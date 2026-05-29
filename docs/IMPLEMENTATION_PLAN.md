@@ -739,6 +739,45 @@ After v0.1: the v0.2 / v0.3 feature waves above.
 
 ---
 
+## 18. Deferred from v0.1 (running list, updated as we go)
+
+Items surfaced during implementation that we consciously punted out of v0.1.
+**Append-only as new deferrals come up; check off when reabsorbed.** This is
+separate from §11's v0.2/v0.3 feature waves (which are categorical: array
+theory, quantifiers, etc.) — this section catalogues *narrow, late-binding*
+gaps in shipped modules that v0.1 chose not to plug.
+
+Format: each entry says **what** we deferred, **why** (the trade we made
+during implementation), and **where it goes** (v0.2 / v0.x / dropped).
+
+### From step 8 (solver + model)
+
+- **Variant-with-reason `Z3Status`** — the `case kind ... of zsUnsat: core: seq[Z3Bool]` shape sketched in §14 Q4. **Why**: a plain `Z3Status` enum reads better at call sites (`case s.check() of zsSat:`) and the reason metadata belongs on the solver (`reasonUnknown`) rather than the decision itself. **Where**: dropped — superseded by the enum + accessor design. (Unsat core extraction itself is still a v0.2 item under "optimization/diagnostics".)
+- **`evalReal`/`toReal` composer** — paralleling `evalInt`/`evalBool`. **Why**: Real values aren't always representable as float64 without loss; we exposed `toBigRealStr` instead. **Where**: v0.2 — add `toRealApprox: float64` with a documented precision caveat once we have a clear approximation policy.
+
+### From step 9 (bitvec)
+
+- **`mkBigBitVec(numeral: string, W)`** for widths above 64 bits. **Why**: requires the string-numeral FFI path (`Z3_mk_numeral` with the BV sort) plus a `static: assert W > 64` divergence in the constructor; not exercised by any planned v0.1 example. **Where**: v0.2.
+- **`toBigUintStr` / `toBigIntStr` on `Z3BitVec[W]`** for W > 64. **Why**: same. The current `toUint`/`toInt` `static: assert W <= 64` errors give a clear "use the big form" message — but the big form doesn't exist yet. **Where**: v0.2 alongside `mkBigBitVec`.
+- **Unified two-param `Z3Ast[S, W: static int = 0]`** sketched in §4. **Why**: chose separate `Z3BitVec[W]` instead — width is a Nat parameter fundamentally different from the finite sort tag, and the sentinel-`W=0` shape would have polluted every existing generic. **Where**: dropped; the separate-type design is now the spec.
+- **Width-arithmetic correctness beyond the static asserts** — e.g. `extract(0, -1)` doesn't even type-check because `lo: static int` with `lo < 0` triggers `assert lo >= 0`, but we don't have property-based coverage that every `extract`/`concat`/`zeroExtend`/`signExtend`/`repeat` instantiation matches Z3's actual output width. **Where**: step 11 (property tests via proptest) — the natural place to brute-force this.
+
+### From step 10 (pretty)
+
+- **DOT / GraphViz export of AST DAGs**. **Why**: pretty-printer covers the linear SMT-LIB view; DOT is a separate visualisation surface and only useful when debugging shared-subterm structure. **Where**: v0.2 — likely as `z3/dot` with `Z3_get_ast_id` for hash-consing-aware node identity.
+- **Colorised terminal output (`prettyColored`)** with ANSI escapes for keywords/operators/literals. **Why**: orthogonal to indentation; the README/examples in step 13 will tell us whether it materially helps comprehension or just adds noise. **Where**: v0.2 if step 13 surfaces demand; drop otherwise.
+- **Multi-byte UTF-8 atom tokenising**. **Why**: Z3's own output is ASCII; our tokeniser walks bytes and would mishandle non-ASCII identifiers only if a user fed `reformat` an external string with unicode atoms. Not exercised by Z3's emitted output. **Where**: v0.2 if a user hits it.
+- **SMT-LIB infix mathematical notation** (e.g. render `(+ x 1)` as `x + 1`). **Why**: large divergence from SMT-LIB canonical; would split the output story. **Where**: dropped — SMT-LIB output stays canonical; let users feed `pretty` output through a separate translator if they want infix.
+- **`pretty` for `Z3FuncDecl`** — function declarations don't have a typed module yet. **Where**: covered transitively whenever `Z3FuncDecl` lands (likely v0.2 alongside uninterpreted functions / quantifiers).
+
+### Cross-cutting
+
+- **ASAN / valgrind under CI** — §9 testing strategy calls for it; not wired yet. **Where**: step 12 (multi-version CI matrix) is the natural slot.
+- **Differential testing against Python z3** — §9 §5 mentions it. **Where**: post-v0.1 as a CI-only job; not blocking for tag.
+- **`{.optional.}` softlink declarations for symbols added in newer Z3** — the dynlib block currently treats every symbol as required. The plan's §7 carve-out for `.optional` symbols hasn't fired because every symbol we declared today is in 4.10+. **Where**: revisit when step 12's CI matrix surfaces a 4.10 symbol-missing failure, or when we add a symbol from 4.13+ in v0.2.
+
+---
+
 ## Closing note
 
 This plan is a **commitment** — we ship to it. Deviations require updating the plan, not just the code. The cost of writing this plan up front (a half-day) is dramatically lower than the cost of discovering halfway through implementation that we got the lifetime story wrong.

@@ -1,7 +1,24 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## Status: pre-0.1. The public surface is being built per
-## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md).
+## v0.1 — initial release. The architecture is captured in
+## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md), the
+## per-release diff in [CHANGELOG.md](../CHANGELOG.md), and runnable
+## starter code in [examples/](../examples/). The headline use:
+##
+## ```nim
+## import z3
+##
+## let ctx = newContext()
+## let x = mkIntVar("x")
+## let y = mkIntVar("y")
+##
+## let s = newSolver()
+## s.add (x + y == 10) and (x > 3)
+##
+## if s.check() == zsSat:
+##   let m = s.model()
+##   echo m.evalInt(x), " ", m.evalInt(y)
+## ```
 ##
 ## Layered architecture:
 ##

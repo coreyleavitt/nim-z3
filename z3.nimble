@@ -29,3 +29,14 @@ task test, "Run the test suite":
     # job resolves milpa so the path is on --nimcache.
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf
+
+task examples, "Compile + run every example on both backends":
+  # Each example is itself a runnable test of the public API — if
+  # the user's first encounter with the library is broken, nothing
+  # else matters. Running them on both backends also catches any
+  # accidental c-only / cpp-only regression in the example code.
+  for ex in ["examples/basic_solve.nim", "examples/nqueens.nim",
+             "examples/bitvec_solve.nim", "examples/pretty_and_smt2.nim",
+             "examples/properties.nim"]:
+    exec "nim c -r --threads:on --hints:off " & ex
+    exec "nim cpp -r --threads:on --hints:off " & ex

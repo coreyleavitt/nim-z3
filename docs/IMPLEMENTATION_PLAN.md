@@ -788,6 +788,12 @@ during implementation), and **where it goes** (v0.2 / v0.x / dropped).
 - **`finalizeZ3Memory` hook at process exit**. **Why**: `tversion.nim` calls it manually; PhD-thorough would register it via `addExitProc` so it fires automatically on normal shutdown. But: it would interfere with multi-context test suites that run after `tversion.nim` in the same process. **Where**: dropped for v0.1 — manual call is the right ergonomics; revisit if a real user wants automatic shutdown cleanup.
 - **CI is currently red and that's expected.** `coreyleavitt/milpa` and `coreyleavitt/proptest` are private during the alpha-on-alpha phase, so `pipx install` and `milpa fetch` fail in every matrix row and in the ASAN job. The workflow YAML is correct; it will go green the moment those repos go public (or once a deploy-key / PAT is added). **Don't debug the CI failures as a code bug** — the local podman runs (with the user's own credentials mounted) are the source of truth for v0.1 verification.
 
+### From step 13 (examples + README + docs)
+
+- **Example "user.nim" / "stateful_solver.nim"** showing the `withFrame` template for hypothetical reasoning + the `setCurrentContext` swap idiom in a single coherent story. **Why**: the existing five examples cover the headline path, BV, queens, pretty/SMT2 round-trip, and proptest dogfooding — but `withFrame` and current-context manipulation are user-facing ergonomic features that aren't demonstrated. **Where**: v0.2 if a user asks; the docstrings on those features already include code samples.
+- **Generated API reference** via `nim doc --project`. **Why**: every public proc has a docstring, so `nim doc` produces a complete reference for free, but we haven't committed a publish workflow. **Where**: v0.2 — wire to GitHub Pages once `milpa` goes public.
+- **"Recipe book" doc** for common SMT idioms (encoding constraint problems, soft constraints via cardinality, common pitfalls with quantifiers). **Why**: nim-z3 is the wrapper, not a tutorial on SMT; pointing users at Z3's own [SMT-LIB tutorial](https://smt-lib.org/) is the right delegation. **Where**: dropped — out of scope for a wrapper library.
+
 ### Cross-cutting (no longer cross-cutting after step 12)
 
 All previously cross-cutting deferrals have moved into per-step entries.

@@ -35,9 +35,15 @@
 ##   `concat`, `zeroExtend`, `signExtend`, `repeat`), polymorphic
 ##   `ite` / `mkDistinct` / `==` / `!=`, literal lifts, and signed +
 ##   unsigned model extraction (`toInt`, `toUint`). **Implemented.**
+## - `z3/pretty` — indented multi-line `pretty()` overloads (for
+##   ASTs, sorts, solvers, models), `smt2Script` / `writeSmt2` for
+##   self-contained SMT2 emission, `parseSmt2` for round-trip
+##   parsing. The reformatter is a pure Nim Wadler-style "fit or
+##   stack" pass over Z3's flat output. **Implemented.**
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
-       z3/solver, z3/model, z3/bitvec
-export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec
+       z3/solver, z3/model, z3/bitvec, z3/pretty
+export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
+       pretty
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

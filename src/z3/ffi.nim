@@ -43,9 +43,11 @@ type
   RawZ3Solver*    {.importc: "Z3_solver",    header: "z3.h", bycopy.} = object
   RawZ3Model*     {.importc: "Z3_model",     header: "z3.h", bycopy.} = object
   RawZ3FuncDecl*  {.importc: "Z3_func_decl", header: "z3.h", bycopy.} = object
+  RawZ3AstVector* {.importc: "Z3_ast_vector", header: "z3.h", bycopy.} = object
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-            RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl): bool {.inline.} =
+            RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
+            RawZ3AstVector): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -58,12 +60,14 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 # the `=copy` short-circuit (`if dst.raw != src.raw`) and was the
 # cause of a real refcount bug surfaced by step 4-5 testing.
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl](
+          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
+          RawZ3AstVector](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl](
+          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
+          RawZ3AstVector](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -413,6 +417,34 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Replace Z3's default error handler (which would abort the
     ## program) with our own no-op handler so the error code stays in
     ## the context for us to check after each call.
+
+  # --- SMT2 parser ---------------------------------------------------------
+
+  proc Z3_parse_smtlib2_string(c: RawZ3Context, src: cstring,
+                               num_sorts: cuint,
+                               sort_names: ptr UncheckedArray[RawZ3Symbol],
+                               sorts: ptr UncheckedArray[RawZ3Sort],
+                               num_decls: cuint,
+                               decl_names: ptr UncheckedArray[RawZ3Symbol],
+                               decls: ptr UncheckedArray[RawZ3FuncDecl]
+                              ): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Parse an SMT2 source string. The four name/handle arrays let the
+    ## caller pre-bind sorts and uninterpreted-function declarations
+    ## that appear free in the source; passing zero arrays only allows
+    ## sources self-contained via their own `declare-...` forms (the
+    ## common case). Returns an `ast_vector` of the parsed assertions.
+
+  # --- ast_vector accessors ------------------------------------------------
+
+  proc Z3_ast_vector_inc_ref(c: RawZ3Context, v: RawZ3AstVector)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_vector_dec_ref(c: RawZ3Context, v: RawZ3AstVector)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_vector_size(c: RawZ3Context, v: RawZ3AstVector): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_vector_get(c: RawZ3Context, v: RawZ3AstVector, i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
 
   # --- Pretty printing -----------------------------------------------------
 

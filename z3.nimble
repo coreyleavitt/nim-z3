@@ -23,6 +23,6 @@ task test, "Run the test suite":
              "tests/tsort.nim", "tests/tast.nim",
              "tests/tboolean.nim", "tests/tarith.nim",
              "tests/tsolver.nim", "tests/tmodel.nim",
-             "tests/tbitvec.nim"]:
+             "tests/tbitvec.nim", "tests/tpretty.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf

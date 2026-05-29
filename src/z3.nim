@@ -10,16 +10,18 @@
 ## - `z3/context` — `Z3Context` lifecycle, current-context threadvar,
 ##   `withContext` scoping, error handler installation, `Z3Error`,
 ##   `checkErr` template. **Implemented.**
-## - `z3/sort` — phantom-typed `Z3Sort[S]`. (TODO)
-## - `z3/ast` — phantom-typed `Z3Ast[S]` + lifecycle hooks. (TODO)
-## - `z3/numeral`, `z3/boolean`, `z3/arith`, `z3/bitvec` — sort-tagged
-##   builders + operators. (TODO)
+## - `z3/sort` — phantom-typed `Z3Sort[S]` + sort constructors.
+##   **Implemented.**
+## - `z3/ast` — phantom-typed `Z3Ast[S]` + lifecycle hooks + `$` /
+##   `astEqual`. **Implemented.**
+## - `z3/builder` — AST literals + variables (`mkInt`, `mkBool`,
+##   `mkIntVar`, `mkBoolVar`, etc.). Type aliases `Z3Int`, `Z3Real`,
+##   `Z3Bool`. **Implemented.**
+## - `z3/boolean`, `z3/arith`, `z3/bitvec` — sort-tagged operators.
+##   (TODO)
 ## - `z3/solver`, `z3/model` — solver lifecycle + model extraction. (TODO)
-##
-## This file re-exports the user-facing surface from each module once
-## ready. For v0.0.2 it re-exports the FFI and context modules.
 
-import z3/ffi, z3/context
-export ffi, context
+import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder
+export ffi, context, sort, ast, builder
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

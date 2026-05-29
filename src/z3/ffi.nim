@@ -51,6 +51,22 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
   ## reinterpret-cast through `pointer` for a single-instruction check.
   cast[pointer](x) == nil
 
+# Identity-equality for opaque value types. Without these, Nim's
+# default `==` compares the empty-from-Nim's-POV `bycopy` structs
+# field-by-field — and since they expose no fields, all instances
+# compare equal regardless of the underlying C pointer. That breaks
+# the `=copy` short-circuit (`if dst.raw != src.raw`) and was the
+# cause of a real refcount bug surfaced by step 4-5 testing.
+proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
+          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl](
+    a, b: T): bool {.inline.} =
+  cast[pointer](a) == cast[pointer](b)
+
+proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
+          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl](
+    a, b: T): bool {.inline.} =
+  cast[pointer](a) != cast[pointer](b)
+
 # ============================================================================
 # Z3 enums — must be importc with `size: sizeof(cint)` for ABI compat
 # ============================================================================

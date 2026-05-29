@@ -19,6 +19,7 @@ task test, "Run the test suite":
   # Both backends. cpp is a softlink-#12 regression guard. Paths come
   # from the milpa-emitted nim.cfg at the project root, so no manual
   # --path: flags here.
-  for tf in ["tests/tffi.nim", "tests/tcontext.nim"]:
+  for tf in ["tests/tffi.nim", "tests/tcontext.nim",
+             "tests/tsort.nim", "tests/tast.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf

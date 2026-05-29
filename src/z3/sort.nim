@@ -37,6 +37,15 @@ type
     stInt
     stReal
     stBool
+    stBitVec
+      ## BitVec width lives on a separate `Z3BitVec[W: static int]` type
+      ## (see `z3/bitvec`) rather than as a second generic parameter on
+      ## `Z3Ast[S]` — width is a Nat parameter, fundamentally different
+      ## from the small finite sort tag, and a shared two-param type
+      ## would mean sentinel-value pollution (`W=0` for non-BV sorts)
+      ## and invasive rework of every existing generic over `Z3Ast[S]`.
+      ## This tag exists so `Z3Sort[stBitVec]` is still expressible for
+      ## sort-level introspection.
 
   Z3Sort*[S: static SortTag] = object
     ## Phantom-typed sort handle. Value type carrying the underlying
@@ -70,6 +79,15 @@ proc mkRealSort*(): Z3Sort[stReal] = mkRealSort(requireCurrentContext())
 proc mkBoolSort*(ctx: Z3Context): Z3Sort[stBool] =
   Z3Sort[stBool](raw: ctx.checkErr Z3_mk_bool_sort(ctx.raw), ctx: ctx)
 proc mkBoolSort*(): Z3Sort[stBool] = mkBoolSort(requireCurrentContext())
+
+proc mkBitVecSort*(ctx: Z3Context, w: cuint): Z3Sort[stBitVec] =
+  ## Fixed-width bit-vector sort of `w` bits. Width is a runtime cuint
+  ## here at the *sort* level; the type-level width discipline lives
+  ## on `Z3BitVec[W]` (see `z3/bitvec`) which calls into this with a
+  ## `static int` width converted at the call site.
+  Z3Sort[stBitVec](raw: ctx.checkErr Z3_mk_bv_sort(ctx.raw, w), ctx: ctx)
+proc mkBitVecSort*(w: cuint): Z3Sort[stBitVec] =
+  mkBitVecSort(requireCurrentContext(), w)
 
 # ============================================================================
 # Pretty-print

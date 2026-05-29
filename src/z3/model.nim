@@ -54,6 +54,12 @@ proc wrapModel(ctx: Z3Context, raw: RawZ3Model): Z3Model =
   Z3_model_inc_ref(ctx.raw, raw)
   Z3Model(raw: raw, ctx: ctx)
 
+proc raw*(m: Z3Model): RawZ3Model {.inline.} = m.raw
+proc ctx*(m: Z3Model): Z3Context {.inline.} = m.ctx
+  ## Underlying handle accessors — used by `z3/bitvec` and any external
+  ## extension module that needs to construct ASTs against the same
+  ## context as the model. Parallel to `Z3Solver`'s accessors.
+
 proc model*(s: Z3Solver): Z3Model =
   ## Retrieve the model from a satisfied solver. Raises `Z3Error` if
   ## the solver's last `check()` was not `zsSat` (Z3 returned a nil

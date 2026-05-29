@@ -258,6 +258,107 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## All-pairs-distinct constraint; cheaper than the equivalent
     ## quadratic conjunction of `not (a == b)`.
 
+  # --- BitVec sort + numerals ----------------------------------------------
+
+  proc Z3_mk_bv_sort(c: RawZ3Context, sz: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Fixed-width bit-vector sort. `sz` is the width in bits.
+
+  proc Z3_mk_unsigned_int64(c: RawZ3Context, v: uint64, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Construct a BV numeral from an unsigned 64-bit value. For widths
+    ## smaller than 64 the value is taken modulo 2^W; for widths up to
+    ## 64 the full range is representable directly. Larger widths
+    ## require `Z3_mk_numeral` with the string form.
+
+  proc Z3_mk_int64(c: RawZ3Context, v: int64, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Signed 64-bit variant of `Z3_mk_unsigned_int64`. Used for
+    ## constructing signed-interpreted BV literals.
+
+  proc Z3_get_numeral_uint64(c: RawZ3Context, v: RawZ3Ast,
+                             out_val: ptr uint64): bool
+    {.cdecl, header: "z3.h".}
+    ## Extract an unsigned 64-bit value from a BV numeral. Returns false
+    ## if the AST isn't a numeral or its magnitude exceeds 64 bits.
+
+  proc Z3_get_numeral_int64(c: RawZ3Context, v: RawZ3Ast,
+                            out_val: ptr int64): bool
+    {.cdecl, header: "z3.h".}
+    ## Signed 64-bit extraction. The numeral is interpreted as 2's-complement
+    ## over its declared width before clamping to int64.
+
+  proc Z3_get_bv_sort_size(c: RawZ3Context, t: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+    ## Width (in bits) of a BV sort. Used at runtime by toUint to verify
+    ## the AST's actual width matches the static type-level width.
+
+  proc Z3_get_sort(c: RawZ3Context, a: RawZ3Ast): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Sort of an AST.
+
+  # --- BitVec ops: arithmetic (sign-independent + signed/unsigned variants) -
+
+  proc Z3_mk_bvadd(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsub(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvmul(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvneg(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvudiv(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsdiv(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvurem(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsrem(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsmod(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+
+  # --- BitVec ops: bitwise -------------------------------------------------
+
+  proc Z3_mk_bvand(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvor(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvxor(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvnot(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvnand(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvnor(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvxnor(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+
+  # --- BitVec ops: shifts --------------------------------------------------
+
+  proc Z3_mk_bvshl(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvlshr(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+    ## Logical (zero-fill) right shift. Pair with `bvashr` for arithmetic
+    ## (sign-bit-fill) right shift.
+  proc Z3_mk_bvashr(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+
+  # --- BitVec ops: comparison (unsigned + signed) --------------------------
+
+  proc Z3_mk_bvult(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvule(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvugt(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvuge(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvslt(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsle(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsgt(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+  proc Z3_mk_bvsge(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
+
+  # --- BitVec ops: width manipulation --------------------------------------
+
+  proc Z3_mk_extract(c: RawZ3Context, high, low: cuint, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Bit slice `[high..low]` inclusive. Result width = `high - low + 1`.
+
+  proc Z3_mk_concat(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## `l` becomes the high-order bits, `r` the low-order. Result width
+    ## is the sum.
+
+  proc Z3_mk_zero_ext(c: RawZ3Context, i: cuint, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Prepend `i` zero bits.
+  proc Z3_mk_sign_ext(c: RawZ3Context, i: cuint, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Prepend `i` copies of the sign bit (MSB).
+  proc Z3_mk_repeat(c: RawZ3Context, i: cuint, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Tile `t` `i` times; result width = `i * width(t)`.
+
   # --- Solver --------------------------------------------------------------
 
   proc Z3_mk_solver(c: RawZ3Context): RawZ3Solver {.cdecl, header: "z3.h".}

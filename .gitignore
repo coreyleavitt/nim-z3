@@ -2,12 +2,20 @@
 spike/spike
 spike/inspect.sh
 spike/inspect2.sh
-# Anything in tests/ that isn't a .nim source is a build artifact.
+# Anything in tests/ or examples/ that isn't a .nim source is a build
+# artifact. The negation pattern keeps the .nim files tracked while
+# ignoring every compiled binary, shared library, or cache directory
+# `nim c -r` deposits next to them.
 tests/*
 !tests/*.nim
 tests/*.so
 tests/*.dylib
 tests/*.dll
+examples/*
+!examples/*.nim
+examples/*.so
+examples/*.dylib
+examples/*.dll
 nimcache/
 *.o
 *.exe

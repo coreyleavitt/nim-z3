@@ -786,6 +786,7 @@ during implementation), and **where it goes** (v0.2 / v0.x / dropped).
 - **Differential testing against Python z3** — §9 §5 mentions it. **Where**: post-v0.1 CI job; bigger lift than the CLI variant because requires installing Python z3 wheels per matrix row.
 - **`{.optional.}` softlink declarations for symbols added in newer Z3** — the dynlib block still treats every symbol as required. The matrix would surface this immediately if a 4.13+ symbol were used on the 4.10 row. **Where**: still v0.2 — every symbol used today is in 4.10+; revisit when a v0.2 module needs a newer one.
 - **`finalizeZ3Memory` hook at process exit**. **Why**: `tversion.nim` calls it manually; PhD-thorough would register it via `addExitProc` so it fires automatically on normal shutdown. But: it would interfere with multi-context test suites that run after `tversion.nim` in the same process. **Where**: dropped for v0.1 — manual call is the right ergonomics; revisit if a real user wants automatic shutdown cleanup.
+- **CI is currently red and that's expected.** `coreyleavitt/milpa` and `coreyleavitt/proptest` are private during the alpha-on-alpha phase, so `pipx install` and `milpa fetch` fail in every matrix row and in the ASAN job. The workflow YAML is correct; it will go green the moment those repos go public (or once a deploy-key / PAT is added). **Don't debug the CI failures as a code bug** — the local podman runs (with the user's own credentials mounted) are the source of truth for v0.1 verification.
 
 ### Cross-cutting (no longer cross-cutting after step 12)
 

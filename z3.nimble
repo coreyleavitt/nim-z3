@@ -21,6 +21,7 @@ task test, "Run the test suite":
   # --path: flags here.
   for tf in ["tests/tffi.nim", "tests/tcontext.nim",
              "tests/tsort.nim", "tests/tast.nim",
-             "tests/tboolean.nim", "tests/tarith.nim"]:
+             "tests/tboolean.nim", "tests/tarith.nim",
+             "tests/tsolver.nim", "tests/tmodel.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf

@@ -256,3 +256,16 @@ template checkErr*(ctx: Z3Context, callExpr: untyped): untyped =
   if err != Z3_OK:
     raiseZ3Error(ctx, err)
   res
+
+template checkErrVoid*(ctx: Z3Context, callExpr: untyped): untyped =
+  ## Void-returning peer of `checkErr` — same error-discipline, no
+  ## result. Use for FFI procs whose return type is `void`
+  ## (`Z3_solver_assert`, `Z3_solver_push`, `Z3_solver_pop`, …).
+  ## We could in principle dispatch on `typeof(callExpr) is void`
+  ## inside `checkErr` itself, but `untyped` template parameters
+  ## don't have a known type at template-expansion time; splitting
+  ## into two templates keeps the dispatch obvious at the call site.
+  callExpr
+  let err = Z3_get_error_code(ctx.raw)
+  if err != Z3_OK:
+    raiseZ3Error(ctx, err)

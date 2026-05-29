@@ -22,10 +22,16 @@
 ## - `z3/arith` — arithmetic + ordering operators on Z3Int + Z3Real
 ##   (`+`, `-`, `*`, `div`, `/`, `mod`, `rem`, `<`, `<=`, `>`, `>=`,
 ##   `==`, `!=`) with int-literal lift overloads. **Implemented.**
+## - `z3/solver` — `Z3Solver` lifecycle, `add`/`check`/`push`/`pop`/
+##   `reset`, `withFrame` template, `Z3Status` enum, `reasonUnknown`.
+##   **Implemented.**
+## - `z3/model` — `Z3Model` lifecycle, `eval` / `[]`, scalar
+##   extractors (`toInt`, `toBool`, etc.), composers (`evalInt`,
+##   `evalBool`). **Implemented.**
 ## - `z3/bitvec` — width-tracked BitVec phantom types + ops. (TODO)
-## - `z3/solver`, `z3/model` — solver lifecycle + model extraction. (TODO)
 
-import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith
-export ffi, context, sort, ast, builder, boolean, arith
+import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
+       z3/solver, z3/model
+export ffi, context, sort, ast, builder, boolean, arith, solver, model
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -24,7 +24,7 @@ task test, "Run the test suite":
              "tests/tboolean.nim", "tests/tarith.nim",
              "tests/tsolver.nim", "tests/tmodel.nim",
              "tests/tbitvec.nim", "tests/tpretty.nim",
-             "tests/tproperty.nim"]:
+             "tests/tproperty.nim", "tests/tversion.nim"]:
     # Note: tproperty.nim depends on proptest (test-only dep). The CI
     # job resolves milpa so the path is on --nimcache.
     exec "nim c -r --threads:on --hints:off " & tf

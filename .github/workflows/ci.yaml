@@ -7,50 +7,137 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  # ============================================================================
+  # Multi-version matrix — Z3 4.10 → 4.13.x, both Nim backends.
+  # ============================================================================
+  #
+  # We pull pre-built Z3 release tarballs from microsoft/z3 instead of
+  # relying on the OS-default libz3-dev — the Ubuntu LTS package gives
+  # only one version per runner, while the matrix needs to vary the Z3
+  # version on a single host so that *Z3 version* is the only variable
+  # across rows.
+  #
+  # Each row downloads `z3-X.Y.Z-x64-glibc-2.31.zip`, unpacks to
+  # /opt/z3, and points the build at it via LD_LIBRARY_PATH (runtime
+  # symbol resolution) + C_INCLUDE_PATH (softlink's _Static_assert
+  # header verification).
+  #
+  # softlink's dynlib pattern `libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)`
+  # then finds the unsuffixed `libz3.so` symlink that ships in the
+  # tarball regardless of which version is on PATH.
+  matrix-test:
     runs-on: ubuntu-latest
     container: nimlang/nim:2.2.0
     strategy:
       fail-fast: false
       matrix:
-        # Z3 version matrix per IMPLEMENTATION_PLAN.md §7. The Debian
-        # libz3-dev package on each Ubuntu LTS gives us a stable
-        # version per row; we test against whatever the container has.
-        # Future: when consumer demand justifies it, switch to building
-        # specific Z3 versions from source per matrix entry.
-        z3-distribution:
-          - default-libz3-dev
+        # Pinned point releases — one per major.minor we support.
+        # Update by editing this matrix; the rest of the workflow
+        # picks the version up automatically.
+        z3:
+          - "4.10.2"
+          - "4.11.2"
+          - "4.12.6"
+          - "4.13.4"
     steps:
       - uses: actions/checkout@v6
 
       - name: trust workdir for git (container uid mismatch w/ runner)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: install Z3 development headers + runtime + tools
+      - name: install build prerequisites
         run: |
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            libz3-dev z3 python3 python3-pip pipx git
+            curl unzip python3 python3-pip pipx git build-essential
 
-      - name: report z3 version
-        run: z3 --version
+      - name: install Z3 ${{ matrix.z3 }} from upstream release
+        run: |
+          set -euo pipefail
+          ver="${{ matrix.z3 }}"
+          # microsoft/z3 release artifact convention. The glibc-2.31
+          # build runs on every Ubuntu LTS >= 20.04. If a future
+          # release diverges from this name shape, override per-row
+          # via matrix.include with explicit `artifact` keys.
+          base="z3-${ver}-x64-glibc-2.31"
+          url="https://github.com/Z3Prover/z3/releases/download/z3-${ver}/${base}.zip"
+          curl -fsSL -o /tmp/z3.zip "$url"
+          unzip -q /tmp/z3.zip -d /opt
+          mv "/opt/${base}" /opt/z3
+          /opt/z3/bin/z3 --version
+          echo "Z3_HOME=/opt/z3" >> "$GITHUB_ENV"
+          echo "/opt/z3/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
+          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
 
-      - name: install milpa
-        # milpa is the project-wide Nim dep resolver
-        # (https://github.com/coreyleavitt/milpa). Reads milpa.kdl,
-        # emits nim.cfg with the right --path: lines. nimble stays
-        # out of the build path — matches the convention used by
-        # nimkdl, intonaco, fresco, and all other nimlibs.
+      - name: install milpa (Nim dep resolver)
         run: |
           pipx install --include-deps \
             git+https://github.com/coreyleavitt/milpa.git
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: milpa fetch (resolve softlink + emit nim.cfg)
+      - name: milpa fetch (resolve softlink + proptest, emit nim.cfg)
         run: milpa fetch
 
       - name: nimble test
-        # Runs both backends per z3.nimble's test task (regression
-        # guard for softlink #12 + general C/cpp ABI sanity). Paths
-        # come from the milpa-emitted nim.cfg, no manual --path: flags.
+        # Runs both backends per z3.nimble's test task (c + cpp). The
+        # tversion.nim probe asserts major==4 && minor>=10 on whichever
+        # libz3 the row provides; any matrix row whose libz3 fails to
+        # load (missing symbol, ABI drift) fails inside that probe.
         run: nimble -y test
+
+  # ============================================================================
+  # AddressSanitizer — lifecycle bug catcher (use-after-free in
+  # =destroy, double dec_ref, etc.).
+  # ============================================================================
+  #
+  # Runs against the OS-default libz3 only — the matrix above already
+  # varies Z3; this varies the build mode. We use -d:useMalloc so that
+  # Nim's heap is visible to ASAN (the default ORC allocator hides
+  # allocations behind a custom shim ASAN can't track).
+  #
+  # Restricted to the lifecycle-critical tests (`tcontext`, `tast`, the
+  # operator suites, solver/model/bitvec). The property suite is
+  # excluded — it dwarfs ASAN's tolerance, and any lifecycle bug it
+  # would surface should also surface in the smaller suites.
+  asan:
+    runs-on: ubuntu-latest
+    container: nimlang/nim:2.2.0
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: trust workdir for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: install build prerequisites + libz3
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libz3-dev z3 python3 python3-pip pipx git build-essential
+
+      - name: install milpa
+        run: |
+          pipx install --include-deps \
+            git+https://github.com/coreyleavitt/milpa.git
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: milpa fetch
+        run: milpa fetch
+
+      - name: run lifecycle tests under ASAN
+        env:
+          # Z3 has many intentional internal leaks (static caches,
+          # singleton config); turn off leak detection so we report
+          # only the bug classes we can act on — use-after-free,
+          # buffer overflow, double-free.
+          ASAN_OPTIONS: "detect_leaks=0:abort_on_error=0:halt_on_error=0"
+        run: |
+          set -e
+          for t in tests/tcontext.nim tests/tast.nim tests/tboolean.nim \
+                   tests/tarith.nim tests/tsolver.nim tests/tmodel.nim \
+                   tests/tbitvec.nim tests/tversion.nim; do
+            echo "=== ASAN: $t ==="
+            nim c -r --threads:on --hints:off -d:useMalloc \
+              --passC:-fsanitize=address --passL:-fsanitize=address \
+              --debugger:native "$t"
+          done

@@ -257,6 +257,51 @@ template checkErr*(ctx: Z3Context, callExpr: untyped): untyped =
     raiseZ3Error(ctx, err)
   res
 
+# ============================================================================
+# Version probes
+# ============================================================================
+#
+# Loading libz3 lazily means we don't know what version we got until
+# someone asks. These probes are the canonical way to ask. They're
+# also the public-facing test points for the multi-version CI matrix:
+# `tversion.nim` calls them across every Z3 release the matrix targets.
+
+type Z3VersionInfo* = tuple[major, minor, build, revision: int]
+  ## Component-wise libz3 version. All four fields come from
+  ## `Z3_get_version`; revision is the upstream build-number field
+  ## (effectively a tiebreaker for same-release nightlies).
+
+proc z3Version*(): Z3VersionInfo =
+  ## Component-wise version of the loaded libz3. Triggers `ensureLoaded`
+  ## if the library hasn't been loaded yet, so calling it before any
+  ## `newContext()` is fine — the typical first-call pattern.
+  ##
+  ## ```nim
+  ## let v = z3Version()
+  ## if v.major == 4 and v.minor < 11:
+  ##   echo "warning: libz3 ", v, " missing some features used by lib X"
+  ## ```
+  ensureLoaded()
+  var mj, mn, bd, rv: cuint
+  Z3_get_version(addr mj, addr mn, addr bd, addr rv)
+  (int(mj), int(mn), int(bd), int(rv))
+
+proc z3FullVersion*(): string =
+  ## Vendor-formatted version string, e.g. "4.13.3.0". Always equivalent
+  ## to `$z3Version().major & "." & …` modulo whitespace, but the vendor
+  ## string is the canonical wire form (it's what `z3 --version` prints).
+  ensureLoaded()
+  $Z3_get_full_version()
+
+proc finalizeZ3Memory*() =
+  ## Process-wide Z3 cleanup. Frees Z3's internal globals (hash-cons
+  ## tables, allocator pools) that survive per-context destruction.
+  ## Call from a single shutdown hook if you want sanitisers to report
+  ## clean exit; safe to call multiple times. **No further Z3 API may
+  ## be invoked from this process after this returns.**
+  if z3Loaded():
+    Z3_finalize_memory()
+
 template checkErrVoid*(ctx: Z3Context, callExpr: untyped): untyped =
   ## Void-returning peer of `checkErr` — same error-discipline, no
   ## result. Use for FFI procs whose return type is `void`

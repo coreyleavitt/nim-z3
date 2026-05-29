@@ -131,6 +131,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Component-wise version; lets callers compare numerically without
     ## parsing the string form.
 
+  proc Z3_finalize_memory() {.cdecl, header: "z3.h".}
+    ## Process-wide cleanup. Z3 keeps internal globals (hash-cons tables,
+    ## allocator pools) that survive `Z3_del_context`; calling this at
+    ## program shutdown lets sanitisers report a clean exit. Safe to
+    ## call multiple times. After this returns, *no* further Z3 API may
+    ## be invoked from this process.
+
   # --- Configuration --------------------------------------------------------
 
   proc Z3_mk_config(): RawZ3Config {.cdecl, header: "z3.h".}

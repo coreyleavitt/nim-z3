@@ -778,11 +778,18 @@ during implementation), and **where it goes** (v0.2 / v0.x / dropped).
 - **`smtValid` / `smtEquiv` overloads for sorts beyond `Z3Ast[S]` and `Z3BitVec[W]`** (arrays, strings, datatypes). **Where**: v0.2, alongside those sort modules.
 - **Property-based width-arithmetic coverage for BV** (from §18 step 9 entry). Step 11 partially addresses this — `extract`/`concat`/`zeroExtend` round-trip properties are now in the suite — but only at W=8. Wider widths and `signExtend`/`repeat` random-tree coverage are still gaps. **Where**: subsumed by step 11's wider-width follow-up in v0.2.
 
-### Cross-cutting
+### From step 12 (multi-version CI matrix)
 
-- **ASAN / valgrind under CI** — §9 testing strategy calls for it; not wired yet. **Where**: step 12 (multi-version CI matrix) is the natural slot.
-- **Differential testing against Python z3** — §9 §5 mentions it. **Where**: post-v0.1 as a CI-only job; not blocking for tag.
-- **`{.optional.}` softlink declarations for symbols added in newer Z3** — the dynlib block currently treats every symbol as required. The plan's §7 carve-out for `.optional` symbols hasn't fired because every symbol we declared today is in 4.10+. **Where**: revisit when step 12's CI matrix surfaces a 4.10 symbol-missing failure, or when we add a symbol from 4.13+ in v0.2.
+- **macOS / aarch64 runners in the matrix**. **Why**: Z3 ships glibc-2.31 and macOS builds; we only test the glibc rows. PhD-thorough would add `runs-on: macos-latest` (Apple-silicon Z3 release artifact) and an Ubuntu aarch64 row. **Where**: v0.2 — wait until consumers ask for it; the abstraction layer (softlink dynlib pattern) doesn't change shape across platforms, so the matrix expansion is mechanical.
+- **valgrind job alongside ASAN**. **Why**: ASAN catches use-after-free / double-free; valgrind's `--leak-check=full` finds bytes-still-reachable that ASAN's leak detector (which we disable due to Z3's intentional static caches) would also flag. We could selectively suppress Z3's known leaks in a `.supp` file. **Where**: v0.2 — same-class signal as ASAN; revisit if ASAN ever misses a real bug.
+- **Differential testing against the Z3 CLI binary**. **Why**: §9 / §5 mention it. Now that the matrix puts a real `z3` binary on each row's PATH, we have the infrastructure: emit `smt2Script(solver)`, pipe to `z3 -in`, compare sat/unsat with our result. **Where**: v0.2 — needs a Settings-style runner abstraction so the diff job and the property suite can share a single source of constraints.
+- **Differential testing against Python z3** — §9 §5 mentions it. **Where**: post-v0.1 CI job; bigger lift than the CLI variant because requires installing Python z3 wheels per matrix row.
+- **`{.optional.}` softlink declarations for symbols added in newer Z3** — the dynlib block still treats every symbol as required. The matrix would surface this immediately if a 4.13+ symbol were used on the 4.10 row. **Where**: still v0.2 — every symbol used today is in 4.10+; revisit when a v0.2 module needs a newer one.
+- **`finalizeZ3Memory` hook at process exit**. **Why**: `tversion.nim` calls it manually; PhD-thorough would register it via `addExitProc` so it fires automatically on normal shutdown. But: it would interfere with multi-context test suites that run after `tversion.nim` in the same process. **Where**: dropped for v0.1 — manual call is the right ergonomics; revisit if a real user wants automatic shutdown cleanup.
+
+### Cross-cutting (no longer cross-cutting after step 12)
+
+All previously cross-cutting deferrals have moved into per-step entries.
 
 ---
 

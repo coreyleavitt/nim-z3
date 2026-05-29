@@ -44,6 +44,14 @@ type
     raw*: RawZ3Ast
     ctx*: Z3Context
 
+  Z3Int*  = Z3Ast[stInt]
+    ## Convenience alias for `Z3Ast[stInt]`. Aliases live here so the
+    ## type system + the operator overload modules (`arith.nim`,
+    ## `boolean.nim`) can reference them without depending on
+    ## `builder.nim`.
+  Z3Real* = Z3Ast[stReal]
+  Z3Bool* = Z3Ast[stBool]
+
 # ============================================================================
 # Lifecycle hooks
 # ============================================================================
@@ -125,6 +133,29 @@ proc astEqual*[S: static SortTag](a, b: Z3Ast[S]): bool {.inline.} =
 # ============================================================================
 # Pretty-print
 # ============================================================================
+
+# ============================================================================
+# Generic same-sort equality
+# ============================================================================
+#
+# `==` returns a Z3Bool — it's the SMT semantic-equality operator,
+# not Nim value equality. (For pointer-level identity use `astEqual`.)
+# Type-checked at compile time to require both sides have the same
+# sort, so `x: Z3Int; p: Z3Bool; x == p` is a compile error.
+#
+# Literal-lift overloads (`x == 5` for `x: Z3Int`) live in the
+# type-specific operator modules (`arith.nim`, `boolean.nim`)
+# alongside the matching `<`, `and`, etc. overloads — that's where
+# users will look for them.
+
+proc `==`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+  ## SMT equality. Returns a `Z3Bool` AST `(= a b)`.
+  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+
+proc `!=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+  ## SMT non-equality. Equivalent to `not (a == b)`.
+  let eq = a == b
+  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
 proc `$`*[S: static SortTag](a: Z3Ast[S]): string =
   ## SMT-LIB rendering of the AST. Useful for debugging:

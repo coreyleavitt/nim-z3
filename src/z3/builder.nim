@@ -28,14 +28,9 @@
 import ./ffi, ./context, ./sort, ./ast
 export ast      # Z3Ast[S], $, astEqual; ast re-exports sort
 
-# ============================================================================
-# User-friendly type aliases
-# ============================================================================
-
-type
-  Z3Int*  = Z3Ast[stInt]
-  Z3Real* = Z3Ast[stReal]
-  Z3Bool* = Z3Ast[stBool]
+# Type aliases (Z3Int, Z3Real, Z3Bool) live in `ast.nim` so the
+# operator-overload modules can use them without depending on this
+# module. We re-export them transitively via `export ast` above.
 
 # ============================================================================
 # Boolean literals

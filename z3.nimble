@@ -20,6 +20,7 @@ task test, "Run the test suite":
   # from the milpa-emitted nim.cfg at the project root, so no manual
   # --path: flags here.
   for tf in ["tests/tffi.nim", "tests/tcontext.nim",
-             "tests/tsort.nim", "tests/tast.nim"]:
+             "tests/tsort.nim", "tests/tast.nim",
+             "tests/tboolean.nim", "tests/tarith.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf

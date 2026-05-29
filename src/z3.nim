@@ -15,13 +15,17 @@
 ## - `z3/ast` — phantom-typed `Z3Ast[S]` + lifecycle hooks + `$` /
 ##   `astEqual`. **Implemented.**
 ## - `z3/builder` — AST literals + variables (`mkInt`, `mkBool`,
-##   `mkIntVar`, `mkBoolVar`, etc.). Type aliases `Z3Int`, `Z3Real`,
-##   `Z3Bool`. **Implemented.**
-## - `z3/boolean`, `z3/arith`, `z3/bitvec` — sort-tagged operators.
-##   (TODO)
+##   `mkIntVar`, `mkBoolVar`, etc.). **Implemented.**
+## - `z3/boolean` — boolean operators (`and`, `or`, `not`, `xor`,
+##   `implies`, `iff`, `ite`, varargs `mkAnd` / `mkOr`,
+##   `mkDistinct`) with Nim-bool lift overloads. **Implemented.**
+## - `z3/arith` — arithmetic + ordering operators on Z3Int + Z3Real
+##   (`+`, `-`, `*`, `div`, `/`, `mod`, `rem`, `<`, `<=`, `>`, `>=`,
+##   `==`, `!=`) with int-literal lift overloads. **Implemented.**
+## - `z3/bitvec` — width-tracked BitVec phantom types + ops. (TODO)
 ## - `z3/solver`, `z3/model` — solver lifecycle + model extraction. (TODO)
 
-import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder
-export ffi, context, sort, ast, builder
+import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith
+export ffi, context, sort, ast, builder, boolean, arith
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

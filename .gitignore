@@ -1,0 +1,16 @@
+# Build artifacts
+spike/spike
+spike/inspect.sh
+spike/inspect2.sh
+tests/tffi
+tests/*.so
+tests/*.dylib
+tests/*.dll
+nimcache/
+*.o
+*.exe
+
+# milpa-managed dep symlinks + nim.cfg (regenerated on `milpa fetch`).
+# milpa.kdl and milpa.lock ARE committed.
+_deps/
+nim.cfg

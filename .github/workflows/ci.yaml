@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: nimlang/nim:2.2.0
+    strategy:
+      fail-fast: false
+      matrix:
+        # Z3 version matrix per IMPLEMENTATION_PLAN.md §7. The Debian
+        # libz3-dev package on each Ubuntu LTS gives us a stable
+        # version per row; we test against whatever the container has.
+        # Future: when consumer demand justifies it, switch to building
+        # specific Z3 versions from source per matrix entry.
+        z3-distribution:
+          - default-libz3-dev
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: trust workdir for git (container uid mismatch w/ runner)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: install Z3 development headers + runtime + tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libz3-dev z3 python3 python3-pip pipx git
+
+      - name: report z3 version
+        run: z3 --version
+
+      - name: install milpa
+        # milpa is the project-wide Nim dep resolver
+        # (https://github.com/coreyleavitt/milpa). Reads milpa.kdl,
+        # emits nim.cfg with the right --path: lines. nimble stays
+        # out of the build path — matches the convention used by
+        # nimkdl, intonaco, fresco, and all other nimlibs.
+        run: |
+          pipx install --include-deps \
+            git+https://github.com/coreyleavitt/milpa.git
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: milpa fetch (resolve softlink + emit nim.cfg)
+        run: milpa fetch
+
+      - name: nimble test
+        # Runs both backends per z3.nimble's test task (regression
+        # guard for softlink #12 + general C/cpp ABI sanity). Paths
+        # come from the milpa-emitted nim.cfg, no manual --path: flags.
+        run: nimble -y test

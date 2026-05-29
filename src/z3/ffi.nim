@@ -78,6 +78,18 @@ type
     Z3_EXCEPTION = 12
 
 # ============================================================================
+# Z3 callback types
+# ============================================================================
+
+type
+  Z3ErrorHandler* = proc(c: RawZ3Context, e: Z3ErrorCode) {.cdecl.}
+    ## C-ABI callback Z3 invokes when an API error occurs. The default
+    ## handler aborts the program; we install a no-op handler at
+    ## context creation (see `z3/context.nim`) so error codes remain
+    ## accessible via `Z3_get_error_code` rather than terminating the
+    ## process.
+
+# ============================================================================
 # Z3 FFI declarations
 # ============================================================================
 #
@@ -279,6 +291,11 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_get_error_msg(c: RawZ3Context, err: Z3ErrorCode): cstring
     {.cdecl, header: "z3.h".}
+  proc Z3_set_error_handler(c: RawZ3Context, h: Z3ErrorHandler)
+    {.cdecl, header: "z3.h".}
+    ## Replace Z3's default error handler (which would abort the
+    ## program) with our own no-op handler so the error code stays in
+    ## the context for us to check after each call.
 
   # --- Pretty printing -----------------------------------------------------
 

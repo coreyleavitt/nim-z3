@@ -700,11 +700,18 @@ These need explicit answers before coding starts:
 
 When we start coding, the work order:
 
-1. **Nimble skeleton + CI**: `z3.nimble`, basic CI config that runs `nimble test` against Z3 4.13 on Linux. Empty tests pass.
+1. **Nimble skeleton + CI**: `z3.nimble`, basic CI config that runs `nimble test` against Z3 4.13 on Linux. Empty tests pass. **DONE** in v0.0.1 commit.
 
-2. **softlink FFI layer**: declare ~30 core symbols (context, config, sort, basic AST, solver, model). Verify softlink loads libz3 and resolves them. Smoke test in `tffi.nim`.
+2. **softlink FFI layer**: declare ~30 core symbols (context, config, sort, basic AST, solver, model). Verify softlink loads libz3 and resolves them. Smoke test in `tffi.nim`. **DONE**: ~55 symbols + Z3ErrorHandler callback type, 14 smoke tests covering every category.
 
-3. **`Z3Context` + error handler**: lifecycle, `=destroy`, error capture. Tests verify creation/destruction.
+3. **`Z3Context` + error handler**: lifecycle, `=destroy`, error capture. Tests verify creation/destruction. **DONE** with two intentional extensions beyond the original spec:
+
+   - **Implicit current-context threadvar**. `newContext()` sets the per-thread current context; `currentContext()` retrieves it; `requireCurrentContext()` raises a clear `Z3Error` for missing-current diagnostics; `setCurrentContext(ctx)` swaps without creating. Idiomatic builders downstream will resolve against current-context when no explicit `ctx: Z3Context` arg is supplied. Same ergonomic pattern Python's z3 library uses; multi-thread composes naturally via threadvar.
+   - **`withContext(ctx): body` scoping template**. Temporarily swaps current-context for `body`; restores on normal or exceptional exit. Enables library-internal scoped use without disturbing caller's setting.
+   - **Auto-load of libz3 on first `newContext()`**. Users don't need to call `loadZ3()` explicitly; first context creation invokes it idempotently. `LibZ3UnavailableError` (Defect-subclass) raised with a clear remediation message when libz3 is missing or too old.
+   - **`Z3Error` carries typed `Z3ErrorCode` enum** (not just a message). `checkErr` template wraps FFI calls; raises with stack trace pointing at the user's code (template-based for inlining).
+
+   Reasoning for divergence: each addition is purely ergonomic with zero impact on the explicit-context API. The plan-strict design still works (`ctx.mkIntVar("x")` is supported via UFCS once builders land); we just don't *require* it.
 
 4. **Sort module**: phantom-typed `Z3Sort[S]`, constructors for Int/Real/Bool. Tests verify sort equality.
 

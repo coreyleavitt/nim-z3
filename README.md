@@ -79,11 +79,13 @@ Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble e
 
 ## Design
 
-The architectural rationale — phantom sort types, refcount discipline, the current-context threadvar, validation against Z3's actual API behaviour — lives in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). [`docs/SPIKE_FINDINGS.md`](docs/SPIKE_FINDINGS.md) is the up-front validation log; every assumption in the plan was checked against Z3 4.13.3 before the wrapper landed. §18 of the plan catalogues every deferral — what we punted from v0.1, why, and where it goes.
+- [`docs/V0.1_PLAN.md`](docs/V0.1_PLAN.md) — the archived v0.1 plan. Phantom sort types, refcount discipline, current-context threadvar, the lifetime story, and the §18 deferral ledger documenting what we punted from v0.1 (and why).
+- [`docs/SPIKE_FINDINGS.md`](docs/SPIKE_FINDINGS.md) — the up-front validation log; every assumption in the v0.1 plan was checked against Z3 4.13.3 before the wrapper landed.
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — the **live** plan, currently scoped to v0.2: arrays, datatypes, quantifiers, optimisation, tactics, the strategies-as-public-API module.
 
 ## Versioning
 
-Pre-1.0 the public surface may shift between minor versions. We track deferrals and design changes in `docs/IMPLEMENTATION_PLAN.md` §18; consult `CHANGELOG.md` for the per-release diff.
+Pre-1.0 the public surface may shift between minor versions. We track deferrals and design changes in `docs/IMPLEMENTATION_PLAN.md`'s deferral section (and the archived `V0.1_PLAN.md` §18 for v0.1-era deferrals); consult `CHANGELOG.md` for the per-release diff.
 
 ## License
 

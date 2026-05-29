@@ -1,7 +1,8 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## v0.1 — initial release. The architecture is captured in
-## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md), the
+## v0.1 — initial release; v0.2 in progress. The shipped architecture
+## is captured in [docs/V0.1_PLAN.md](../docs/V0.1_PLAN.md), live work
+## in [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md),
 ## per-release diff in [CHANGELOG.md](../CHANGELOG.md), and runnable
 ## starter code in [examples/](../examples/). The headline use:
 ##

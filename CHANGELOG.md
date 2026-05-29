@@ -6,7 +6,9 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-## [0.1.0] — v0.1
+— Work toward v0.2; see `docs/IMPLEMENTATION_PLAN.md`.
+
+## [0.1.0] — 2026-05-29
 
 The initial release. A user can write the headline `x + y == 10 ∧ x > 3`
 example in their first 5 minutes (per the §11 deliverable target in

@@ -448,3 +448,12 @@ proc `[]`*[W: static int](m: Z3Model, a: Z3BitVec[W]): Z3BitVec[W] =
 proc `$`*[W: static int](a: Z3BitVec[W]): string =
   ## SMT-LIB rendering of the BV AST. Mirrors `$` on `Z3Ast[S]`.
   $Z3_ast_to_string(a.ctx.raw, a.raw)
+
+# ============================================================================
+# Equivalence oracle for BVs — parallels `smtEquiv` on `Z3Ast[S]`.
+# ============================================================================
+
+proc smtEquiv*[W: static int](a, b: Z3BitVec[W]): bool {.inline.} =
+  ## True iff `a` and `b` are SMT-level equal under every interpretation.
+  ## Same width discipline as `==`. Sugar over `smtValid(a == b)`.
+  smtValid(a == b)

@@ -2,6 +2,19 @@
 version 1
 strategy "maxver"
 
+dep "proptest" {
+    identity "sha256:a9ed563171a7c39e30e8306a569317342afe884e1926e47d3e9ce15e865ee24f"
+    version "0.0.1"
+    src_dir "src"
+    requires
+    provenance {
+        kind "git"
+        url "https://github.com/coreyleavitt/proptest.git"
+        ref "main"
+        commit_sha "21a1df63f5260dc4e97e9fda5a2a4e880a07f313"
+    }
+}
+
 dep "softlink" {
     identity "sha256:7ba07d4a1c28324d07eed77e294aed9ed8400a0922060579f820e92473baa373"
     version "0.0.1"

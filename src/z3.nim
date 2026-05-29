@@ -35,6 +35,11 @@
 ##   `concat`, `zeroExtend`, `signExtend`, `repeat`), polymorphic
 ##   `ite` / `mkDistinct` / `==` / `!=`, literal lifts, and signed +
 ##   unsigned model extraction (`toInt`, `toUint`). **Implemented.**
+## - `z3/solver` also exposes `smtValid(p: Z3Bool): bool` and
+##   `smtEquiv[S](a, b: Z3Ast[S]): bool` (with a `Z3BitVec[W]` overload
+##   in `z3/bitvec`) — validity / equivalence oracles built on a
+##   throwaway solver. Useful in property tests; also a clean primitive
+##   for downstream verification tooling.
 ## - `z3/pretty` — indented multi-line `pretty()` overloads (for
 ##   ASTs, sorts, solvers, models), `smt2Script` / `writeSmt2` for
 ##   self-contained SMT2 emission, `parseSmt2` for round-trip

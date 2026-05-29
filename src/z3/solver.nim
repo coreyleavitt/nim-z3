@@ -186,6 +186,37 @@ proc reset*(s: Z3Solver) =
 # Pretty-print
 # ============================================================================
 
+# ============================================================================
+# Validity / equivalence oracles
+# ============================================================================
+#
+# Top-level convenience for "is this proposition valid?" — every PBT
+# property over Z3 expressions wants this. Implemented as a scratch
+# solver against the proposition's context so the user's primary
+# solver state stays untouched. We could in principle stash a
+# per-context throwaway solver, but allocating one per call is cheap
+# in the timeframes SMT queries run in (microseconds to seconds), and
+# the API stays trivially composable: `smtValid(p)` reads at the
+# call site exactly the way you'd read it on paper.
+
+proc smtValid*(p: Z3Bool): bool =
+  ## True iff `p` is valid — i.e. `(not p)` is unsatisfiable. Uses a
+  ## fresh throwaway solver bound to `p`'s context.
+  ##
+  ## Returns `false` for both falsified and unknown — strict validity
+  ## requires Z3 prove unsat. If you need to distinguish "definitely
+  ## not valid" from "couldn't decide", use a solver manually and case
+  ## on `Z3Status`.
+  let s = newSolver(p.ctx)
+  s.add wrap[stBool](p.ctx,
+    p.ctx.checkErr Z3_mk_not(p.ctx.raw, p.raw))
+  s.check() == zsUnsat
+
+proc smtEquiv*[S: static SortTag](a, b: Z3Ast[S]): bool {.inline.} =
+  ## True iff `a` and `b` are SMT-level equal under every interpretation.
+  ## Sugar over `smtValid(a == b)`.
+  smtValid(a == b)
+
 proc `$`*(s: Z3Solver): string =
   ## SMT-LIB rendering of the solver's current assertion set. Useful
   ## for diagnostic output:

@@ -32,41 +32,16 @@
 {.experimental: "callOperator".}
 
 import std/[macros]
-import ./ffi, ./context, ./ast, ./bitvec, ./char, ./seq, ./string, ./fp,
-       ./model
+import ./ffi, ./context, ./ast, ./sortdispatch, ./array, ./bitvec, ./char,
+       ./seq, ./string, ./fp, ./model
+# The leaf-family imports are intentional: funcdecl's domainSorts
+# iterates an arbitrary tuple at compile time, and `sortOfType[FieldT]`
+# resolves through `mixin sortOf` at the iteration site (which is
+# inside this module). So every family whose `sortOf` overload we want
+# reachable from a `Z3FuncDecl[…]` signature must be imported here.
 
-# ============================================================================
-# Sort dispatch — widened from z3/array's sortOfType
-# ============================================================================
-#
-# z3/array's sortOfType supports Int/Real/Bool/BV. For funcdecl
-# signatures we also need Char/String/Seq[E]/Fp[E,S]. Logged in §8 as
-# the trigger for a future z3/sortdispatch consolidation.
-
-proc sortOfTypeFD*[T](ctx: Z3Context): RawZ3Sort =
-  ## Local widened dispatcher for the v0.3 family set. Mirrors
-  ## `array.sortOfType` + `seq.sortOfTypeSeq` cases; consolidation
-  ## logged in §8.
-  when T is Z3Int:
-    ctx.checkErr Z3_mk_int_sort(ctx.raw)
-  elif T is Z3Real:
-    ctx.checkErr Z3_mk_real_sort(ctx.raw)
-  elif T is Z3Bool:
-    ctx.checkErr Z3_mk_bool_sort(ctx.raw)
-  elif T is Z3BitVec:
-    ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(T.W))
-  elif T is Z3Char:
-    ctx.checkErr Z3_mk_char_sort(ctx.raw)
-  elif T is Z3Seq:
-    let inner = sortOfTypeFD[T.E](ctx)
-    ctx.checkErr Z3_mk_seq_sort(ctx.raw, inner)
-  elif T is Z3Fp:
-    ctx.checkErr Z3_mk_fpa_sort(ctx.raw, cuint(T.Ebits), cuint(T.Sbits))
-  else:
-    {.error: "Z3FuncDecl signature: unsupported element type. " &
-             "Supported: Z3Int, Z3Real, Z3Bool, Z3BitVec[W], Z3Char, " &
-             "Z3Seq[E], Z3Fp[E,S]. Z3Array / Z3DatatypeValue / nested " &
-             "user types land if needed; ask.".}
+# v0.3 step 9 dropped the local `sortOfType` cascade — every typed
+# family now owns its `sortOf` overload via `z3/sortdispatch`.
 
 # ============================================================================
 # Z3FuncDecl[ArgsTup, Ret] — phantom-typed function declaration
@@ -123,7 +98,7 @@ proc domainSorts[ArgsTup: tuple](ctx: Z3Context): system.seq[RawZ3Sort] =
   result = newSeq[RawZ3Sort]()
   var t: ArgsTup
   for field in fields(t):
-    result.add sortOfTypeFD[typeof(field)](ctx)
+    result.add sortOfType[typeof(field)](ctx)
 
 proc mkFuncDecl*[ArgsTup: tuple, Ret](
     ctx: Z3Context, name: string): Z3FuncDecl[ArgsTup, Ret] =
@@ -133,7 +108,7 @@ proc mkFuncDecl*[ArgsTup: tuple, Ret](
     if domain.len == 0: nil
     else: cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  let rangeSort = sortOfTypeFD[Ret](ctx)
+  let rangeSort = sortOfType[Ret](ctx)
   let raw = ctx.checkErr Z3_mk_func_decl(
     ctx.raw, sym, cuint(domain.len), domainPtr, rangeSort)
   result = Z3FuncDecl[ArgsTup, Ret](raw: raw, ctx: ctx)

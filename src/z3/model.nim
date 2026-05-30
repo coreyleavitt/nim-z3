@@ -23,7 +23,7 @@
 ## actually needed to constrain.
 
 import std/options
-import ./ffi, ./context, ./sort, ./ast, ./builder, ./solver
+import ./ffi, ./context, ./ast, ./builder, ./solver
 export solver
 
 type

@@ -285,7 +285,7 @@ examples/
 6. **FloatingPoint** (`z3/fp`). ✅ shipped.
 7. **Uninterpreted functions** (`Z3FuncDecl`). ✅ shipped.
 8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`. ✅ shipped.
-9. Pre-tag audit.
+9. Pre-tag audit. ✅ shipped (this commit).
 10. v0.3 tag.
 
 *Pruned from this list mid-v0.3:* DOT / GraphViz AST export (out-of-scope; redirected to a future `nim-z3-tools` sibling per §8 scope discipline) and "wider-width BV recipes" as a numbered step (recipes are continuous — extended whenever a theory family lands).
@@ -386,6 +386,13 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
 
+### From step 9 (pre-tag audit + sortdispatch consolidation)
+
+- **Architectural payoff**: the three `sortOfType` / `sortOfTypeSeq` / `sortOfTypeFD` cascades collapsed to a single `mixin sortOf` dispatch in `z3/sortdispatch`. Each typed family now owns its own `sortOf` overload at the declaration site; `sortOfType[T]` is a one-line template with `mixin sortOf` that defers resolution to the instantiation site. Adding a new typed family in v0.4+ is now one `sortOf` overload in that family's module — zero edits to any central dispatcher.
+- **Bonus capability**: this closes the v0.2 §8 "nested arrays deferred — typedesc-reflection limit" item. `Z3Array[Z3Int, Z3Array[Z3Int, Z3Int]]` round-trips through store/select. The same mechanism unlocks `Z3FuncDecl[(Z3Array[Z3Int, Z3Int],), Z3Bool]` and `Z3Seq[Z3Array[K, V]]` for free.
+- **Z3DatatypeValue as a sortdispatch element type — explicitly deferred to v0.4.** A datatype's sort handle is created at runtime (by `declareDatatype`) and stored on its decl. `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` would need a runtime decl-table lookup keyed by `T`'s marker type. Real Z3 capability, real ergonomic win (`Z3Array[Z3Int, Z3DatatypeValue[Foo]]`), but the decl-table indirection deserves its own design pass.
+- **Dead `./sort` imports cleared** from `builder.nim`, `model.nim`, `quantifier.nim`, `optimize.nim` — four `Warning: imported and not used` lints had been printing on every compile since step 1's lifecycle relocation moved `Z3Sort` discovery off the direct-import path. Pre-tag clean compile.
+
 ### From step 8 (solver-tactic bridges)
 
 - **Spec correction**: I originally planned an observable-effect test for `setParams` via `model=false` + `s.model()` raising on a sat solver. Z3 4.13.3 **does not honour `model=false`** on a solver in that way — `s.model()` still returns a model. The wrapper's contract is "pass the typed bag through and don't break the solver"; whether a given Z3 param has its documented runtime effect is Z3's problem, not the wrapper's. Test replaced with a typed-params-breadth check (bool / uint / float / string overloads of `Z3Params.set` all land in `setParams` without error). **No work deferred** — the bridge is solid.
@@ -426,6 +433,99 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Wider-width BV recipes as a numbered step** — recipes are continuous practice; extended in tests/recipes.nim alongside the theory family that motivates them.
 
 Same discipline as v0.1 §18 and v0.2 §8 — append-only. Format: **what**, **why**, **where it goes** (v0.4 / dropped / sibling-package).
+
+---
+
+## 8b. Pre-tag audit — v0.3
+
+The structured walk before tagging, mirroring the v0.2 precedent. Each §1 goal + §5 step is classified as **landed / rolled to v0.4 / dropped / sibling-package**, with the commit hash for landed items.
+
+### §1 Goals
+
+| # | Goal | Status | Commit / Notes |
+|---|---|---|---|
+| 1 | Architectural unification (`Z3Term` concept + unified lifecycle/wrap) | ✅ landed | `ea46a86` — v0.3 step 1 |
+| 2 | Carried-forward v0.2 gaps + small cleanups | ✅ landed | `78852f4` (semantics), `7b2d59f` (small cleanups). DOT export + recipes scope-pruned mid-v0.3 (see §8 "Scope-pruned items"). |
+| 3 | String theory + regex | ✅ landed | `f5c7e91` — v0.3 step 4 |
+| 4 | Sequence theory | ✅ landed | `f0965ce` — v0.3 step 5. Also folded `Z3String = Z3Seq[Z3Char]` alias refactor. |
+| 5 | FloatingPoint theory | ✅ landed | `438594d` — v0.3 step 6 |
+| 6 | Uninterpreted functions (`Z3FuncDecl`) | ✅ landed | `78ff9dc` — v0.3 step 7 |
+| 7 | Solver–tactic bridges | ✅ landed | `8be9bee` — v0.3 step 8 |
+| 8 | Fixedpoint engine (`Z3Fixedpoint`) | **rolled to v0.4** | Not surfaced as a real-user need during v0.3. Plan §1 already flagged it as "may roll." |
+| 9 | Carried-forward CI work (if [#1](https://github.com/coreyleavitt/nim-z3/issues/1) unblocks) | **rolled** (conditional) | The private-dep blocker that filed #1 in v0.2 stayed unresolved through v0.3. Nothing v0.3 did changes this. |
+| 10 | `{.optional.}` softlink declarations | **rolled to v0.4** | None of the v0.3 modules pulled a 4.13+-only symbol. Soonest trigger: a new theory wraps a symbol added after Z3 4.10 baseline. |
+| 11 | Pre-tag audit for v0.3 | ✅ this block | The audit you are reading. |
+
+### §5 Steps
+
+| Step | Deliverable | Status | Commit |
+|---|---|---|---|
+| 1 | Architectural unification | ✅ landed | `ea46a86` |
+| 2 | `z3/semantics` + carryover gaps | ✅ landed | `78852f4` |
+| 3 | Small cleanups (SortTag prune + `mkBitVec` bracket-W) | ✅ landed | `7b2d59f` |
+| 4 | Strings + regexes (`z3/char`, `z3/string`, `z3/regex`) | ✅ landed | `f5c7e91` |
+| 5 | Sequences (`z3/seq`) + Z3String alias refactor | ✅ landed | `f0965ce` |
+| 6 | FloatingPoint (`z3/fp`) | ✅ landed | `438594d` |
+| 7 | Uninterpreted functions (`z3/funcdecl`) | ✅ landed | `78ff9dc` |
+| 8 | Solver–tactic bridges | ✅ landed | `8be9bee` |
+| 9 | Pre-tag audit + sortdispatch consolidation | ✅ this commit | sortdispatch landed + audit block written |
+| 10 | v0.3 tag | next commit | The actual `v0.3.0` git tag. |
+
+### Spec corrections logged during v0.3 (cross-reference)
+
+Every step that hit a spec assumption-needed-changing surfaced it back to the user before continuing; the corrections live in their per-step §8 entries above. Summary for the audit:
+
+- **Step 2**: `Z3_apply_result_convert_model` retired in Z3 4.8.0 — moved to `Z3_goal_convert_model` (per-subgoal). Capability identical, modern name. `toRealApprox` precision-knob lean was a misread — `Z3_get_numeral_double` doesn't take a precision arg. Both surfaced before code touched.
+- **Step 3**: Nim won't infer a second generic when the first is bracket-supplied — `mkBitVec[W, T]` collapsed to `mkBitVec[W: static int](v: SomeInteger)`. Pure resolution; no design change.
+- **Step 4**: `Z3_mk_re_range` operands are **`Z3String`**, not `Z3Char` (Z3's polymorphic sort checker explicitly rejects Char). The internal-assertion failure on raw `Z3_mk_string` was orthogonal; switching to `Z3_mk_lstring` fixed it. `Z3Char` stays in scope as its own typed family with its own surface (`<=`, `<`, `isDigit`, `toInt`).
+- **Step 6**: `Z3_fpa_get_numeral_double` does **not** exist in z3.h despite the obvious symmetry with `Z3_get_numeral_double`. Resolution: round-trip via `Z3_mk_fpa_to_ieee_bv` + `simplify` + `Z3_get_numeral_uint64` + Nim reinterpret-cast. Lossless across every IEEE-754 binary32/64 bit pattern. Also: `==`/`!=` on `Z3Fp[E,S]` use **IEEE equality** (`Z3_mk_fpa_eq`), not structural — deliberate divergence from every other typed family because NaN ≠ NaN is what FP users expect.
+- **Step 7**: The headline `forall x. f(g(x)) == x` test hung Z3 (classic quantifier-without-trigger problem flagged in §6 risks). Replaced with concrete-witness composition (`f(g(0)) == 42` with `g(0) == 99`) that demonstrates the same uninterpreted-function-composition story while terminating.
+- **Step 8**: Z3 4.13.3 **does not honour `model=false`** on a solver — `s.model()` still returns a model after sat. The observable-effect test was replaced with a typed-params-breadth check.
+- **Step 9 (this)**: the `sortdispatch` consolidation also closed the v0.2 §8 "nested arrays deferred" item by using `mixin sortOf` to defer name resolution to the instantiation site — no special-case handling for arbitrary nesting depth.
+
+### Items rolled forward to v0.4
+
+These are logged per-step in §8 above. Consolidated here for the rollforward:
+
+- **`Z3Fixedpoint`** — §1 goal 8. Real Z3 capability; no real-user trigger during v0.3.
+- **`Z3_solver_get_unsat_core` / `Z3_solver_get_proof`** — natural follow-ups to setting `unsat_core=true` / `proof=true` (step 8). AST-vector / proof-grammar surfaces with their own design.
+- **`Z3_solver_get_param_descrs`** — schema-driven param introspection (step 8). Separate ref-typed handle, deserves its own pass.
+- **`Z3_func_interp` tabular extraction** — entries + else-value iteration for uninterpreted-function model interpretation (step 7). The headline "value at point" is `evalAt(m, f, args)`; the full table is a richer surface.
+- **`Z3Char` BV interop** (`Z3_mk_char_to_bv` / `_from_bv`) — needs runtime `:char-width` thread + cross-module visibility (step 4).
+- **`Z3Float128` / `Z3Float16` structured extraction** — no Nim-native float type for those widths; `toIeeeBv` is the escape hatch (step 6).
+- **Epsilon-bound `Z3Real` extraction** — `Z3_get_numeral_double` blocks on `1/2 + ε`-shaped optimisation outputs (step 2). Workaround: inspect AST kind manually.
+- **`Z3DatatypeValue[T]` as a `sortdispatch` element type** — would let `Z3Array[…, Z3DatatypeValue[Foo]]`, `Z3Seq[Z3DatatypeValue[Foo]]`, etc. construct. Needs runtime decl-table lookup (datatype sorts aren't compile-time). Not blocking pre-1.0.
+- **Replace-all on `Z3String`** — Z3 doesn't ship a primitive; idiomatic path is regex composition.
+- **Carry-forward CI items (#1)** — same blocker as v0.2.
+- **`{.optional.}` softlink declarations** — triggers when first 4.13+-only symbol lands.
+- **Differential testing against Python z3** — non-goal as of v0.3.
+
+### Scope-pruned items (redirected to sibling packages or continuous practice)
+
+Already in §8 "Scope-pruned items"; not deferred to v0.4:
+
+- **DOT / GraphViz AST export** — sibling package (`nim-z3-tools`/`-viz`); not a wrapper concern.
+- **Wider-width BV recipes** as a numbered step — continuous practice, extended in `tests/recipes.nim` alongside the theory family that motivates them.
+
+### Dropped (won't ship)
+
+(None this release. Items deferred from v0.2 stayed deferred or shipped; no new drops surfaced.)
+
+### Cumulative test count
+
+v0.2 closed at **652 OKs**. v0.3 closes at **890 OKs** across both `nim c` and `nim cpp`. Step-by-step delta:
+
+| After step | Total | Delta | New tests |
+|---|---|---|---|
+| 1 (unification) | 652 | 0 | (refactor — no new tests) |
+| 2 (semantics + carryover) | 674 | +22 | 11 × 2 |
+| 3 (small cleanups) | 684 | +10 | 5 × 2 |
+| 4 (strings + regexes + chars) | 752 | +68 | 34 × 2 |
+| 5 (sequences + Z3String alias) | 788 | +36 | 18 × 2 |
+| 6 (FloatingPoint) | 850 | +62 | 31 × 2 |
+| 7 (uninterpreted functions) | 872 | +22 | 11 × 2 |
+| 8 (solver-tactic bridges) | 886 | +14 | 7 × 2 |
+| 9 (sortdispatch + nested arrays + Z3FuncDecl over Z3Array) | 890 | +4 | 2 × 2 |
 
 ---
 

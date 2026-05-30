@@ -16,19 +16,7 @@
 ## strings — strings are sequences). Treat `zsUnknown` as a possible
 ## outcome for non-trivial sequence proof obligations.
 
-import ./ffi, ./context, ./ast, ./bitvec, ./char, ./builder
-
-# ============================================================================
-# sortOfType extension for Z3Char + Z3Seq[E]
-# ============================================================================
-#
-# This module's own `sortOfTypeSeq[E]` covers the cases Z3Seq needs at
-# construction time. The full unified sortOfType (with array-side
-# cases) lives in `z3/array`; future v0.3 step that introduces a
-# central dispatcher can collapse the two. For now the duplication is
-# scoped to a single recursion step.
-
-proc sortOfTypeSeq*[E](ctx: Z3Context): RawZ3Sort
+import ./ffi, ./context, ./ast, ./builder, ./sortdispatch
 
 # ============================================================================
 # Z3Seq[E] — phantom-typed value family
@@ -48,31 +36,12 @@ proc `=copy`[E](dst: var Z3Seq[E], src: Z3Seq[E]) {.raises: [].} =
 proc `=dup`[E](src: Z3Seq[E]): Z3Seq[E] {.raises: [].} =
   termDup(result, src, Z3_inc_ref)
 
-# Dispatch needs to know element sorts. v0.3 step 5 wires Z3Int /
-# Z3Real / Z3Bool / Z3BitVec[W] / Z3Char / nested Z3Seq[E']; widen
-# alongside future families. Z3Array / Z3DatatypeValue are reachable
-# in principle but live in their own modules and aren't needed for
-# step 5.
-
-proc sortOfTypeSeq*[E](ctx: Z3Context): RawZ3Sort =
-  when E is Z3Int:
-    ctx.checkErr Z3_mk_int_sort(ctx.raw)
-  elif E is Z3Real:
-    ctx.checkErr Z3_mk_real_sort(ctx.raw)
-  elif E is Z3Bool:
-    ctx.checkErr Z3_mk_bool_sort(ctx.raw)
-  elif E is Z3BitVec:
-    ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(E.W))
-  elif E is Z3Char:
-    ctx.checkErr Z3_mk_char_sort(ctx.raw)
-  elif E is Z3Seq:
-    # Nested seq: recurse on the inner element type.
-    let inner = sortOfTypeSeq[E.E](ctx)
-    ctx.checkErr Z3_mk_seq_sort(ctx.raw, inner)
-  else:
-    {.error: "Z3Seq: unsupported element type. Supported: Z3Int, Z3Real, " &
-             "Z3Bool, Z3BitVec[W], Z3Char, Z3Seq[E'] (nested). " &
-             "Z3Array / Z3DatatypeValue elements land if needed; ask.".}
+# Step 9 sortOf overload — recurses via `sortOfType[E]` (template with
+# `mixin sortOf`). Any element type with a `sortOf` overload in scope
+# at the instantiation site is accepted; nested Z3Seq[Z3Seq[...]],
+# Z3Seq[Z3Array[K, V]], Z3Seq[Z3Fp[E,S]], etc. all flow through.
+proc sortOf*[E](_: typedesc[Z3Seq[E]], ctx: Z3Context): RawZ3Sort {.inline.} =
+  ctx.checkErr Z3_mk_seq_sort(ctx.raw, sortOfType[E](ctx))
 
 # ============================================================================
 # Construction
@@ -80,8 +49,7 @@ proc sortOfTypeSeq*[E](ctx: Z3Context): RawZ3Sort =
 
 proc mkSeqEmpty*[E](ctx: Z3Context): Z3Seq[E] =
   ## Empty sequence `(seq.empty (Seq E))`.
-  let elem = sortOfTypeSeq[E](ctx)
-  let seqSort = ctx.checkErr Z3_mk_seq_sort(ctx.raw, elem)
+  let seqSort = sortOf(Z3Seq[E], ctx)
   wrap[Z3Seq[E]](ctx, ctx.checkErr Z3_mk_seq_empty(ctx.raw, seqSort))
 proc mkSeqEmpty*[E](): Z3Seq[E] =
   mkSeqEmpty[E](requireCurrentContext())
@@ -96,8 +64,7 @@ proc mkSeqUnit*[E](e: E): Z3Seq[E] {.inline.} =
 proc mkSeqVar*[E](ctx: Z3Context, name: string): Z3Seq[E] =
   ## Free sequence variable. Element type comes from the typedesc
   ## generic.
-  let elem = sortOfTypeSeq[E](ctx)
-  let seqSort = ctx.checkErr Z3_mk_seq_sort(ctx.raw, elem)
+  let seqSort = sortOf(Z3Seq[E], ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   wrap[Z3Seq[E]](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, seqSort))
 proc mkSeqVar*[E](name: string): Z3Seq[E] =

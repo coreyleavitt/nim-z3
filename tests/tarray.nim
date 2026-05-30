@@ -113,3 +113,18 @@ suite "Z3Array — read-over-write axioms (random shapes)":
         intRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
+
+suite "Z3Array — nested arrays (v0.3 step 9 closes v0.2 §8 deferral)":
+  test "Z3Array[Z3Int, Z3Array[Z3Int, Z3Int]] round-trips through store+select":
+    # v0.2 §8 deferred nested arrays citing 'typedesc-reflection limit'.
+    # Step 9's mixin-based sortOf dispatch closes that gap — the outer
+    # array's sortOf[K, V] now recurses through sortOfType[V] for any V
+    # that has a sortOf overload in scope, including Z3Array itself.
+    let ctx = newContext()
+    let outer = mkArrayVar[Z3Int, Z3Array[Z3Int, Z3Int]]("outer")
+    let inner0 = mkConstArray[Z3Int, Z3Int](mkInt(0))
+    let inner0_at_5_is_42 = inner0.store(mkInt(5), mkInt(42))
+    let outer1 = outer.store(mkInt(0), inner0_at_5_is_42)
+    let s = newSolver()
+    s.add outer1.select(mkInt(0)).select(mkInt(5)) == mkInt(42)
+    check s.check() == zsSat

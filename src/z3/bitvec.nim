@@ -62,6 +62,17 @@ proc `=copy`[W: static int](dst: var Z3BitVec[W], src: Z3BitVec[W]) {.raises: []
 proc `=dup`[W: static int](src: Z3BitVec[W]): Z3BitVec[W] {.raises: [].} =
   termDup(result, src, Z3_inc_ref)
 
+# ============================================================================
+# sortOf overload (v0.3 step 9)
+# ============================================================================
+
+proc sortOf*[W: static int](_: typedesc[Z3BitVec[W]],
+                            ctx: Z3Context): RawZ3Sort {.inline.} =
+  ## Width-parameterised BV sort. Participates in the step-9
+  ## `sortdispatch` resolution — `Z3BitVec[W]` is now reachable as a
+  ## funcdecl arg / seq element / array key or value automatically.
+  ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
+
 # `wrapBv` removed v0.3 step 1 — call sites use the unified
 # `wrap[Z3BitVec[W]](ctx, raw)` from `z3/lifecycle` directly.
 

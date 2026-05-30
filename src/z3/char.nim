@@ -36,6 +36,10 @@ type
 
 emitTermLifecycle(Z3Char, Z3_dec_ref, Z3_inc_ref)
 
+# Step 9 sortOf overload — participates in z3/sortdispatch's resolution.
+proc sortOf*(_: typedesc[Z3Char], ctx: Z3Context): RawZ3Sort {.inline.} =
+  ctx.checkErr Z3_mk_char_sort(ctx.raw)
+
 # ============================================================================
 # Construction
 # ============================================================================

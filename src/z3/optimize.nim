@@ -27,7 +27,7 @@
 ## (see plan §8) — they require setting `Z3_optimize_set_params` with
 ## a typed `Z3Params` object, which is the v0.2 step-1 deferral.
 
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./model, ./solver, ./params
+import ./ffi, ./context, ./ast, ./bitvec, ./model, ./solver, ./params
 
 # ============================================================================
 # Z3Optimize — lifecycle

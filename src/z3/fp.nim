@@ -68,6 +68,11 @@ proc `=copy`[E, S: static int](dst: var Z3Fp[E, S], src: Z3Fp[E, S]) {.raises: [
 proc `=dup`[E, S: static int](src: Z3Fp[E, S]): Z3Fp[E, S] {.raises: [].} =
   termDup(result, src, Z3_inc_ref)
 
+# Step 9 sortOf overload — participates in z3/sortdispatch's resolution.
+proc sortOf*[E, S: static int](_: typedesc[Z3Fp[E, S]],
+                               ctx: Z3Context): RawZ3Sort {.inline.} =
+  ctx.checkErr Z3_mk_fpa_sort(ctx.raw, cuint(E), cuint(S))
+
 # ============================================================================
 # Z3RoundingMode — typed AST family for quantification over rounding
 # ============================================================================

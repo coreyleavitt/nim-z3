@@ -170,13 +170,13 @@
 ##   parsing. The reformatter is a pure Nim Wadler-style "fit or
 ##   stack" pass over Z3's flat output. **Implemented.**
 
-import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
-       z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
-       z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
-       z3/semantics, z3/char, z3/seq, z3/string, z3/regex, z3/fp,
-       z3/funcdecl
-export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
-       semantics, char, seq, string, regex, fp, funcdecl
+import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
+       z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec, z3/pretty,
+       z3/simplify, z3/array, z3/datatypes, z3/quantifier, z3/optimize,
+       z3/params, z3/tactic, z3/semantics, z3/char, z3/seq, z3/string,
+       z3/regex, z3/fp, z3/funcdecl
+export ffi, context, sort, sortdispatch, ast, builder, boolean, arith, solver,
+       model, bitvec, pretty, simplify, array, datatypes, quantifier, optimize,
+       params, tactic, semantics, char, seq, string, regex, fp, funcdecl
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

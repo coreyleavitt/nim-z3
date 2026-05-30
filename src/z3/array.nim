@@ -32,30 +32,12 @@
 ## - **`Z3_mk_array_ext`** (extensionality witness). Niche; defer
 ##   until tactics or v0.3.
 
-import ./ffi, ./context, ./sort, ./ast, ./bitvec
-
-# ============================================================================
-# sortOfType — typedesc → RawZ3Sort dispatch
-# ============================================================================
-
-proc sortOfType*[T](ctx: Z3Context): RawZ3Sort =
-  ## Compile-time-resolved sort constructor for a typed AST family.
-  ## Used by `Z3Array` and any other module needing to turn a typedesc
-  ## into a raw Z3 sort. Public so future modules (datatypes, etc.)
-  ## can dispatch the same way.
-  when T is Z3Int:
-    ctx.checkErr Z3_mk_int_sort(ctx.raw)
-  elif T is Z3Real:
-    ctx.checkErr Z3_mk_real_sort(ctx.raw)
-  elif T is Z3Bool:
-    ctx.checkErr Z3_mk_bool_sort(ctx.raw)
-  elif T is Z3BitVec:
-    # T.W extracts the static int generic param of Z3BitVec[W].
-    ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(T.W))
-  else:
-    {.error: "sortOfType: unsupported sort type. Supported: Z3Int, " &
-             "Z3Real, Z3Bool, Z3BitVec[W]. Nested arrays / datatypes " &
-             "land in later v0.2 steps.".}
+import ./ffi, ./context, ./ast, ./sortdispatch
+export sortdispatch
+  # Downstream modules that historically imported `z3/array` for
+  # `sortOfType` (notably `z3/datatypes`) keep working through this
+  # re-export. The v0.3 step 9 consolidation moved the actual
+  # dispatcher to `z3/sortdispatch`.
 
 # ============================================================================
 # Z3Array — phantom-typed value type
@@ -80,6 +62,16 @@ proc `=copy`[Key, Val](dst: var Z3Array[Key, Val],
 
 proc `=dup`[Key, Val](src: Z3Array[Key, Val]): Z3Array[Key, Val] {.raises: [].} =
   termDup(result, src, Z3_inc_ref)
+
+# Step 9 sortOf overload — recurses via `sortOfType[K]` / `sortOfType[V]`
+# (template with `mixin sortOf`). Nested arrays (`Z3Array[Z3Int,
+# Z3Array[Z3Int, Z3Bool]]`) close the v0.2 §8 deferral here: any K or V
+# with a `sortOf` overload in scope at the instantiation site works,
+# including Z3Array itself for nesting.
+proc sortOf*[K, V](_: typedesc[Z3Array[K, V]],
+                   ctx: Z3Context): RawZ3Sort {.inline.} =
+  ctx.checkErr Z3_mk_array_sort(ctx.raw,
+    sortOfType[K](ctx), sortOfType[V](ctx))
 
 # `wrapArray` removed v0.3 step 1 — call sites use the unified
 # `wrap[Z3Array[Key, Val]](ctx, raw)` from `z3/lifecycle` directly.
@@ -112,9 +104,7 @@ proc mkArrayVar*[Key, Val](
   ## ```nim
   ## let mem = mkArrayVar[Z3BitVec[32], Z3BitVec[8]]("mem")
   ## ```
-  let kSort = sortOfType[Key](ctx)
-  let vSort = sortOfType[Val](ctx)
-  let aSort = ctx.checkErr Z3_mk_array_sort(ctx.raw, kSort, vSort)
+  let aSort = sortOf(Z3Array[Key, Val], ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   wrap[Z3Array[Key, Val]](ctx,
     ctx.checkErr Z3_mk_const(ctx.raw, sym, aSort))

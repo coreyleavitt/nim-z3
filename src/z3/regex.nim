@@ -14,7 +14,7 @@
 ## cases (large counted repetitions, intersections that produce
 ## exponential DFAs). Treat `zsUnknown` as a possible solver outcome.
 
-import ./ffi, ./context, ./ast, ./char, ./seq, ./string
+import ./ffi, ./context, ./ast, ./sortdispatch, ./char, ./seq, ./string
 export char
 
 # ============================================================================
@@ -40,15 +40,13 @@ proc `=dup`[Basis](src: Z3Regex[Basis]): Z3Regex[Basis] {.raises: [].} =
 # Basis-sort dispatch
 # ============================================================================
 #
-# Mirrors `array.sortOfType[T]` — turns a basis typedesc into the
-# matching SMT sort. v0.3 step 4 supports Z3String only.
+# Delegates to `sortOfType[Basis]` — works for `Z3Seq[E]` (which
+# subsumes `Z3String = Z3Seq[Z3Char]` via alias). v0.3 step 9 routed
+# through the central `z3/sortdispatch` mechanism.
 
 proc basisSort[Basis](ctx: Z3Context): RawZ3Sort =
   when Basis is Z3Seq:
-    # Z3String = Z3Seq[Z3Char] flows through this branch too. The
-    # element sort comes from `z3/seq`'s recursive dispatcher.
-    let elem = sortOfTypeSeq[Basis.E](ctx)
-    ctx.checkErr Z3_mk_seq_sort(ctx.raw, elem)
+    sortOfType[Basis](ctx)
   else:
     {.error: "Z3Regex basis: must be a Z3Seq[E] (= Z3String for E = Z3Char). " &
              "Got an unsupported basis type.".}

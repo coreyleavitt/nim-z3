@@ -109,3 +109,16 @@ suite "Z3FuncDecl — sort safety":
     check not compiles((f(mkTrue())))
     # Right sort compiles.
     check compiles((f(mkInt(0))))
+
+suite "Z3FuncDecl — Z3Array element type (v0.3 step 9)":
+  test "predicate over Z3Array[Z3Int, Z3Int]: decides a sat formula":
+    # Pre step-9 this failed to compile — funcdecl's sortOf cascade
+    # didn't include Z3Array. The consolidation in step 9 made every
+    # typed family own its sortOf overload, so Z3Array element types
+    # now flow through automatically.
+    let ctx = newContext()
+    let p = mkFuncDecl[(Z3Array[Z3Int, Z3Int],), Z3Bool]("p")
+    let a = mkConstArray[Z3Int, Z3Int](mkInt(0))
+    let s = newSolver()
+    s.add p(a)
+    check s.check() == zsSat

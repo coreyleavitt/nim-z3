@@ -267,7 +267,7 @@ Each step closes with a §8 deferral entry if anything surfaced mid-cycle (same 
 
 6. **Solver `assertConstraintAndTrack` + `getUnsatCore`.** `assertConstraintAndTrack(s, c, tracker)`: wraps `Z3_solver_assert_and_track`. `getUnsatCore(s): seq[Z3Bool]`: wraps `Z3_solver_get_unsat_core` (returns `Z3_ast_vector` — convert via step 1's `toSeq`). TDD: assert `x > 5` tracked as `t1`, `x < 3` tracked as `t2`, check unsat, `getUnsatCore` returns `[t1, t2]`.
 
-7. **Solver `getProof`.** `proc getProof(s: Z3Solver): Z3Proof`. Requires `setParams(p with proof=true)` before assertion. TDD: same shape as step 4's note — assert unsat formula, extract proof, walk root rule.
+7. **Solver `getProof`.** ✅ shipped together with step 4 (commit `ae9b105`). Closed in step 4 because the `Z3Proof` family is untestable without a way to extract one — Z3 has no public proof-literal constructor. No work happens at "step 7" in the sequence; the numbered slot is preserved for historical traceability against the original plan ordering. See §8 "From step 4 (Z3Proof family + getProof — steps 4 and 7 merged)".
 
 8. **Solver `getStatistics` + `getConsequences`.** `Z3Stats` typed handle with `len` / `[]` / `keys` / iteration. `getStatistics(s): Z3Stats`. `getConsequences(s, assumptions, variables): tuple[status: Z3Status, consequences: seq[Z3Bool]]`. TDD: solve trivial problem, `getStatistics` returns non-zero `len`, lookup a known key.
 
@@ -328,6 +328,10 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 7 (Solver.getProof) — explicit close-out
+
+- **No work done in step 7's slot.** All of step 7's planned scope (`getProof` extraction) shipped in step 4 (commit `ae9b105`) per the merge rationale logged in this §8 above. Step 7 is closed without code as a docs-only marker, preserving the numbered slot for historical alignment with the original plan and the V0.4_PLAN.md archive. Step 8 (`getStatistics` + `getConsequences`) is the next active step.
 
 ### From step 6 (assertConstraintAndTrack + getUnsatCore)
 

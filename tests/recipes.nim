@@ -176,7 +176,7 @@ proc interpret*(r: IntRecipe, ctx: Z3Context): Z3Int =
 
 proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   case r.kind
-  of bvrkLit: mkBitVec(ctx, uint32(r.lit), 8)
+  of bvrkLit: mkBitVec[8](ctx, uint32(r.lit))
   of bvrkVar: mkBitVecVar[8](ctx, r.name)
   of bvrkNeg: -interpret(r.e, ctx)
   of bvrkNot: not interpret(r.e, ctx)

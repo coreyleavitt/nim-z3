@@ -39,7 +39,7 @@ suite "simplify — algebraic identities":
 
   test "BV bitwise folding: 0xAB and 0xF0 simplifies to 0xA0":
     let ctx = newContext()
-    let r = simplify(mkBitVec(0xAB'u8, 8) and mkBitVec(0xF0'u8, 8))
+    let r = simplify(mkBitVec[8](0xAB'u8) and mkBitVec[8](0xF0'u8))
     check r.toUint == 0xA0'u64
 
 suite "simplify — phantom type preservation":
@@ -60,7 +60,7 @@ suite "simplify — phantom type preservation":
 
   test "simplify of Z3BitVec[8] stays Z3BitVec[8]":
     let ctx = newContext()
-    let r = simplify(mkBitVecVar[8]("b") + mkBitVec(1'u8, 8))
+    let r = simplify(mkBitVecVar[8]("b") + mkBitVec[8](1'u8))
     check r is Z3BitVec[8]
 
   test "simplify of Z3BitVec[16] stays Z3BitVec[16]":

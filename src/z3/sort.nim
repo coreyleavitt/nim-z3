@@ -45,23 +45,15 @@ type
       ## would mean sentinel-value pollution (`W=0` for non-BV sorts)
       ## and invasive rework of every existing generic over `Z3Ast[S]`.
       ## This tag exists so `Z3Sort[stBitVec]` is still expressible for
-      ## sort-level introspection.
-    stArray
-      ## Array sort. Key/value types live on a separate
-      ## `Z3Array[Key, Val]` type (see `z3/array`) carrying typedesc
-      ## generic parameters — same precedent as `Z3BitVec[W]` carrying
-      ## its width. The flat `SortTag` enum can't express two
-      ## sub-parameters (key sort + value sort, where the value can
-      ## itself be a width-tracked BV), so the typed array surface
-      ## lives in its own type family. This tag exists for sort-level
-      ## introspection.
-    stDatatype
-      ## Inductive datatype sort. The datatype's identity (name +
-      ## constructors) lives on `Z3DatatypeDecl[Name]` /
-      ## `Z3DatatypeValue[Name]` (see `z3/datatypes`) with the name as
-      ## a `static string` phantom parameter, mirroring the
-      ## `Z3BitVec[W]` and `Z3Array[Key, Val]` precedents. This tag
-      ## exists for sort-level introspection.
+      ## `mkBitVecSort` and sort-level introspection.
+
+  # NOTE: v0.3 step 3 retired `stArray` and `stDatatype` from this enum.
+  # Both were placeholder tags from v0.2 that never had a caller — the
+  # array and datatype surfaces live on `Z3Array[Key, Val]` and
+  # `Z3DatatypeValue[Name]` (typedesc-parameterised phantom families)
+  # and never round-trip through `Z3Ast[S]`, so the tags were
+  # unreachable and confused the enum's purpose. `Z3Sort[stBitVec]`
+  # stays because `mkBitVecSort` actually returns it.
 
   Z3Sort*[S: static SortTag] = object
     ## Phantom-typed sort handle. Value type carrying the underlying

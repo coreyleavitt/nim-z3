@@ -96,7 +96,7 @@ proc mkConstArray*[Key, Val](
   ## ```nim
   ## let zeros = mkConstArray[Z3Int, Z3Int](ctx, mkInt(0))
   ## let blank = mkConstArray[Z3BitVec[32], Z3BitVec[8]](
-  ##   ctx, mkBitVec(0'u8, 8))
+  ##   ctx, mkBitVec[8](0'u8))
   ## ```
   let kSort = sortOfType[Key](ctx)
   wrap[Z3Array[Key, Val]](ctx,

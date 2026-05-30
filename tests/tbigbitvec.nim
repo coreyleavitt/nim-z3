@@ -22,7 +22,7 @@ suite "big BV — tracer":
     let ctx = newContext()
     # v0.1 required mkBigBitVec for W > 64 even with tiny values; v0.2
     # drops that artificial cap because Z3 itself handles any W.
-    let bv = mkBitVec(42'u, 128)
+    let bv = mkBitVec[128](42'u)
     check bv is Z3BitVec[128]
     check bv.toBigUintStr == "42"
 
@@ -36,13 +36,13 @@ suite "big BV — signed extraction":
     let ctx = newContext()
     # 0xFF on BV[8] is -1 signed. v0.1's toInt returned -1 for W=8;
     # the string form should agree.
-    let bv = mkBitVec(0xFF'u, 8)
+    let bv = mkBitVec[8](0xFF'u)
     check bv.toBigIntStr == "-1"
     check bv.toBigUintStr == "255"
 
   test "toBigIntStr on BV[8] without MSB is the unsigned value":
     let ctx = newContext()
-    let bv = mkBitVec(42'u, 8)
+    let bv = mkBitVec[8](42'u)
     check bv.toBigIntStr == "42"
 
   test "toBigIntStr on a 128-bit BV with MSB set is large-negative":

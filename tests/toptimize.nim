@@ -63,20 +63,20 @@ suite "Z3Optimize — BV objectives":
     let ctx = newContext()
     let x = mkBitVecVar[8]("x")
     let o = newOptimize()
-    o.add(bvult(x, mkBitVec(100'u8, 8)))
+    o.add(bvult(x, mkBitVec[8](100'u8)))
     let h = o.maximize(x)
     check o.check() == zsSat
     check h.upper is Z3BitVec[8]
-    check smtEquiv(h.upper, mkBitVec(99'u8, 8))
+    check smtEquiv(h.upper, mkBitVec[8](99'u8))
 
   test "minimize x: BV[8] subject to bvugt(x, 200) → lower is 201":
     let ctx = newContext()
     let x = mkBitVecVar[8]("x")
     let o = newOptimize()
-    o.add(bvugt(x, mkBitVec(200'u8, 8)))
+    o.add(bvugt(x, mkBitVec[8](200'u8)))
     let h = o.minimize(x)
     check o.check() == zsSat
-    check smtEquiv(h.lower, mkBitVec(201'u8, 8))
+    check smtEquiv(h.lower, mkBitVec[8](201'u8))
 
 suite "Z3Optimize — soft constraints":
   test "three conflicting soft constraints: at most one survives":

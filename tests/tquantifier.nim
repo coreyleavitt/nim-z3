@@ -37,7 +37,7 @@ suite "quantifier — heterogeneous sorts":
   test "forall x: BV[8]. x + 0 == x":
     let ctx = newContext()
     let x = mkBitVecVar[8]("x")
-    check smtValid(forall(x, (x + mkBitVec(0'u8, 8)) == x))
+    check smtValid(forall(x, (x + mkBitVec[8](0'u8)) == x))
 
   test "forall x: BV[8], y: BV[8]. x + y == y + x":
     let ctx = newContext()

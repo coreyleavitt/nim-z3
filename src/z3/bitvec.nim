@@ -83,26 +83,28 @@ proc mkBitVecVar*[W: static int](ctx: Z3Context, name: string): Z3BitVec[W] =
 proc mkBitVecVar*[W: static int](name: string): Z3BitVec[W] =
   mkBitVecVar[W](requireCurrentContext(), name)
 
-proc mkBitVec*[T: SomeInteger](
-    ctx: Z3Context, v: T, W: static int): Z3BitVec[W] =
+proc mkBitVec*[W: static int](
+    ctx: Z3Context, v: SomeInteger): Z3BitVec[W] =
   ## Bit-vector literal of width `W` carrying the unsigned (mod 2^W)
-  ## interpretation of `v`.
+  ## interpretation of `v`. Width is a bracket-position generic so the
+  ## call site matches the rest of the BV surface (`mkBitVecVar[W]`,
+  ## `mkBigBitVec[W]`).
   ##
   ## ```nim
-  ## let a = mkBitVec(5'u32, 8)     # Z3BitVec[8] with value 5
-  ## let b = mkBitVec(-1'i8, 8)     # Z3BitVec[8] = 0xFF
-  ## let c = ctx.mkBitVec(7'u, 16)  # explicit context
+  ## let a = mkBitVec[8](5'u32)     # Z3BitVec[8] with value 5
+  ## let b = mkBitVec[8](-1'i8)     # Z3BitVec[8] = 0xFF
+  ## let c = ctx.mkBitVec[16](7'u)  # explicit context
   ## ```
   ##
-  ## Width is unrestricted — `mkBitVec(5'u, 128)` produces a 128-bit
+  ## Width is unrestricted — `mkBitVec[128](5'u)` produces a 128-bit
   ## BV with low 5. The Nim source value is `uint64`-bounded since
   ## `T: SomeInteger` only ranges over Nim's primitive integer types;
-  ## for values exceeding that range use `mkBigBitVec(numeralString, W)`.
+  ## for values exceeding that range use `mkBigBitVec[W](numeralString)`.
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, uint64(v), s))
-proc mkBitVec*[T: SomeInteger](v: T, W: static int): Z3BitVec[W] =
-  mkBitVec(requireCurrentContext(), v, W)
+proc mkBitVec*[W: static int](v: SomeInteger): Z3BitVec[W] =
+  mkBitVec[W](requireCurrentContext(), v)
 
 proc mkBigBitVec*[W: static int](
     ctx: Z3Context, numeral: string): Z3BitVec[W] =
@@ -332,14 +334,14 @@ proc mkDistinct*[W: static int](xs: varargs[Z3BitVec[W]]): Z3Bool =
 # ============================================================================
 # Literal lifts — `bv + 3'u32`, `3'u32 + bv`, `bv == 5'u32`, etc.
 # Width inferred from the BV side; the integer literal is lifted to a
-# BV of matching width via `mkBitVec(lit, W)`.
+# BV of matching width via `mkBitVec[W](lit)`.
 # ============================================================================
 
 template liftBin(op: untyped) =
   proc op*[W: static int, T: SomeInteger](a: Z3BitVec[W], b: T): Z3BitVec[W] {.inline.} =
-    op(a, mkBitVec(b, W))
+    op(a, mkBitVec[W](b))
   proc op*[W: static int, T: SomeInteger](a: T, b: Z3BitVec[W]): Z3BitVec[W] {.inline.} =
-    op(mkBitVec(a, W), b)
+    op(mkBitVec[W](a), b)
 
 liftBin(`+`)
 liftBin(`-`)
@@ -350,9 +352,9 @@ liftBin(`xor`)
 
 template liftCmp(op: untyped) =
   proc op*[W: static int, T: SomeInteger](a: Z3BitVec[W], b: T): Z3Bool {.inline.} =
-    op(a, mkBitVec(b, W))
+    op(a, mkBitVec[W](b))
   proc op*[W: static int, T: SomeInteger](a: T, b: Z3BitVec[W]): Z3Bool {.inline.} =
-    op(mkBitVec(a, W), b)
+    op(mkBitVec[W](a), b)
 
 liftCmp(`==`)
 liftCmp(`!=`)
@@ -372,7 +374,7 @@ liftCmp(bvsge)
 proc toUint*[W: static int](a: Z3BitVec[W]): uint64 =
   ## Unsigned 64-bit extraction. Requires `W <= 64`. Internally calls
   ## `Z3_simplify` first, so concrete expression trees
-  ## (`mkBitVec(0xFF'u8, 8) + mkBitVec(1'u8, 8)`) extract their folded
+  ## (`mkBitVec[8](0xFF'u8) + mkBitVec[8](1'u8)`) extract their folded
   ## value directly without the caller wrapping them in a solver or
   ## calling `simplify` themselves.
   ##

@@ -34,7 +34,7 @@ proc bvWraparound(): Report[(int, int)] =
   forAll(
     tuples2(integers(0, 255), integers(0, 255)),
     proc(p: (int, int)) =
-      let got = (mkBitVec(uint32(p[0]), 8) + mkBitVec(uint32(p[1]), 8)).toUint
+      let got = (mkBitVec[8](uint32(p[0])) + mkBitVec[8](uint32(p[1]))).toUint
       ensure got == uint64(uint8(p[0]) + uint8(p[1])))
 
 proc main() =

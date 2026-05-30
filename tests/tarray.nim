@@ -44,25 +44,25 @@ suite "Z3Array — phantom type preservation":
   test "select on BV-keyed BV-valued array preserves BV widths":
     let ctx = newContext()
     let mem = mkArrayVar[Z3BitVec[32], Z3BitVec[8]]("mem")
-    let r = mem[mkBitVec(0'u32, 32)]
+    let r = mem[mkBitVec[32](0'u32)]
     check r is Z3BitVec[8]
 
 suite "Z3Array — memory model (BV[32] → BV[8])":
   test "store-and-read round-trips a byte":
     let ctx = newContext()
-    let mem = mkConstArray[Z3BitVec[32], Z3BitVec[8]](mkBitVec(0'u8, 8))
-    let mem2 = mem.store(mkBitVec(0x1000'u32, 32), mkBitVec(0xAB'u8, 8))
-    check smtEquiv(mem2[mkBitVec(0x1000'u32, 32)], mkBitVec(0xAB'u8, 8))
+    let mem = mkConstArray[Z3BitVec[32], Z3BitVec[8]](mkBitVec[8](0'u8))
+    let mem2 = mem.store(mkBitVec[32](0x1000'u32), mkBitVec[8](0xAB'u8))
+    check smtEquiv(mem2[mkBitVec[32](0x1000'u32)], mkBitVec[8](0xAB'u8))
 
   test "two stores at distinct addresses don't collide":
     let ctx = newContext()
-    let mem = mkConstArray[Z3BitVec[32], Z3BitVec[8]](mkBitVec(0'u8, 8))
+    let mem = mkConstArray[Z3BitVec[32], Z3BitVec[8]](mkBitVec[8](0'u8))
     let mem2 = mem
-      .store(mkBitVec(0x100'u32, 32), mkBitVec(0xAA'u8, 8))
-      .store(mkBitVec(0x200'u32, 32), mkBitVec(0xBB'u8, 8))
-    check smtEquiv(mem2[mkBitVec(0x100'u32, 32)], mkBitVec(0xAA'u8, 8))
-    check smtEquiv(mem2[mkBitVec(0x200'u32, 32)], mkBitVec(0xBB'u8, 8))
-    check smtEquiv(mem2[mkBitVec(0x300'u32, 32)], mkBitVec(0x00'u8, 8))
+      .store(mkBitVec[32](0x100'u32), mkBitVec[8](0xAA'u8))
+      .store(mkBitVec[32](0x200'u32), mkBitVec[8](0xBB'u8))
+    check smtEquiv(mem2[mkBitVec[32](0x100'u32)], mkBitVec[8](0xAA'u8))
+    check smtEquiv(mem2[mkBitVec[32](0x200'u32)], mkBitVec[8](0xBB'u8))
+    check smtEquiv(mem2[mkBitVec[32](0x300'u32)], mkBitVec[8](0x00'u8))
 
 suite "Z3Array — solver integration":
   test "free array with constrained index solves":

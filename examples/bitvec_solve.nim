@@ -30,9 +30,9 @@ proc main() =
     let b = mkBitVecVar[8]("b")
     let s = newSolver()
     # bvugt: a > 1 unsigned; same for b.
-    s.add bvugt(a, mkBitVec(1'u8, 8))
-    s.add bvugt(b, mkBitVec(1'u8, 8))
-    s.add a * b == mkBitVec(0xF0'u8, 8)
+    s.add bvugt(a, mkBitVec[8](1'u8))
+    s.add bvugt(b, mkBitVec[8](1'u8))
+    s.add a * b == mkBitVec[8](0xF0'u8)
     doAssert s.check() == zsSat
     let m = s.model()
     let av = m[a].toUint
@@ -46,7 +46,7 @@ proc main() =
     let s = newSolver()
     # concat[W1, W2]: BV[W1] × BV[W2] → BV[W1 + W2]. Width discipline
     # is checked at compile time.
-    s.add concat(hi, lo) == mkBitVec(0xAB'u8, 8)
+    s.add concat(hi, lo) == mkBitVec[8](0xAB'u8)
     doAssert s.check() == zsSat
     let m = s.model()
     echo &"concat: hi=0x{m[hi].toUint:x} lo=0x{m[lo].toUint:x} (expect A, B)"
@@ -58,14 +58,14 @@ proc main() =
     let s = newSolver()
     # bvslt with MSB=1 means signed-less-than zero — 0xFF interprets
     # as -1. Asserting bvslt finds an x with the sign bit set.
-    s.add bvslt(x, mkBitVec(0'u8, 8))
-    s.add x == mkBitVec(0xFF'u8, 8)   # pin to test the interpretation
+    s.add bvslt(x, mkBitVec[8](0'u8))
+    s.add x == mkBitVec[8](0xFF'u8)   # pin to test the interpretation
     doAssert s.check() == zsSat
     echo "signed: 0xFF < 0 (signed) — yes"
 
     # bvult never finds an x < 0 unsigned (every BV is >= 0 unsigned).
     let s2 = newSolver()
-    s2.add bvult(x, mkBitVec(0'u8, 8))
+    s2.add bvult(x, mkBitVec[8](0'u8))
     doAssert s2.check() == zsUnsat
     echo "unsigned: no x < 0 (unsigned) — confirmed unsat"
 

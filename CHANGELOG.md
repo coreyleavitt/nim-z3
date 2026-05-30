@@ -6,7 +6,151 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-— Work toward v0.3; see `docs/IMPLEMENTATION_PLAN.md`.
+— Work toward v0.4; see `docs/IMPLEMENTATION_PLAN.md`.
+
+## [0.3.0] — 2026-05-30
+
+The **architectural-unification + theory-completion** release. v0.2
+covered the theories that turn SMT into a software-verification engine
+(arrays, datatypes, quantifiers, optimisation, tactics). v0.3 unifies
+the typed-family contract, closes the v0.2 audit's user-visible gaps,
+and adds the remaining SMT-LIB theory families (FloatingPoint,
+Strings + Char + Regex, Sequences) plus uninterpreted functions and
+solver-tactic bridges. Tests: **890 OKs** across `nim c` + `nim cpp`
+(up from v0.2's 652).
+
+Full per-step plan + audit: archived in
+[`docs/V0.3_PLAN.md`](docs/V0.3_PLAN.md) (§8b "Pre-tag audit" block).
+
+### Added
+
+- **Architectural unification** (`ea46a86`) — `Z3Term` concept binding
+  the five typed value families (`Z3Ast[S]`, `Z3BitVec[W]`,
+  `Z3Array[K, V]`, `Z3DatatypeValue[T]`, `Z3Pattern`) by their shared
+  shape; unified `wrap[T: Z3Term](ctx, raw): T` template replacing five
+  family-specific `wrap*` helpers; lifecycle-hook generator
+  (`emitTermLifecycle` / `emitRefcountLifecycle`) collapsing 22
+  verbatim `=destroy` / `=copy` / `=dup` copies. Behaviour-preserving;
+  external API unchanged.
+- **`z3/semantics` module** (`78852f4`) — `smtValid` relocated from
+  `z3/solver`, `smtEquiv` collapsed to a generic `smtEquiv[T]` working
+  for every typed family with `==`. Single discovery point. Also lands
+  `Z3Model.eval` / `[]` as a generic for any `T`, the
+  tactic-pipeline model-conversion bridge `convertModel(applyResult,
+  idx, subModel)`, and `evalReal` / `toRealApprox` for `Z3Real` model
+  values. Closes v0.2 §8 carryover items.
+- **Small cleanups** (`7b2d59f`) — retired dead `stArray` /
+  `stDatatype` from `SortTag` (zero referents); normalised `mkBitVec`
+  to bracket-W form (`mkBitVec[8](5'u32)` matching the rest of the BV
+  surface).
+- **`z3/char` + `z3/string` + `z3/regex`** (`f5c7e91`) — SMT-LIB
+  string theory. `Z3Char` Unicode-codepoint family with codepoint
+  ordering / `isDigit` / `toInt`. `Z3String` family with `mkString` /
+  `mkStringVar`, `len`, varargs `concat` + `&`, `contains`, `substr`,
+  `at`, `startsWith` / `endsWith`, `indexOf`, `replace`, `strToInt` /
+  `intToStr`, Nim-`string`-literal lifts. `Z3Regex[Basis]` regex
+  family with `mkRegex` / `mkRegexEmpty` / `mkRegexFull` / `mkRegexAll`
+  / `matches` / `star` / `plus` / `option` / `complement` / varargs
+  `concat` / `union` / `intersect` / `range` / `loop` / `power`.
+- **`z3/seq` + `Z3String` alias refactor** (`f0965ce`) — `Z3Seq[E]`
+  phantom-typed over element type. Step 5 collapses `Z3String` to
+  `Z3Seq[Z3Char]` (Z3's own definition), so every generic sequence op
+  (`len`, `concat`, `nth`, `at`, `substr`, `contains`, `startsWith` /
+  `endsWith`, `indexOf`, `replace`) applies to strings automatically.
+  Regex basis-sort dispatch widened from `Z3String` to any `Z3Seq[E]`.
+- **`z3/fp`** (`438594d`) — IEEE 754 / SMT-LIB FloatingPoint theory.
+  `Z3Fp[Ebits, Sbits]` family with `Z3Float16` / `Z3Float32` /
+  `Z3Float64` / `Z3Float128` aliases. Rounding-mode in two shapes —
+  `RoundingMode` Nim enum (`rmRNE` / `rmRNA` / `rmRTP` / `rmRTN` /
+  `rmRTZ`) and `Z3RoundingMode` AST family for quantification.
+  Operators `+` `-` `*` `/` default to `rmRNE`; explicit forms
+  `fpAdd` / `fpSub` / `fpMul` / `fpDiv` / `sqrt` / `fma` /
+  `roundToIntegral`. **`==` / `!=` use IEEE equality** (NaN ≠ NaN,
+  +0 = -0) — deliberate divergence from every other typed family.
+  Predicates `isNaN` / `isInf` / `isZero` / `isNormal` / `isSubnormal`
+  / `isPositive` / `isNegative`. No-rounding ops `abs` / unary `-` /
+  `rem` / `min` / `max`. Conversions `toIeeeBv` / `toFp` (from BV /
+  FP / Real) / `toFpFromSigned` / `toFpFromUnsigned` / `toReal` /
+  `toSbv` / `toUbv`. Model extraction `toFloat32` / `toFloat64` /
+  `evalFloat32` / `evalFloat64`.
+- **`z3/funcdecl`** (`78ff9dc`) — uninterpreted function declarations.
+  `Z3FuncDecl[ArgsTup: tuple, Ret]` phantom-typed over a tuple of
+  argument types. Per-arity `apply` overloads + `()` callable hooks
+  for 0..6 args (macro-generated) so `f(x, y)` works naturally.
+  `evalAt(m, f, args)` composer for "value of f at this point under
+  the model."
+- **Solver-tactic bridges** (`8be9bee`) — `newSolverFromTactic(t)` /
+  `t.toSolver()` wrap a tactic pipeline as a `Z3Solver` with the
+  familiar add / check / model surface. `setParams(s, p)` symmetric
+  with `setParams(o: Z3Optimize, p)`.
+- **`z3/sortdispatch` consolidation** (`0250381`, v0.3 step 9) — the
+  three `sortOfType` / `sortOfTypeSeq` / `sortOfTypeFD` cascades from
+  steps 1..7 collapsed to a single `mixin sortOf` dispatch. Each
+  typed family owns its own `sortOf` overload at the declaration
+  site. Closes the v0.2 §8 "nested arrays deferred — typedesc-
+  reflection limit" as a side effect: `Z3Array[Z3Int, Z3Array[Z3Int,
+  Z3Int]]` round-trips, and `Z3FuncDecl[(Z3Array[Z3Int, Z3Int],),
+  Z3Bool]` etc. compile.
+
+### Changed
+
+- **`mkBitVec` signature** is now `mkBitVec[W: static int](v:
+  SomeInteger): Z3BitVec[W]`. Previous positional form
+  `mkBitVec(v, 8)` is gone (pre-1.0 breaking change; no consumers).
+- **`Z3String`** is a type alias for `Z3Seq[Z3Char]` rather than its
+  own family. All generic sequence ops apply to strings automatically;
+  the string-specific surface in `z3/string` shrank to `mkString` /
+  `mkStringVar` / `toStr` / `evalStr` / `strToInt` / `intToStr` plus
+  the Nim-`string`-literal lifts.
+- **`Z3Fp[E, S]` `==` / `!=`** use IEEE semantics (`Z3_mk_fpa_eq`),
+  not structural equality. Deliberate divergence from every other
+  typed family because NaN ≠ NaN is what FP users expect.
+- **`SortTag` enum** dropped `stArray` and `stDatatype` (zero
+  referents in v0.2 + v0.3).
+
+### Spec corrections logged during v0.3
+
+Each step that hit a "specification assumption needed changing"
+moment surfaced it back before continuing; full list in
+`docs/V0.3_PLAN.md` §8b "Spec corrections during v0.3" cross-
+reference. Summary:
+
+- `Z3_apply_result_convert_model` retired in Z3 4.8.0; using
+  `Z3_goal_convert_model` (same capability, per-subgoal) — step 2.
+- `toRealApprox` precision-knob lean was a misread — `Z3_get_numeral
+  _double` has no precision arg — step 2.
+- `mkBitVec[W, T]` two-generic shape didn't compile under Nim's
+  inference; collapsed to `mkBitVec[W: static int](v: SomeInteger)` —
+  step 3.
+- `Z3_mk_re_range` operands are `Z3String`, **not** `Z3Char` — step 4.
+- `Z3_fpa_get_numeral_double` does not exist; FP model extraction
+  routes through `Z3_mk_fpa_to_ieee_bv` + `simplify` + bit-cast —
+  step 6.
+- `forall x. f(g(x)) == x` headline test for funcdecls hung Z3
+  (quantifier-without-trigger); replaced with concrete-witness
+  composition — step 7.
+- Z3 4.13.3 does not honour `model=false` on a solver; observable-
+  effect test replaced with typed-params-breadth check — step 8.
+
+### Deferred to v0.4
+
+See `docs/V0.3_PLAN.md` §8b "Items rolled forward to v0.4" and
+`docs/IMPLEMENTATION_PLAN.md` "Rolled forward from v0.3" — short
+list: `Z3Fixedpoint`, `Z3_solver_get_unsat_core` /
+`Z3_solver_get_proof` / `Z3_solver_get_param_descrs`,
+`Z3_func_interp` tabular extraction, `Z3Char` BV interop,
+`Z3DatatypeValue` as a `sortdispatch` element type, `Z3Float128` /
+`Z3Float16` structured extraction, epsilon-bound `Z3Real` extraction,
+`replace-all` on `Z3String`, CI work blocked on the same upstream as
+v0.2 issue #1.
+
+### Scope-pruned
+
+- **DOT / GraphViz AST export** — out of wrapper scope; redirected
+  to a future `nim-z3-tools` sibling per V0.3_PLAN §8 "Scope
+  discipline."
+- **Wider-width BV recipes as a numbered step** — demoted to
+  continuous practice in `tests/recipes.nim`.
 
 ## [0.2.0] — 2026-05-29
 

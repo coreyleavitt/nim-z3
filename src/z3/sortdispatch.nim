@@ -33,7 +33,7 @@
 ## time. Same reason `Z3FuncDecl[(Z3Array[Z3Int, Z3Int],), Z3Bool]`
 ## now constructs.
 
-import ./ffi, ./context, ./sort, ./ast
+import ./ffi, ./context, ./ast
 
 # ============================================================================
 # sortOf overloads for the base typed families (Z3Int / Z3Real / Z3Bool)

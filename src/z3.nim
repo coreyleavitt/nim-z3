@@ -1,11 +1,17 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## v0.2 — theory-expansion release (arrays, datatypes, quantifiers,
-## optimisation, tactics + goals + params); v0.3 in progress (theory
-## completion: strings, sequences, FloatingPoint, uninterpreted
-## functions; plus carried-forward gaps from the v0.2 audit). Shipped
-## architecture in [docs/V0.1_PLAN.md](../docs/V0.1_PLAN.md) and
-## [docs/V0.2_PLAN.md](../docs/V0.2_PLAN.md); live work in
+## v0.3 — **architectural-unification + theory-completion** release
+## (`Z3Term` concept + unified `wrap[T]` + lifecycle generators;
+## Char / String + alias `Z3String = Z3Seq[Z3Char]` / Regex /
+## Sequences / FloatingPoint / uninterpreted functions; solver-tactic
+## bridges; `z3/sortdispatch` mixin-based dispatch closing the v0.2 §8
+## nested-arrays deferral). v0.2 was the theory-expansion release
+## (arrays, datatypes, quantifiers, optimisation, tactics + goals +
+## params); v0.1 was the core SMT primitives.
+##
+## Shipped architecture in [docs/V0.1_PLAN.md](../docs/V0.1_PLAN.md),
+## [docs/V0.2_PLAN.md](../docs/V0.2_PLAN.md), and
+## [docs/V0.3_PLAN.md](../docs/V0.3_PLAN.md); live work in
 ## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md);
 ## per-release diff in [CHANGELOG.md](../CHANGELOG.md); runnable
 ## starter code in [examples/](../examples/). The headline use:

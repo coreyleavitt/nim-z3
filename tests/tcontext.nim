@@ -96,11 +96,11 @@ suite "Z3Error + checkErr template":
 
   test "Z3Error carries the typed error code":
     # Manually raise via the helper so we exercise the path the user
-    # might see if they custom-wrap an FFI call.
+    # might see if they custom-wrap an FFI call. `raiseZ3Error` is
+    # `noReturn`; we inspect the exception in the `except` branch.
     let ctx = newContext()
     try:
       raiseZ3Error(ctx, Z3_INVALID_ARG)
-      check false
     except Z3Error as e:
       check e.code == Z3_INVALID_ARG
       check e.msg.len > 0

@@ -34,13 +34,8 @@ proc bvWraparound(): Report[(int, int)] =
   forAll(
     tuples2(integers(0, 255), integers(0, 255)),
     proc(p: (int, int)) =
-      # Concrete bvadd of two literals doesn't auto-fold; route
-      # through the solver to extract the numeral.
-      let r = mkBitVecVar[8]("r")
-      let s = newSolver()
-      s.add r == (mkBitVec(uint32(p[0]), 8) + mkBitVec(uint32(p[1]), 8))
-      ensure s.check() == zsSat
-      ensure s.model()[r].toUint == uint64(uint8(p[0]) + uint8(p[1])))
+      let got = (mkBitVec(uint32(p[0]), 8) + mkBitVec(uint32(p[1]), 8)).toUint
+      ensure got == uint64(uint8(p[0]) + uint8(p[1])))
 
 proc main() =
   let r1 = soundnessRoundTrip()

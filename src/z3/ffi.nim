@@ -304,6 +304,15 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Width (in bits) of a BV sort. Used at runtime by toUint to verify
     ## the AST's actual width matches the static type-level width.
 
+  proc Z3_mk_bv2int(c: RawZ3Context, a: RawZ3Ast, isSigned: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Convert a bit-vector AST to an integer AST. When `isSigned` is
+    ## false, the value is the unsigned magnitude. When true, the value
+    ## is the two's-complement signed interpretation: an `n`-bit BV
+    ## whose MSB is set maps to `value - 2^n`. This is the canonical
+    ## way to extract the signed value of a BV regardless of width —
+    ## simplify the resulting Int and read off its numeral string.
+
   proc Z3_get_sort(c: RawZ3Context, a: RawZ3Ast): RawZ3Sort
     {.cdecl, header: "z3.h".}
     ## Sort of an AST.

@@ -72,14 +72,7 @@ suite "property: BV ↔ native arithmetic":
     let report = forAll(
       tuples2(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
-        # Concrete bvadd of two BV literals doesn't auto-simplify into
-        # a numeral; we ask the solver to evaluate it. That also
-        # mirrors the realistic user path (assert + check + extract).
-        let r = mkBitVecVar[8]("r")
-        let s = newSolver()
-        s.add r == (mkBitVec(uint32(p[0]), 8) + mkBitVec(uint32(p[1]), 8))
-        ensure s.check() == zsSat
-        let got = s.model()[r].toUint
+        let got = (mkBitVec(uint32(p[0]), 8) + mkBitVec(uint32(p[1]), 8)).toUint
         let expected = uint64(uint8(p[0]) + uint8(p[1]))
         ensure got == expected)
     check report.outcome == otPassed
@@ -89,11 +82,7 @@ suite "property: BV ↔ native arithmetic":
     let report = forAll(
       tuples2(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
-        let r = mkBitVecVar[8]("r")
-        let s = newSolver()
-        s.add r == (mkBitVec(uint32(p[0]), 8) - mkBitVec(uint32(p[1]), 8))
-        ensure s.check() == zsSat
-        let got = s.model()[r].toUint
+        let got = (mkBitVec(uint32(p[0]), 8) - mkBitVec(uint32(p[1]), 8)).toUint
         let expected = uint64(uint8(p[0]) - uint8(p[1]))
         ensure got == expected)
     check report.outcome == otPassed
@@ -103,11 +92,7 @@ suite "property: BV ↔ native arithmetic":
     let report = forAll(
       tuples2(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
-        let r = mkBitVecVar[8]("r")
-        let s = newSolver()
-        s.add r == (mkBitVec(uint32(p[0]), 8) * mkBitVec(uint32(p[1]), 8))
-        ensure s.check() == zsSat
-        let got = s.model()[r].toUint
+        let got = (mkBitVec(uint32(p[0]), 8) * mkBitVec(uint32(p[1]), 8)).toUint
         let expected = uint64(uint8(p[0]) * uint8(p[1]))
         ensure got == expected)
     check report.outcome == otPassed

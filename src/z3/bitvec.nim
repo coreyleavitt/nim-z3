@@ -117,14 +117,35 @@ proc mkBitVec*[T: SomeInteger](
   ## let c = ctx.mkBitVec(7'u, 16)  # explicit context
   ## ```
   ##
-  ## For widths above 64 bits, use `mkBigBitVec` with a string numeral.
-  static:
-    assert W > 0, "BitVec width must be positive"
-    assert W <= 64, "use `mkBigBitVec` for widths above 64 bits"
+  ## Width is unrestricted — `mkBitVec(5'u, 128)` produces a 128-bit
+  ## BV with low 5. The Nim source value is `uint64`-bounded since
+  ## `T: SomeInteger` only ranges over Nim's primitive integer types;
+  ## for values exceeding that range use `mkBigBitVec(numeralString, W)`.
+  static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   wrapBv[W](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, uint64(v), s))
 proc mkBitVec*[T: SomeInteger](v: T, W: static int): Z3BitVec[W] =
   mkBitVec(requireCurrentContext(), v, W)
+
+proc mkBigBitVec*[W: static int](
+    ctx: Z3Context, numeral: string): Z3BitVec[W] =
+  ## Arbitrary-precision bit-vector literal of width `W` from a
+  ## decimal string. Use when the value exceeds `uint64` range.
+  ##
+  ## ```nim
+  ## let big = mkBigBitVec[128]("12345678901234567890")
+  ## let huge = mkBigBitVec[256](
+  ##   "115792089237316195423570985008687907853269984665640564039457")
+  ## ```
+  ##
+  ## The numeral is interpreted mod 2^W (consistent with `mkBitVec`),
+  ## so passing a value beyond the BV's range silently truncates —
+  ## same semantics SMT-LIB itself uses.
+  static: assert W > 0, "BitVec width must be positive"
+  let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
+  wrapBv[W](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
+proc mkBigBitVec*[W: static int](numeral: string): Z3BitVec[W] =
+  mkBigBitVec[W](requireCurrentContext(), numeral)
 
 # ============================================================================
 # Arithmetic (sign-independent: result bit-pattern is the same under either
@@ -372,36 +393,97 @@ liftCmp(bvsge)
 # ============================================================================
 
 proc toUint*[W: static int](a: Z3BitVec[W]): uint64 =
-  ## Unsigned 64-bit extraction from a BV numeral. Requires `W <= 64`.
-  ## Raises `Z3Error` if the AST isn't a literal numeral.
+  ## Unsigned 64-bit extraction. Requires `W <= 64`. Internally calls
+  ## `Z3_simplify` first, so concrete expression trees
+  ## (`mkBitVec(0xFF'u8, 8) + mkBitVec(1'u8, 8)`) extract their folded
+  ## value directly without the caller wrapping them in a solver or
+  ## calling `simplify` themselves.
+  ##
+  ## Raises `Z3Error` if the AST still doesn't reduce to a literal
+  ## numeral (i.e. it references a free variable).
   static: assert W <= 64,
     "toUint requires W <= 64; use `toBigUintStr` for wider BVs"
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
   var v: uint64
-  if not Z3_get_numeral_uint64(a.ctx.raw, a.raw, addr v):
+  if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
     var e = newException(Z3Error,
       "Z3BitVec.toUint: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
-      "` is not a literal BV numeral.")
+      "` does not reduce to a literal BV numeral.")
     e.code = Z3_INVALID_USAGE
     raise e
   v
 
+proc toBigIntStr*[W: static int](a: Z3BitVec[W]): string =
+  ## Signed-2's-complement decimal string of an arbitrary-width BV
+  ## numeral. Works for any `W`; for `W <= 64` `toInt` is the typed-
+  ## return alternative.
+  ##
+  ## ```nim
+  ## let allOnes = mkBigBitVec[128]("340282366920938463463374607431768211455")
+  ## doAssert allOnes.toBigIntStr == "-1"
+  ## ```
+  ##
+  ## Implementation: builds `Z3_mk_bv2int(bv, signed=true)` to obtain
+  ## an Int-sorted AST whose value is the signed interpretation
+  ## (Z3 does the `v - 2^W` transform internally with arbitrary
+  ## precision), simplifies it, then reads off `Z3_get_numeral_string`.
+  ## One FFI call beyond the FFI for `toBigUintStr`, no Nim-side
+  ## arbitrary-precision arithmetic needed.
+  ##
+  ## Raises `Z3Error` if the AST isn't a literal numeral.
+  let asInt = a.ctx.checkErr Z3_mk_bv2int(a.ctx.raw, a.raw, true)
+  let simplified = a.ctx.checkErr Z3_simplify(a.ctx.raw, asInt)
+  let s = Z3_get_numeral_string(a.ctx.raw, simplified)
+  if s.isNil:
+    var e = newException(Z3Error,
+      "Z3BitVec.toBigIntStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
+      "` is not a literal BV numeral.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  $s
+
+proc toBigUintStr*[W: static int](a: Z3BitVec[W]): string =
+  ## Unsigned-interpretation decimal string of an arbitrary-width BV.
+  ## Internally `Z3_simplify`s first, so concrete expression trees
+  ## fold to their literal value before extraction. Works for any `W`;
+  ## for `W <= 64` `toUint` is the typed-return alternative.
+  ##
+  ## ```nim
+  ## let big = mkBigBitVec[128]("12345678901234567890")
+  ## doAssert big.toBigUintStr == "12345678901234567890"
+  ## ```
+  ##
+  ## Raises `Z3Error` if the AST doesn't reduce to a literal numeral
+  ## (i.e. it references a free variable).
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  let s = Z3_get_numeral_string(a.ctx.raw, folded)
+  if s.isNil:
+    var e = newException(Z3Error,
+      "Z3BitVec.toBigUintStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
+      "` does not reduce to a literal BV numeral.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  $s
+
 proc toInt*[W: static int](a: Z3BitVec[W]): int64 =
-  ## Signed-2's-complement interpretation of a BV numeral. Requires
-  ## `W <= 64`. Raises `Z3Error` if the AST isn't a literal numeral.
+  ## Signed-2's-complement interpretation. Requires `W <= 64`.
+  ## Internally calls `Z3_simplify` first, so concrete expression
+  ## trees fold to their literal value before extraction.
   ##
   ## Implementation note: Z3 stores BV numerals as unsigned magnitudes
   ## even when the user intended a signed value (the BV theory itself
   ## doesn't carry a sign attribute — sign is purely an interpretation
-  ## chosen by the operator). `Z3_get_numeral_int64` therefore returns
-  ## the unsigned magnitude; we apply the 2's-complement transform
+  ## chosen by the operator). `Z3_get_numeral_uint64` returns the
+  ## unsigned magnitude; we apply the 2's-complement transform
   ## (`v - 2^W` when the MSB is set) here.
   static: assert W <= 64,
     "toInt requires W <= 64; use `toBigIntStr` for wider BVs"
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
   var v: uint64
-  if not Z3_get_numeral_uint64(a.ctx.raw, a.raw, addr v):
+  if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
     var e = newException(Z3Error,
       "Z3BitVec.toInt: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
-      "` is not a literal BV numeral.")
+      "` does not reduce to a literal BV numeral.")
     e.code = Z3_INVALID_USAGE
     raise e
   when W == 64:

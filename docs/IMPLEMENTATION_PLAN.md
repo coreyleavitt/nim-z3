@@ -223,7 +223,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 7. **Solver extensions — `getProof`.** ✅ shipped together with step 4 (merged — see §8). Returns the `Z3Proof` from step 4.
 
-8. **Solver extensions — `getStatistics` + `getConsequences`.** Adds `Z3Stats` typed handle. Closes goal 4.
+8. **Solver extensions — `getStatistics` + `getConsequences`.** ✅ shipped. Adds `Z3Stats` typed handle (own module `z3/stats`). Closes goal 4 and the step-5 §8 fixedpoint-stats deferral.
 
 9. **Term rewriting** (`z3/rewrite`). `substitute` + `substituteVars`. Generic over `Z3Term`.
 
@@ -328,6 +328,13 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 8 (getStatistics + getConsequences)
+
+- **Clean landing.** Two solver extensions + a new typed family (`Z3Stats` in own module `z3/stats`) + parity addition to `Z3Fixedpoint`. No spec corrections.
+- **`Z3Stats` deep-module placement.** New module `z3/stats` (parallel to `z3/astvector` from step 1) — own conceptually-coherent surface used by both `Z3Solver.getStatistics` and `Z3Fixedpoint.getStatistics`. Lifecycle via `emitRefcountLifecycle`; surface includes `len`, `keys()`, `[key]` uniform-float view, `contains`, `isInt` discriminator, `getInt` (lossless for huge uints), `getFloat`, `pairs` iterator matching Nim's `Table` convention, `$` SMT-LIB rendering.
+- **`getConsequences` reuses step-1's `Z3AstVector` for input + output**. Implementation builds three vectors (assumptions, variables, output), calls `Z3_solver_get_consequences`, converts the result through `Z3AstVector.toSeq(Z3Bool)` to expose typed implication ASTs.
+- **Fixedpoint statistics closes the step-5 §8 deferral.** `Z3_fixedpoint_get_statistics` returns the same `Z3_stats` handle type as solvers; one-line addition to `z3/fixedpoint`.
 
 ### From step 7 (Solver.getProof) — explicit close-out
 

@@ -32,7 +32,7 @@
 ## would create distracting ambiguity in user code.
 
 import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle, ./params,
-       ./astvector
+       ./astvector, ./stats
 export builder, boolean
 
 type
@@ -192,6 +192,40 @@ proc getUnsatCore*(s: Z3Solver): seq[Z3Bool] =
   let raw = s.ctx.checkErr Z3_solver_get_unsat_core(s.ctx.raw, s.raw)
   let vec = wrapAstVector(s.ctx, raw)
   vec.toSeq(Z3Bool)
+
+# ============================================================================
+# Statistics + consequences (v0.4 step 8)
+# ============================================================================
+
+proc getStatistics*(s: Z3Solver): Z3Stats =
+  ## Snapshot of the solver's runtime statistics. Key-value table
+  ## (per-decision-procedure counters, time, memory) — see
+  ## `z3/stats` for the access surface (`len`, `keys`, `[key]`,
+  ## `pairs` iterator, `isInt` / `getInt` / `getFloat`).
+  wrapStats(s.ctx, s.ctx.checkErr Z3_solver_get_statistics(s.ctx.raw, s.raw))
+
+proc getConsequences*(s: Z3Solver,
+                     assumptions: openArray[Z3Bool],
+                     variables: openArray[Z3Bool]):
+                     tuple[status: Z3Status, consequences: seq[Z3Bool]] =
+  ## Compute the consequences of the solver's assertions + the given
+  ## assumptions over the literals in `variables`. Returns the
+  ## status (sat/unsat/unknown) plus the implied literals — each as a
+  ## `Z3Bool` of shape `(=> (and a_1 ... a_n) lit)` where the `a_i`
+  ## are a subset of the assumptions and `lit` is one of the
+  ## variables.
+  let assumptionsVec = newAstVector(s.ctx)
+  for a in assumptions: assumptionsVec.add(a)
+  let variablesVec = newAstVector(s.ctx)
+  for v in variables: variablesVec.add(v)
+  let consequencesVec = newAstVector(s.ctx)
+  let lbool = Z3_solver_get_consequences(s.ctx.raw, s.raw,
+    assumptionsVec.raw, variablesVec.raw, consequencesVec.raw)
+  let errCode = Z3_get_error_code(s.ctx.raw)
+  if errCode != Z3_OK:
+    raiseZ3Error(s.ctx, errCode)
+  result.status = cast[Z3Status](lbool)
+  result.consequences = consequencesVec.toSeq(Z3Bool)
 
 # Convenience: assert several constraints at once.
 proc add*(s: Z3Solver, constraints: varargs[Z3Bool]) =

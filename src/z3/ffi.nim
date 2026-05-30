@@ -70,6 +70,10 @@ type
   RawZ3Fixedpoint* {.importc: "Z3_fixedpoint", header: "z3.h", bycopy.} = object
     ## **v0.4 step 5.** Horn-clause / CHC solver. Refcounted via
     ## `Z3_fixedpoint_inc_ref` / `_dec_ref`.
+  RawZ3Stats* {.importc: "Z3_stats", header: "z3.h", bycopy.} = object
+    ## **v0.4 step 8.** Statistics handle (key-value table) returned
+    ## by `Z3_solver_get_statistics` / `Z3_fixedpoint_get_statistics`.
+    ## Refcounted via `Z3_stats_inc_ref` / `_dec_ref`.
   RawZ3Goal* {.importc: "Z3_goal", header: "z3.h", bycopy.} = object
     ## Conjunction of formulas a tactic operates on. Refcounted.
   RawZ3Tactic* {.importc: "Z3_tactic", header: "z3.h", bycopy.} = object
@@ -83,7 +87,7 @@ type
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Fixedpoint |
+            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats | RawZ3Stats | RawZ3Fixedpoint |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
             RawZ3Params): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
@@ -100,7 +104,7 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint |
+          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
@@ -108,7 +112,7 @@ proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint |
+          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
@@ -946,6 +950,48 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## **v0.4 step 6.** Extract the unsat core after `check() == zsUnsat`.
     ## Returns an `ast_vector` of tracker literals that participate in
     ## the contradiction.
+
+  # --- Stats (v0.4 step 8) -------------------------------------------------
+
+  proc Z3_stats_inc_ref(c: RawZ3Context, s: RawZ3Stats)
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_dec_ref(c: RawZ3Context, s: RawZ3Stats)
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_size(c: RawZ3Context, s: RawZ3Stats): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_get_key(c: RawZ3Context, s: RawZ3Stats, i: cuint): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_is_uint(c: RawZ3Context, s: RawZ3Stats, i: cuint): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_is_double(c: RawZ3Context, s: RawZ3Stats, i: cuint): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_get_uint_value(c: RawZ3Context, s: RawZ3Stats, i: cuint): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_get_double_value(c: RawZ3Context, s: RawZ3Stats,
+                                 i: cuint): cdouble
+    {.cdecl, header: "z3.h".}
+  proc Z3_stats_to_string(c: RawZ3Context, s: RawZ3Stats): cstring
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_solver_get_statistics(c: RawZ3Context, s: RawZ3Solver): RawZ3Stats
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 8.** Retrieve solver runtime statistics.
+  proc Z3_fixedpoint_get_statistics(c: RawZ3Context,
+                                    d: RawZ3Fixedpoint): RawZ3Stats
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 8.** Retrieve fixedpoint runtime statistics (closes
+    ## v0.4 step 5's deferral).
+
+  proc Z3_solver_get_consequences(c: RawZ3Context, s: RawZ3Solver,
+                                  assumptions: RawZ3AstVector,
+                                  variables: RawZ3AstVector,
+                                  consequences: RawZ3AstVector): Z3LBool
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 8.** Compute the consequences of the solver's
+    ## assertions + the given assumptions over the literals in
+    ## `variables`. Output is filled into the pre-allocated
+    ## `consequences` vector as implication ASTs of the form
+    ## `(=> (and a_1 ... a_n) lit)`.
   proc Z3_solver_check(c: RawZ3Context, s: RawZ3Solver): Z3LBool
     {.cdecl, header: "z3.h".}
   proc Z3_solver_get_model(c: RawZ3Context, s: RawZ3Solver): RawZ3Model

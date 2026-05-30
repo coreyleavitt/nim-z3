@@ -61,7 +61,7 @@
 ## ```
 
 import ./ffi, ./context, ./ast, ./builder, ./solver, ./params,
-       ./funcdecl, ./astvector
+       ./funcdecl, ./astvector, ./stats
 
 # ============================================================================
 # Z3Fixedpoint — ref-typed handle
@@ -230,6 +230,12 @@ proc getHelp*(fp: Z3Fixedpoint): string =
 # ============================================================================
 # Params
 # ============================================================================
+
+proc getStatistics*(fp: Z3Fixedpoint): Z3Stats =
+  ## Snapshot of the fixedpoint solver's runtime statistics. Closes
+  ## the v0.4 step-5 §8 deferral.
+  wrapStats(fp.ctx,
+    fp.ctx.checkErr Z3_fixedpoint_get_statistics(fp.ctx.raw, fp.raw))
 
 proc setParams*(fp: Z3Fixedpoint, p: Z3Params) =
   ## Configure the fixedpoint solver. The most user-visible knob is

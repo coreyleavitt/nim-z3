@@ -67,6 +67,9 @@ type
     ## hard + weighted-soft constraints, maximise / minimise
     ## objectives with upper / lower bounds. Refcounted via
     ## `Z3_optimize_inc_ref` / `Z3_optimize_dec_ref`.
+  RawZ3Fixedpoint* {.importc: "Z3_fixedpoint", header: "z3.h", bycopy.} = object
+    ## **v0.4 step 5.** Horn-clause / CHC solver. Refcounted via
+    ## `Z3_fixedpoint_inc_ref` / `_dec_ref`.
   RawZ3Goal* {.importc: "Z3_goal", header: "z3.h", bycopy.} = object
     ## Conjunction of formulas a tactic operates on. Refcounted.
   RawZ3Tactic* {.importc: "Z3_tactic", header: "z3.h", bycopy.} = object
@@ -80,7 +83,7 @@ type
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern | RawZ3Optimize |
+            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Fixedpoint |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
             RawZ3Params): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
@@ -97,7 +100,7 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize |
+          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
@@ -105,7 +108,7 @@ proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize |
+          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
@@ -625,6 +628,76 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `priority` symbol value — `lex` (default), `box`, or `pareto`.
     ## See v0.2 plan §1 and `z3/optimize` docs for the semantic
     ## differences.
+
+  # --- Fixedpoint / CHC (v0.4 step 5) --------------------------------------
+
+  proc Z3_mk_fixedpoint(c: RawZ3Context): RawZ3Fixedpoint
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_inc_ref(c: RawZ3Context, d: RawZ3Fixedpoint)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_dec_ref(c: RawZ3Context, d: RawZ3Fixedpoint)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_register_relation(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                       f: RawZ3FuncDecl)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_add_rule(c: RawZ3Context, d: RawZ3Fixedpoint,
+                              rule: RawZ3Ast, name: RawZ3Symbol)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_add_fact(c: RawZ3Context, d: RawZ3Fixedpoint,
+                              r: RawZ3FuncDecl, num_args: cuint,
+                              args: ptr UncheckedArray[cuint])
+    {.cdecl, header: "z3.h".}
+    ## Z3's addFact takes the relation + an array of **integer
+    ## arguments** (not raw asts). Used for finite-domain facts in
+    ## the datalog engine.
+  proc Z3_fixedpoint_assert(c: RawZ3Context, d: RawZ3Fixedpoint,
+                            axiom: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_update_rule(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                 a: RawZ3Ast, name: RawZ3Symbol)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_add_constraint(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                    e: RawZ3Ast, lvl: cuint)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_add_cover(c: RawZ3Context, d: RawZ3Fixedpoint,
+                               level: cint, pred: RawZ3FuncDecl,
+                               property: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_query(c: RawZ3Context, d: RawZ3Fixedpoint,
+                           query: RawZ3Ast): Z3LBool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_query_relations(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                     num_rels: cuint,
+                                     rels: ptr UncheckedArray[RawZ3FuncDecl]):
+                                     Z3LBool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_answer(c: RawZ3Context, d: RawZ3Fixedpoint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_reason_unknown(c: RawZ3Context,
+                                        d: RawZ3Fixedpoint): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_num_levels(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                    pred: RawZ3FuncDecl): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_cover_delta(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                     level: cint,
+                                     pred: RawZ3FuncDecl): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_rules(c: RawZ3Context, f: RawZ3Fixedpoint):
+                               RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_assertions(c: RawZ3Context,
+                                    f: RawZ3Fixedpoint): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_help(c: RawZ3Context, f: RawZ3Fixedpoint): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_set_params(c: RawZ3Context, f: RawZ3Fixedpoint,
+                                p: RawZ3Params)
+    {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_to_string(c: RawZ3Context, f: RawZ3Fixedpoint,
+                               num_queries: cuint,
+                               queries: ptr UncheckedArray[RawZ3Ast]): cstring
+    {.cdecl, header: "z3.h".}
 
   # --- Quantifiers + patterns ---------------------------------------------
 

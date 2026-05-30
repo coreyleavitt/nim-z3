@@ -56,6 +56,14 @@ type
     ## The phantom tuple `ArgsTup` captures the domain element types
     ## positionally; `Ret` is the codomain.
 
+proc raw*[ArgsTup: tuple, Ret](
+    f: Z3FuncDecl[ArgsTup, Ret]): RawZ3FuncDecl {.inline.} = f.raw
+proc ctx*[ArgsTup: tuple, Ret](
+    f: Z3FuncDecl[ArgsTup, Ret]): Z3Context {.inline.} = f.ctx
+  ## Underlying-handle accessors — used by sibling modules (notably
+  ## `z3/fixedpoint` for `registerRelation` / `addFact` / cover ops)
+  ## that need to thread the raw func_decl into Z3 calls.
+
 # ----------------------------------------------------------------------------
 # Refcount discipline
 # ----------------------------------------------------------------------------

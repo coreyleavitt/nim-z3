@@ -217,7 +217,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 4. **`Z3Proof` family + `ProofRule` enum + `unpackProof` + `Z3Solver.getProof`.** ✅ shipped (with step 7 merged in — see §8). Lives in `z3/proof`.
 
-5. **`Z3Fixedpoint`** (`z3/fixedpoint`). Independent of other goals. Largest single module added in v0.4 — comparable to `z3/optimize`.
+5. **`Z3Fixedpoint`** (`z3/fixedpoint`). ✅ shipped. Largest single module added in v0.4 — comparable to `z3/optimize`. Spec corrections logged in §8 (push/pop, get_ground_sat_answer don't exist).
 
 6. **Solver extensions — `assertConstraintAndTrack` + `getUnsatCore`.** First half of goal 4. Uses `Z3AstVector` from step 1.
 
@@ -328,6 +328,16 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 5 (Z3Fixedpoint)
+
+- **Spec correction: `Z3_fixedpoint_push` and `Z3_fixedpoint_pop` don't exist.** The plan's initial design ported `Z3Solver`'s `push` / `pop` / `withFrame` scoping pattern by analogy. Z3's actual Fixedpoint API has no user-controlled scope management — rules + facts accumulate for the handle's lifetime. Users who want fresh state allocate a new `Z3Fixedpoint`. Wrapper documents this in source comments where `push`/`pop` would have lived.
+- **Spec correction: `Z3_fixedpoint_get_ground_sat_answer` doesn't exist.** The plan listed `getGroundSatAnswer` as a sat-witness extractor distinct from `getAnswer`. Z3 only ships `Z3_fixedpoint_get_answer`; the wrapper uses that as the canonical witness extractor.
+- **Spec correction: `datalog` engine requires finite-domain sorts.** The plan's draft test set `engine=datalog` on a graph-reachability test that used unbounded `Z3Int`s — datalog returned `zsUnknown` because the predicates aren't finite-domain. Resolution: tests use Z3's default engine, which picks an appropriate strategy for the problem shape. `engine=datalog` is real but requires the user to use `Z3_mk_finite_domain_sort` or BVs — a niche path not exercised by step 5's tests.
+- **Z3Stats / fixedpoint statistics deferred to step 8.** `Z3_fixedpoint_get_statistics` returns `Z3_stats`; the typed `Z3Stats` handle lands in step 8 (`Z3Solver.getStatistics` parallel). Step 5's surface excludes statistics; will be added retroactively to fixedpoint when step 8 lands.
+- **SMT-LIB I/O for fixedpoint deferred to step 14.** `Z3_fixedpoint_from_string` / `_from_file` are real entry points; they land alongside the rest of the I/O surface in step 14's `z3/io` module rewrite.
+- **Callback registration (`Z3_fixedpoint_init`, `_set_predicate_representation`, `_set_reduce_*_callback`) deferred indefinitely.** Same category as user propagators — callback-based extension to Z3's solver; substantial scope; no real user demand. Logged for v1.x+ research-grade follow-up.
+- **`raw` / `ctx` accessors added to `Z3FuncDecl`.** The funcdecl module had `Z3FuncDeclOwn`'s `raw` and `ctx` fields private. Sibling modules (`z3/fixedpoint` needs the raw decl handle for `registerRelation` / cover ops) couldn't reach in. Added `raw*` / `ctx*` accessor procs in `z3/funcdecl` parallel to the `Z3Solver` / `Z3Model` precedent. **No work deferred** — minor pre-1.0 cleanup that v0.4 step 5 surfaced.
 
 ### From step 4 (Z3Proof family + getProof — steps 4 and 7 merged)
 

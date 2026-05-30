@@ -58,6 +58,13 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
+## - `z3/datatypes` — inductive sums via `declareDatatype[T]`. Phantom
+##   is a Nim marker type (`type Foo = object`), so
+##   `Z3DatatypeValue[Foo]` is distinct from `Z3DatatypeValue[Bar]`.
+##   Surface: `field`, `selfField`, `constructor`, `declareDatatype`,
+##   `.con` / `.recognizer` / `.accessor`, `.apply` / `.test` / `.read`,
+##   `mkDatatypeVar`. Mutually-recursive datatypes are v0.2 step 5.
+##   **v0.2 step 4.**
 ## - `z3/array` — `Z3Array[Key, Val]` phantom-typed over typedescs
 ##   of AST families (so `Z3Array[Z3BitVec[32], Z3BitVec[8]]` is a
 ##   distinct type from `Z3Array[Z3BitVec[64], Z3BitVec[8]]`).
@@ -75,8 +82,9 @@
 ##   stack" pass over Z3's flat output. **Implemented.**
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
-       z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array
+       z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
+       z3/datatypes
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array
+       pretty, simplify, array, datatypes
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

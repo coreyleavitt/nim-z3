@@ -55,6 +55,13 @@ type
       ## itself be a width-tracked BV), so the typed array surface
       ## lives in its own type family. This tag exists for sort-level
       ## introspection.
+    stDatatype
+      ## Inductive datatype sort. The datatype's identity (name +
+      ## constructors) lives on `Z3DatatypeDecl[Name]` /
+      ## `Z3DatatypeValue[Name]` (see `z3/datatypes`) with the name as
+      ## a `static string` phantom parameter, mirroring the
+      ## `Z3BitVec[W]` and `Z3Array[Key, Val]` precedents. This tag
+      ## exists for sort-level introspection.
 
   Z3Sort*[S: static SortTag] = object
     ## Phantom-typed sort handle. Value type carrying the underlying

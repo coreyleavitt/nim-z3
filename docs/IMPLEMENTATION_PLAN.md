@@ -314,6 +314,22 @@ Same discipline as the v0.1 §18 ledger — append-only. Format: **what**, **why
 
 Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs of the actual AST families (`Z3Int`, `Z3BitVec[W]`, …), not `static SortTag` values. `sortOfType[T](ctx)` is the dispatch helper; `T.W` extracts BV widths via Nim's static-generic-param access. Datatypes (step 4) and quantifiers (step 5) will follow the same pattern wherever they need sort-level parameterisation. The v0.1 §4 sketch — `Z3Array[K, V: static SortTag]` — is superseded; that representation collapsed BV widths to a single tag and could not express memory models.
 
+### From step 4 (single inductive datatypes)
+
+- **Mutually recursive datatypes** (List ↔ Tree referencing each other) — this is the step-5 deliverable. Currently `selfField` works only for the datatype being declared.
+- **Heterogeneous-arity constructor application past 5 args**. The `apply` template family covers arities 0–5; bigger constructors require either adding more templates or a macro form. **Where**: defer until a user needs it.
+- **Pretty-printing test for `$`** of a datatype value. Implemented but not test-asserted; trivial delegation to `Z3_ast_to_string`. **Where**: defer.
+- **`Z3DatatypeValue` model evaluation** (`m[v]`, `m.eval(v)`). The existing `Z3Model.eval` is generic over `Z3Ast[S]` and doesn't dispatch to datatypes yet. A corresponding `proc eval[T](m: Z3Model, v: Z3DatatypeValue[T]): Z3DatatypeValue[T]` overload is needed. **Where**: still v0.2 — likely picked up alongside step 5 (mutually recursive) since both touch the model surface.
+
+### Spec divergence (step 4, captured here for the precedent)
+
+v0.2 plan §7 Q1 sketched **runtime decl-pointer comparison** as the leaning, against a `static string`-phantom alternative. We diverged in two steps:
+
+1. First tried `Z3DatatypeValue[Name: static string]` for compile-time name-based distinction. Hit a Nim 2.2 instantiation bug: `=destroy` could not be resolved for `static string`-parameterised types when constructed through a generic `applyImpl` intermediate. Reproducible in 10 lines; reported upstream (TBD).
+2. Switched to **Nim marker types** as the phantom — `type Maybe = object`, then `Z3DatatypeValue[Maybe]`. Each marker is a distinct Nim type, so compile-time distinction works the same as static-string would. The Z3 sort name comes from `$T` (the marker's Nim type name), so the marker doubles as the human-readable identifier.
+
+Cost to the user: one `type X = object` declaration per datatype. Benefit: full type-system distinction between `Z3DatatypeValue[Maybe]` and `Z3DatatypeValue[IntList]`, just as v0.1 § type-safe sorts intended. PhD-defensible: when the type system Nim gives us doesn't work for a phantom-string approach, sentinel marker types are the next-best path and they preserve the same guarantee.
+
 ---
 
 ## 9. Closing note

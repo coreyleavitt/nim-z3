@@ -44,10 +44,16 @@ type
   RawZ3Model*     {.importc: "Z3_model",     header: "z3.h", bycopy.} = object
   RawZ3FuncDecl*  {.importc: "Z3_func_decl", header: "z3.h", bycopy.} = object
   RawZ3AstVector* {.importc: "Z3_ast_vector", header: "z3.h", bycopy.} = object
+  RawZ3Constructor* {.importc: "Z3_constructor", header: "z3.h", bycopy.} = object
+    ## Opaque handle to a constructor descriptor, intermediate between
+    ## a `ConstructorSpec` and the finalised `Z3_func_decl` that the
+    ## datatype's `mk_datatype` call yields. Must be deleted with
+    ## `Z3_del_constructor` after `Z3_query_constructor` has extracted
+    ## the func_decls — Z3 doesn't refcount the descriptor itself.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-            RawZ3AstVector): bool {.inline.} =
+            RawZ3AstVector | RawZ3Constructor): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -61,13 +67,13 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 # cause of a real refcount bug surfaced by step 4-5 testing.
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector](
+          RawZ3AstVector | RawZ3Constructor](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector](
+          RawZ3AstVector | RawZ3Constructor](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -268,6 +274,54 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## All-pairs-distinct constraint; cheaper than the equivalent
     ## quadratic conjunction of `not (a == b)`.
+
+  # --- Datatypes -----------------------------------------------------------
+
+  proc Z3_mk_constructor(c: RawZ3Context, name: RawZ3Symbol,
+                         recognizer: RawZ3Symbol,
+                         num_fields: cuint,
+                         field_names: ptr UncheckedArray[RawZ3Symbol],
+                         sorts: ptr UncheckedArray[RawZ3Sort],
+                         sort_refs: ptr UncheckedArray[cuint]): RawZ3Constructor
+    {.cdecl, header: "z3.h".}
+    ## Build a constructor descriptor. `sorts` may contain nil entries
+    ## for fields that are recursive references; in that case the
+    ## corresponding `sort_refs` index identifies which datatype in
+    ## the same `Z3_mk_datatypes` call the field references (0 = the
+    ## sole datatype for single-recursion).
+
+  proc Z3_del_constructor(c: RawZ3Context, con: RawZ3Constructor)
+    {.cdecl, header: "z3.h".}
+    ## Release the constructor descriptor. After `Z3_mk_datatype` has
+    ## consumed it and `Z3_query_constructor` has extracted the
+    ## func_decls, the descriptor is no longer needed.
+
+  proc Z3_mk_datatype(c: RawZ3Context, name: RawZ3Symbol,
+                      num_constructors: cuint,
+                      constructors: ptr UncheckedArray[RawZ3Constructor]): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Finalise a single (non-mutually-recursive) datatype.
+
+  proc Z3_query_constructor(c: RawZ3Context, con: RawZ3Constructor,
+                            num_fields: cuint,
+                            constructor_out: ptr RawZ3FuncDecl,
+                            tester_out: ptr RawZ3FuncDecl,
+                            accessors_out: ptr UncheckedArray[RawZ3FuncDecl])
+    {.cdecl, header: "z3.h".}
+    ## Extract the constructor / recognizer / accessor `func_decl`s
+    ## from a descriptor after `Z3_mk_datatype` has finalised the sort.
+
+  proc Z3_mk_app(c: RawZ3Context, d: RawZ3FuncDecl,
+                 num_args: cuint, args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Apply a function declaration to arguments. Used for constructor /
+    ## recognizer / accessor invocations.
+
+  proc Z3_func_decl_to_ast(c: RawZ3Context, d: RawZ3FuncDecl): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Cast a `func_decl` to its underlying `ast` for refcounting.
+    ## `Z3_inc_ref` / `Z3_dec_ref` operate on `ast`; we use this to
+    ## keep the func_decls alive while their datatype decl is in scope.
 
   # --- Array sort + ops ----------------------------------------------------
 

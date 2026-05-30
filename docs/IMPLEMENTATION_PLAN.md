@@ -284,7 +284,7 @@ examples/
 5. **Sequences** (`z3/seq`). ✅ shipped.
 6. **FloatingPoint** (`z3/fp`). ✅ shipped.
 7. **Uninterpreted functions** (`Z3FuncDecl`). ✅ shipped.
-8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
+8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`. ✅ shipped.
 9. Pre-tag audit.
 10. v0.3 tag.
 
@@ -385,6 +385,12 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+### From step 8 (solver-tactic bridges)
+
+- **Spec correction**: I originally planned an observable-effect test for `setParams` via `model=false` + `s.model()` raising on a sat solver. Z3 4.13.3 **does not honour `model=false`** on a solver in that way — `s.model()` still returns a model. The wrapper's contract is "pass the typed bag through and don't break the solver"; whether a given Z3 param has its documented runtime effect is Z3's problem, not the wrapper's. Test replaced with a typed-params-breadth check (bool / uint / float / string overloads of `Z3Params.set` all land in `setParams` without error). **No work deferred** — the bridge is solid.
+- **`Z3_solver_get_param_descrs` introspection deferred.** Z3 ships a per-solver param-descrs surface that would let users discover valid keys and types at runtime. Could be useful for tooling on top of the wrapper, but the surface (a separate `Z3_param_descrs` ref-typed handle with `Z3_param_descrs_get_kind` / `_get_documentation` / `_size`) deserves its own design pass. **Where**: v0.4 if a real consumer needs schema-driven param configuration. Not blocking.
+- **`Z3_solver_get_unsat_core` / `Z3_solver_get_proof` deferred.** Surfaced as natural follow-ups to setting `unsat_core=true` / `proof=true` on a solver, but these are richer features (AST vector handling for cores; the proof AST grammar for proofs) with their own ergonomics questions. **Where**: v0.4. Not blocking.
 
 ### From step 7 (uninterpreted functions)
 

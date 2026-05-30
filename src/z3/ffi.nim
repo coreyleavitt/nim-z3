@@ -724,6 +724,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   # --- Solver --------------------------------------------------------------
 
   proc Z3_mk_solver(c: RawZ3Context): RawZ3Solver {.cdecl, header: "z3.h".}
+  proc Z3_mk_solver_from_tactic(c: RawZ3Context, t: RawZ3Tactic): RawZ3Solver
+    {.cdecl, header: "z3.h".}
+    ## **v0.3 step 8.** Wrap a tactic pipeline as a solver. The
+    ## returned solver delegates its decision procedure to `t`; the
+    ## familiar push / pop / add / check / model surface still applies.
+
+  proc Z3_solver_set_params(c: RawZ3Context, s: RawZ3Solver, p: RawZ3Params)
+    {.cdecl, header: "z3.h".}
+    ## **v0.3 step 8.** Apply a typed params bag (timeout, model,
+    ## random_seed, …) to an existing solver. Mirrors
+    ## `Z3_optimize_set_params`.
+
   proc Z3_solver_assert(c: RawZ3Context, s: RawZ3Solver, a: RawZ3Ast)
     {.cdecl, header: "z3.h".}
   proc Z3_solver_check(c: RawZ3Context, s: RawZ3Solver): Z3LBool

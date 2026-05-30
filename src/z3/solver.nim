@@ -31,7 +31,7 @@
 ## `assert` because Nim has a built-in `assert` template; overloading
 ## would create distracting ambiguity in user code.
 
-import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle
+import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle, ./params
 export builder, boolean
 
 type
@@ -59,13 +59,24 @@ type
 
 emitRefcountLifecycle(Z3SolverOwn, Z3_solver_dec_ref)
 
+proc wrapSolver*(ctx: Z3Context, raw: RawZ3Solver): Z3Solver =
+  ## Take ownership of a freshly-returned raw solver handle. Public so
+  ## sibling modules (`z3/tactic` for `newSolverFromTactic`, future
+  ## extensions) can wrap solvers obtained from their own FFI paths.
+  ## Raises `Z3Error` if `raw` is nil.
+  if raw.isNil:
+    var e = newException(Z3Error,
+      "Z3 returned a nil solver handle.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  Z3_solver_inc_ref(ctx.raw, raw)
+  Z3Solver(raw: raw, ctx: ctx)
+
 proc newSolver*(ctx: Z3Context): Z3Solver =
   ## Fresh solver bound to `ctx`. The solver retains a strong reference
   ## to the context (Z3 ASTs in its assertions are context-owned), so
   ## the context can't be finalised while the solver is alive.
-  let raw = ctx.checkErr Z3_mk_solver(ctx.raw)
-  Z3_solver_inc_ref(ctx.raw, raw)
-  Z3Solver(raw: raw, ctx: ctx)
+  wrapSolver(ctx, ctx.checkErr Z3_mk_solver(ctx.raw))
 
 proc newSolver*(): Z3Solver =
   ## Fresh solver bound to `currentContext()`. Raises `Z3Error` with
@@ -78,6 +89,36 @@ proc newSolver*(): Z3Solver =
 
 proc raw*(s: Z3Solver): RawZ3Solver {.inline.} = s.raw
 proc ctx*(s: Z3Solver): Z3Context {.inline.} = s.ctx
+
+# ============================================================================
+# Parameter configuration (v0.3 step 8)
+# ============================================================================
+
+proc setParams*(s: Z3Solver, p: Z3Params) =
+  ## Apply a typed param bag to the solver. Common knobs:
+  ##
+  ## - `timeout` (`uint`, milliseconds) — return `zsUnknown` if the
+  ##   solver hasn't decided within the budget.
+  ## - `model` (`bool`, default `true`) — enable / disable model
+  ##   generation. With `model = false`, `s.model()` after a sat
+  ##   `check()` raises `Z3Error` because Z3 didn't produce one.
+  ## - `random_seed` (`uint`) — seeds the solver's nondeterminism.
+  ## - `unsat_core` (`bool`) — enable unsat-core extraction (the
+  ##   `Z3_solver_get_unsat_core` surface isn't wrapped yet).
+  ##
+  ## Z3 silently ignores keys the solver doesn't recognise; for the
+  ## per-solver list of valid keys see `Z3_solver_get_param_descrs`
+  ## (not surfaced — needs its own design pass).
+  ##
+  ## ```nim
+  ## let p = newParams()
+  ## p.set("timeout", 5000'u)
+  ## p.set("random_seed", 42'u)
+  ## s.setParams(p)
+  ## ```
+  ##
+  ## Mirrors `setParams(o: Z3Optimize, p: Z3Params)`. **v0.3 step 8.**
+  s.ctx.checkErrVoid Z3_solver_set_params(s.ctx.raw, s.raw, p.raw)
 
 # ============================================================================
 # Assertion

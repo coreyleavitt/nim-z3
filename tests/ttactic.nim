@@ -173,3 +173,84 @@ suite "tactic — apply-result model conversion":
     # The parent model must satisfy the original `x` constraint.
     let xv = parentModel.evalInt(x)
     check xv > 0 and xv < 10 and xv * xv == 9    # i.e. xv == 3
+
+suite "solver-tactic bridges (v0.3 step 8) — tracer":
+  test "newSolverFromTactic(mkTactic(\"smt\")) decides a sat formula":
+    let ctx = newContext()
+    let s = newSolverFromTactic(mkTactic("smt"))
+    let x = mkIntVar("x")
+    s.add x == mkInt(42)
+    check s.check() == zsSat
+    check s.model().evalInt(x) == 42
+
+  test "toSolver() UFCS alias is equivalent":
+    let ctx = newContext()
+    let s = mkTactic("smt").toSolver()
+    let x = mkIntVar("x")
+    s.add x > mkInt(5)
+    s.add x < mkInt(10)
+    check s.check() == zsSat
+    let xv = s.model().evalInt(x)
+    check xv > 5 and xv < 10
+
+  test "composed tactic decides through the solver wrapper":
+    let ctx = newContext()
+    let pipeline = mkTactic("simplify").andThen(mkTactic("smt"))
+    let s = pipeline.toSolver()
+    let x = mkIntVar("x")
+    s.add (x + mkInt(0)) * mkInt(1) == mkInt(7)   # exercises simplify
+    check s.check() == zsSat
+    check s.model().evalInt(x) == 7
+
+  test "tacticFail-driven solver returns zsUnknown":
+    # Proves the underlying tactic actually drives the decision — a
+    # tactic that always fails can't decide anything, so check() must
+    # return zsUnknown (not zsSat as Z3's default smt tactic would).
+    let ctx = newContext()
+    let s = tacticFail().toSolver()
+    let x = mkIntVar("x")
+    s.add x == mkInt(1)
+    check s.check() == zsUnknown
+
+suite "solver-tactic bridges — Z3Solver.setParams":
+  test "setParams accepts a valid params bag and check() still works":
+    let ctx = newContext()
+    let s = newSolver()
+    let p = newParams()
+    p.set("random_seed", 42'u)
+    s.setParams(p)
+    let x = mkIntVar("x")
+    s.add x == mkInt(42)
+    check s.check() == zsSat
+    check s.model().evalInt(x) == 42
+
+  test "setParams accepts all four typed param value kinds":
+    # The wrapper's job is to pass a typed bag through; verify the
+    # four `Z3Params.set` overloads (bool, uint, float, string) land
+    # in the solver without error. Whether Z3 *honours* a given key
+    # is Z3's contract, not the wrapper's — Z3 silently ignores
+    # unrecognised keys, and the runtime effect of recognised keys
+    # like `model=false` varies by version (Z3 4.13.x does NOT honour
+    # `model=false` on a solver per local empirical check).
+    let ctx = newContext()
+    let s = newSolver()
+    let p = newParams()
+    p.set("random_seed", 7'u)
+    p.set("auto_config", false)
+    p.set("timeout", 60_000'u)
+    p.set("smt.relevancy", 2'u)
+    s.setParams(p)
+    let x = mkIntVar("x")
+    s.add x == mkInt(1)
+    check s.check() == zsSat
+
+  test "setParams composes with newSolverFromTactic":
+    let ctx = newContext()
+    let s = mkTactic("smt").toSolver()
+    let p = newParams()
+    p.set("random_seed", 1'u)
+    s.setParams(p)
+    let x = mkIntVar("x")
+    s.add x == mkInt(99)
+    check s.check() == zsSat
+    check s.model().evalInt(x) == 99

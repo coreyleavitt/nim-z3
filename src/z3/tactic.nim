@@ -239,6 +239,38 @@ proc convertModel*(g: Z3Goal, m: Z3Model): Z3Model =
   wrapModel(g.ctx,
     g.ctx.checkErr Z3_goal_convert_model(g.ctx.raw, g.raw, m.raw))
 
+# ============================================================================
+# Solver bridges (v0.3 step 8)
+# ============================================================================
+#
+# `Z3_mk_solver_from_tactic` lets a tactic pipeline be driven through
+# the familiar Z3Solver surface (push / pop / add / check / model).
+# Three constructor shapes ship: the explicit-context form matching
+# the `new*` convention, a current-context overload, and a `toSolver`
+# UFCS alias for the more natural `mkTactic("smt").toSolver()`
+# discovery path.
+
+proc newSolverFromTactic*(ctx: Z3Context, t: Z3Tactic): Z3Solver =
+  ## Wrap tactic `t` as a `Z3Solver`. The solver's decision procedure
+  ## delegates to `t`; everything else (assertion accumulation,
+  ## push/pop scopes, model extraction) behaves identically to a
+  ## fresh `newSolver()`.
+  wrapSolver(ctx, ctx.checkErr Z3_mk_solver_from_tactic(ctx.raw, t.raw))
+
+proc newSolverFromTactic*(t: Z3Tactic): Z3Solver =
+  ## Current-context overload. Raises `Z3Error` with
+  ## `Z3_INVALID_USAGE` if no current context is set.
+  newSolverFromTactic(t.ctx, t)
+
+proc toSolver*(t: Z3Tactic): Z3Solver {.inline.} =
+  ## UFCS-friendly alias for `newSolverFromTactic(t)`. Reads more
+  ## naturally at the call site as a coercion:
+  ##
+  ## ```nim
+  ## let s = mkTactic("simplify").andThen(mkTactic("smt")).toSolver()
+  ## ```
+  newSolverFromTactic(t.ctx, t)
+
 proc convertModel*(r: Z3ApplyResult, idx: int, m: Z3Model): Z3Model =
   ## Sugar: take a model satisfying sub-goal `idx` and convert it back
   ## into a model for the original goal `r` was produced from.

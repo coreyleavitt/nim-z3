@@ -45,8 +45,9 @@
 ##   (`+`, `-`, `*`, `div`, `/`, `mod`, `rem`, `<`, `<=`, `>`, `>=`,
 ##   `==`, `!=`) with int-literal lift overloads. **Implemented.**
 ## - `z3/solver` — `Z3Solver` lifecycle, `add`/`check`/`push`/`pop`/
-##   `reset`, `withFrame` template, `Z3Status` enum, `reasonUnknown`.
-##   **Implemented.**
+##   `reset`, `withFrame` template, `Z3Status` enum, `reasonUnknown`,
+##   `setParams(s, p: Z3Params)` for timeout / random_seed / etc.
+##   **Implemented. setParams in v0.3 step 8.**
 ## - `z3/model` — `Z3Model` lifecycle, `eval` / `[]`, scalar
 ##   extractors (`toInt`, `toBool`, etc.), composers (`evalInt`,
 ##   `evalBool`). **Implemented.**
@@ -68,7 +69,10 @@
 ## - `z3/tactic` — `Z3Goal` (formula conjunction), `Z3Tactic`
 ##   (`mkTactic("simplify")`, `andThen`, `orElse`, `repeat`, `tryFor`,
 ##   `withParams`, `tacticSkip` / `tacticFail`), `Z3ApplyResult` for
-##   subgoal iteration. **v0.2 step 8.**
+##   subgoal iteration. Plus `newSolverFromTactic(t)` / `t.toSolver()`
+##   solver bridges so a tactic pipeline can drive a `Z3Solver`'s
+##   decision procedure under the familiar add/check/model surface.
+##   **v0.2 step 8; solver bridge v0.3 step 8.**
 ## - `z3/semantics` — `smtValid(p: Z3Bool): bool` and the generic
 ##   `smtEquiv[T](a, b: T): bool`. Single discovery location for
 ##   validity / equivalence oracles; covers every typed family with

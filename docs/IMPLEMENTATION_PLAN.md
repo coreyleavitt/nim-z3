@@ -342,6 +342,13 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 - **Multi-pattern macro (`varargs[typed]`)** for `mkPattern`. Same trade-off as constructor apply in step 4 — per-arity templates keep error messages clean.
 - **Quantifier weight parameter.** `Z3_mk_forall_const` accepts a `weight` argument that de-prioritises this quantifier vs. others; we hardcode 0. Useful for tuning solver heuristics on hard problems but not user-facing for v0.2. **Where**: v0.3 if a real user hits it.
 
+### From step 7 (optimization)
+
+- **`Z3Params` typed wrapper.** Step 1's deferral that finally bites — box and Pareto multi-objective modes are set via `Z3_optimize_set_params(o, params)` where `params: Z3_params`. Until `Z3Params` is a proper typed wrapper (refcount lifecycle, key/value setters, the canonical place tactics will use), multi-objective modes beyond the lex default aren't accessible. **Where**: alongside the tactics module if step 7's optimization caller demand surfaces, otherwise v0.3.
+- **`Z3_optimize_get_objectives`**, `Z3_optimize_get_assertions`, `Z3_optimize_from_file/from_string`. Inspection helpers that aren't on a hot path. **Where**: v0.3 if a user needs them.
+- **Optimize-side push/pop arity ≥ 2.** Z3's optimize.pop only takes a count of 1 (unlike the solver's `pop(n)` form). We currently expose `pop(o)` only — matches Z3. If multi-level pop ever lands in Z3 we'll expose it; not a deferral so much as a non-feature.
+- **Surprise documented**: Z3's `optimize_get_upper`/`lower` returns the bound for a BV objective as an *Int* AST (the unsigned-magnitude bound). The wrapper hides this by re-converting via `Z3_mk_int2bv` so `upper(h: Z3OptHandle[Z3BitVec[8]])` returns `Z3BitVec[8]` per the typed promise. Tested round-trip. The cost is one extra FFI symbol (`Z3_mk_int2bv`) and one Z3 AST construction per call — negligible.
+
 ### Spec divergence (step 6, captured for the precedent)
 
 v0.2 plan §7 Q2 leaned toward a `Z3BoundVar` typeclass with `mkBoundVar[S]()` explicit boxing. We diverged to **per-arity templates over any typed AST family** — `forall(x, p, body)` where `x: Z3Int` and `p: Z3Bool` works directly because each generic position binds independently. Same precedent as step 4's constructor `apply` template family. The Q2 alternative would have forced the user to wrap every variable: `forall([mkBoundVar(x), mkBoundVar(p)], body)`. Strictly worse ergonomics for the same expressive power.

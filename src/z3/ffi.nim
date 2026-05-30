@@ -62,11 +62,16 @@ type
     ## attached patterns. Refcounted through `Z3_pattern_to_ast` —
     ## same trick used for `Z3_func_decl` (Z3 doesn't expose a
     ## dedicated `Z3_pattern_inc_ref`).
+  RawZ3Optimize* {.importc: "Z3_optimize", header: "z3.h", bycopy.} = object
+    ## Solver-shaped object specialised for optimisation problems:
+    ## hard + weighted-soft constraints, maximise / minimise
+    ## objectives with upper / lower bounds. Refcounted via
+    ## `Z3_optimize_inc_ref` / `Z3_optimize_dec_ref`.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern): bool {.inline.} =
+            RawZ3Pattern | RawZ3Optimize): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -81,14 +86,14 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern](
+          RawZ3Pattern | RawZ3Optimize](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern](
+          RawZ3Pattern | RawZ3Optimize](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -359,6 +364,67 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## bound var must be a constant constructed via `Z3_mk_const`
     ## (or equivalently `mkIntVar` / `mkBitVecVar` / `mkDatatypeVar`).
 
+  # --- Optimize ------------------------------------------------------------
+
+  proc Z3_mk_optimize(c: RawZ3Context): RawZ3Optimize
+    {.cdecl, header: "z3.h".}
+  proc Z3_optimize_inc_ref(c: RawZ3Context, o: RawZ3Optimize)
+    {.cdecl, header: "z3.h".}
+  proc Z3_optimize_dec_ref(c: RawZ3Context, o: RawZ3Optimize)
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_assert(c: RawZ3Context, o: RawZ3Optimize, a: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Add a hard constraint (must be satisfied).
+
+  proc Z3_optimize_assert_soft(c: RawZ3Context, o: RawZ3Optimize,
+                               a: RawZ3Ast, weight: cstring,
+                               id: RawZ3Symbol): cuint
+    {.cdecl, header: "z3.h".}
+    ## Add a soft constraint with a weight (decimal string,
+    ## e.g. "1.0"). Z3 minimises the weighted sum of violated soft
+    ## constraints. `id` groups soft constraints into named
+    ## objectives — the empty-name symbol means "default group".
+    ## Returns the objective index.
+
+  proc Z3_optimize_maximize(c: RawZ3Context, o: RawZ3Optimize,
+                            t: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+    ## Register `t` as a maximisation objective. Returns the
+    ## objective index used by `get_upper` / `get_lower`.
+
+  proc Z3_optimize_minimize(c: RawZ3Context, o: RawZ3Optimize,
+                            t: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_check(c: RawZ3Context, o: RawZ3Optimize,
+                         num_assumptions: cuint,
+                         assumptions: ptr UncheckedArray[RawZ3Ast]): Z3LBool
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_get_model(c: RawZ3Context, o: RawZ3Optimize): RawZ3Model
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_get_reason_unknown(c: RawZ3Context, o: RawZ3Optimize): cstring
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_get_upper(c: RawZ3Context, o: RawZ3Optimize, idx: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Upper bound for objective `idx`. May be a numeric literal, an
+    ## infinitesimal-plus-bound expression for reals (`epsilon + 10`),
+    ## or a positive-infinity term if the objective is unbounded.
+
+  proc Z3_optimize_get_lower(c: RawZ3Context, o: RawZ3Optimize, idx: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_push(c: RawZ3Context, o: RawZ3Optimize)
+    {.cdecl, header: "z3.h".}
+  proc Z3_optimize_pop(c: RawZ3Context, o: RawZ3Optimize)
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_optimize_to_string(c: RawZ3Context, o: RawZ3Optimize): cstring
+    {.cdecl, header: "z3.h".}
+
   # --- Quantifiers + patterns ---------------------------------------------
 
   proc Z3_mk_pattern(c: RawZ3Context, num_patterns: cuint,
@@ -456,6 +522,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
 
   proc Z3_mk_bv2int(c: RawZ3Context, a: RawZ3Ast, isSigned: bool): RawZ3Ast
     {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_int2bv(c: RawZ3Context, n: cuint, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Convert an `Int` AST to an `n`-bit BV. The integer is taken
+    ## mod 2^n. Used by `Z3Optimize.upper` / `.lower` to box bounds
+    ## back as `Z3BitVec[W]` — Z3's optimisation API returns BV
+    ## bounds as Int (the unsigned magnitude).
     ## Convert a bit-vector AST to an integer AST. When `isSigned` is
     ## false, the value is the unsigned magnitude. When true, the value
     ## is the two's-complement signed interpretation: an `n`-bit BV

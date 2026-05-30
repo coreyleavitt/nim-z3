@@ -44,11 +44,16 @@ proc `=destroy`(m: Z3ModelOwn) {.raises: [].} =
     discard
 
 # Internal: wrap a freshly-returned Z3_model into a managed Z3Model.
-proc wrapModel(ctx: Z3Context, raw: RawZ3Model): Z3Model =
+proc wrapModel*(ctx: Z3Context, raw: RawZ3Model): Z3Model =
+  ## Take ownership of a freshly-returned raw model handle. Public so
+  ## sibling modules (`z3/optimize`, future tactics, …) can wrap
+  ## models they obtain from their own FFI paths. Raises `Z3Error`
+  ## if `raw` is nil.
   if raw.isNil:
     var e = newException(Z3Error,
       "Z3 returned a nil model. Most likely cause: `model()` was " &
-      "called on a solver whose last `check()` did not return `zsSat`.")
+      "called on a solver/optimiser whose last `check()` did not " &
+      "return `zsSat`.")
     e.code = Z3_INVALID_USAGE
     raise e
   Z3_model_inc_ref(ctx.raw, raw)

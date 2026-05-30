@@ -58,6 +58,11 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
+## - `z3/optimize` — `Z3Optimize` with hard / soft constraints,
+##   `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
+##   `upper` / `lower` bound retrieval, `push` / `pop` scopes. Default
+##   multi-objective semantics are lex (lexicographic); box / Pareto
+##   modes need `Z3Params` (deferred). **v0.2 step 7.**
 ## - `z3/quantifier` — `forall(b1, …, body, patterns=[…])` and
 ##   `exists(...)` with per-arity templates (1–5 bound vars). Bound
 ##   vars can be any typed AST family (`Z3Int`, `Z3BitVec[W]`,
@@ -92,8 +97,8 @@
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
-       z3/datatypes, z3/quantifier
+       z3/datatypes, z3/quantifier, z3/optimize
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array, datatypes, quantifier
+       pretty, simplify, array, datatypes, quantifier, optimize
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

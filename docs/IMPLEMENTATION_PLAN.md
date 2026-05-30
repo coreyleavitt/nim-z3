@@ -329,6 +329,12 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 - **Pretty-printing test for `$`** of a datatype value. Implemented but not test-asserted; trivial delegation to `Z3_ast_to_string`. **Where**: defer.
 - **`Z3DatatypeValue` model evaluation** (`m[v]`, `m.eval(v)`). The existing `Z3Model.eval` is generic over `Z3Ast[S]` and doesn't dispatch to datatypes yet. A corresponding `proc eval[T](m: Z3Model, v: Z3DatatypeValue[T]): Z3DatatypeValue[T]` overload is needed. **Where**: still v0.2 — likely picked up alongside step 5 (mutually recursive) since both touch the model surface.
 
+### From step 5 (mutually recursive datatypes)
+
+- **`declareDatatypes` arity ≥ 4.** Per-arity overloads cover N=2 and N=3; bigger families need additional overloads (each is ~30 mechanical lines). **Where**: bump as a user surfaces the need; the precedent is set.
+- **A `declareDatatypes:` block-DSL macro.** Considered during planning — would let the user write `declareDatatypes: forDatatype[Tree]: ...; forDatatype[Forest]: ...` and emit the right return tuple. Costs 200+ lines for an arity ceiling Nim itself enforces. Per-arity overloads are simpler. **Where**: revisit only if the arity overloads become a maintenance burden, otherwise drop.
+- **Carry-forward from step 4: `Z3Model.eval` overload for `Z3DatatypeValue[T]`.** Still not landed; touches the model surface in the same way for both single and mutual datatypes. **Where**: alongside the next module that needs model-side datatype reads (likely v0.2 step 6 quantifiers via patterns that match on constructors, or a follow-up).
+
 ### Spec divergence (step 4, captured here for the precedent)
 
 v0.2 plan §7 Q1 sketched **runtime decl-pointer comparison** as the leaning, against a `static string`-phantom alternative. We diverged in two steps:

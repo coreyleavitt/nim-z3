@@ -47,7 +47,7 @@
 ## recognizer / accessor func_decl; they live as long as the decl.
 ## `=destroy` on the decl decrements them in bulk.
 
-import std/[strformat]
+import std/[strformat, tables]
 import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./array
 
 # ============================================================================
@@ -55,16 +55,26 @@ import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./array
 # ============================================================================
 
 type
-  FieldKind = enum fkSort, fkRecursive
+  FieldKind = enum fkSort, fkRecursive, fkCross
   FieldSpec* = ref object
     fname*: string
     case kind*: FieldKind
     of fkSort: sortFn: proc (ctx: Z3Context): RawZ3Sort {.closure.}
     of fkRecursive: discard
+    of fkCross: crossTypeName*: string
+      ## Marker-type name (`$T2`) of the other datatype this field
+      ## references. Resolved against the sibling specs at
+      ## `declareDatatypes` call time.
 
   ConstructorSpec* = ref object
     cname*: string
     fields*: seq[FieldSpec]
+
+  DatatypeSpec*[T] = object
+    ## Per-datatype spec used by `declareDatatypes`. Carries the
+    ## marker type `T` as a phantom plus the constructor list. Built
+    ## via `forDatatype[T](cons)`.
+    cons*: seq[ConstructorSpec]
 
 proc field*[T](name: string, _: typedesc[T]): FieldSpec =
   ## Non-recursive field. Sort is derived from the typedesc `T` via
@@ -74,12 +84,25 @@ proc field*[T](name: string, _: typedesc[T]): FieldSpec =
 
 proc selfField*(name: string): FieldSpec =
   ## Recursive field — references the datatype currently being declared.
-  ## Resolved inside `declareDatatype` to the sort index.
+  ## In a `forDatatype[T]` group, "self" is the datatype tagged with `T`.
   FieldSpec(fname: name, kind: fkRecursive)
+
+proc crossField*[T2](name: string, _: typedesc[T2] = T2): FieldSpec =
+  ## Cross-reference field — references another datatype `T2` in the
+  ## same `declareDatatypes` batch. Resolved by marker-type name (`$T2`)
+  ## at declaration time. Using `crossField` outside `declareDatatypes`
+  ## (in single-datatype `declareDatatype`) raises `Z3Error` because
+  ## there's no sibling to resolve against.
+  FieldSpec(fname: name, kind: fkCross, crossTypeName: $T2)
 
 proc constructor*(name: string,
                   fields: openArray[FieldSpec] = []): ConstructorSpec =
   ConstructorSpec(cname: name, fields: @fields)
+
+proc forDatatype*[T](cons: openArray[ConstructorSpec]): DatatypeSpec[T] =
+  ## Bundle a constructor list with its marker type, ready for
+  ## `declareDatatypes`.
+  DatatypeSpec[T](cons: @cons)
 
 # ============================================================================
 # Decl + handle types
@@ -204,80 +227,85 @@ template wrapValue[T](
 # declareDatatype
 # ============================================================================
 
-proc declareDatatype*[T](
-    ctx: Z3Context,
-    cons: openArray[ConstructorSpec]): Z3DatatypeDecl[T] =
-  ## Finalise an inductive datatype with the supplied constructors.
-  ## The `T` generic is a Nim marker type — typically `type Maybe =
-  ## object` declared above the call. Values are typed
-  ## `Z3DatatypeValue[T]`; the Z3 sort name is `$T`.
-  ##
-  ## ```nim
-  ## type Maybe = object
-  ## let MaybeDt = declareDatatype[Maybe](@[
-  ##   constructor("nothing"),
-  ##   constructor("just", @[field("value", Z3Int)])
-  ## ])
-  ## ```
-  let dtSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T).cstring)
+type
+  RawConsWork = object
+    ## Per-datatype scratch carrying everything that has to outlive the
+    ## `Z3_mk_constructor` calls until `Z3_mk_datatype(s)` has consumed
+    ## the descriptors. Owned by the caller — kept on the stack frame
+    ## across the entire build.
+    rawCons: seq[RawZ3Constructor]
+    fieldNameSyms: seq[seq[RawZ3Symbol]]
+    fieldSorts: seq[seq[RawZ3Sort]]
+    fieldRefs: seq[seq[cuint]]
 
-  # Build raw constructor descriptors in lockstep with `cons`.
-  var rawCons = newSeq[RawZ3Constructor](cons.len)
-  # We have to keep the per-constructor scratch arrays alive across the
-  # Z3_mk_constructor call (it copies them but the GC scares me less
-  # this way).
-  var fieldNameSyms = newSeq[seq[RawZ3Symbol]](cons.len)
-  var fieldSorts = newSeq[seq[RawZ3Sort]](cons.len)
-  var fieldRefs = newSeq[seq[cuint]](cons.len)
+proc buildRawConstructors(
+    ctx: Z3Context,
+    cons: openArray[ConstructorSpec],
+    selfIdx: int,
+    nameToIdx: Table[string, int]): RawConsWork =
+  ## Build raw constructor descriptors for one datatype. `selfIdx` is
+  ## the datatype's own index in the surrounding `Z3_mk_datatypes`
+  ## batch (always 0 for single-datatype). `nameToIdx` maps marker-
+  ## type names (`$T2`) to indices for cross-references; empty in the
+  ## single-datatype path.
+  result.rawCons = newSeq[RawZ3Constructor](cons.len)
+  result.fieldNameSyms = newSeq[seq[RawZ3Symbol]](cons.len)
+  result.fieldSorts = newSeq[seq[RawZ3Sort]](cons.len)
+  result.fieldRefs = newSeq[seq[cuint]](cons.len)
 
   for ci, c in cons:
     let cnameSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, c.cname.cstring)
     let recogName = "is-" & c.cname
     let recogSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, recogName.cstring)
 
-    fieldNameSyms[ci] = newSeq[RawZ3Symbol](c.fields.len)
-    fieldSorts[ci] = newSeq[RawZ3Sort](c.fields.len)
-    fieldRefs[ci] = newSeq[cuint](c.fields.len)
+    result.fieldNameSyms[ci] = newSeq[RawZ3Symbol](c.fields.len)
+    result.fieldSorts[ci] = newSeq[RawZ3Sort](c.fields.len)
+    result.fieldRefs[ci] = newSeq[cuint](c.fields.len)
 
     for fi, f in c.fields:
-      fieldNameSyms[ci][fi] =
+      result.fieldNameSyms[ci][fi] =
         ctx.checkErr Z3_mk_string_symbol(ctx.raw, f.fname.cstring)
       case f.kind
       of fkSort:
-        fieldSorts[ci][fi] = f.sortFn(ctx)
-        fieldRefs[ci][fi] = 0
+        result.fieldSorts[ci][fi] = f.sortFn(ctx)
+        result.fieldRefs[ci][fi] = 0
       of fkRecursive:
-        # Sort field is nil; the index in `sort_refs` is the datatype
-        # being declared. Single-datatype mode → index 0.
-        fieldSorts[ci][fi] = RawZ3Sort()    # nil
-        fieldRefs[ci][fi] = 0
+        result.fieldSorts[ci][fi] = RawZ3Sort()    # nil
+        result.fieldRefs[ci][fi] = cuint(selfIdx)
+      of fkCross:
+        if not nameToIdx.hasKey(f.crossTypeName):
+          raise newException(Z3Error,
+            &"datatype build: crossField references '{f.crossTypeName}' " &
+            "which is not among the sibling datatypes in this batch. " &
+            "Use `selfField` for self-references; use `declareDatatypes` " &
+            "with all involved datatypes in one call for cross-references.")
+        result.fieldSorts[ci][fi] = RawZ3Sort()
+        result.fieldRefs[ci][fi] = cuint(nameToIdx[f.crossTypeName])
 
     let fieldNamesPtr =
       if c.fields.len > 0:
-        cast[ptr UncheckedArray[RawZ3Symbol]](addr fieldNameSyms[ci][0])
+        cast[ptr UncheckedArray[RawZ3Symbol]](addr result.fieldNameSyms[ci][0])
       else: nil
     let fieldSortsPtr =
       if c.fields.len > 0:
-        cast[ptr UncheckedArray[RawZ3Sort]](addr fieldSorts[ci][0])
+        cast[ptr UncheckedArray[RawZ3Sort]](addr result.fieldSorts[ci][0])
       else: nil
     let fieldRefsPtr =
       if c.fields.len > 0:
-        cast[ptr UncheckedArray[cuint]](addr fieldRefs[ci][0])
+        cast[ptr UncheckedArray[cuint]](addr result.fieldRefs[ci][0])
       else: nil
 
-    rawCons[ci] = ctx.checkErr Z3_mk_constructor(ctx.raw,
+    result.rawCons[ci] = ctx.checkErr Z3_mk_constructor(ctx.raw,
       cnameSym, recogSym, cuint(c.fields.len),
       fieldNamesPtr, fieldSortsPtr, fieldRefsPtr)
 
-  let consPtr =
-    if rawCons.len > 0:
-      cast[ptr UncheckedArray[RawZ3Constructor]](addr rawCons[0])
-    else: nil
-  let dtSort = ctx.checkErr Z3_mk_datatype(ctx.raw, dtSym,
-    cuint(rawCons.len), consPtr)
-
-  # Query the func_decls for each constructor.
-  var conRefs = newSeq[Z3ConstructorDeclRef[T]](cons.len)
+proc queryConstructorsInto[T](
+    ctx: Z3Context,
+    cons: openArray[ConstructorSpec],
+    rawCons: openArray[RawZ3Constructor]): seq[Z3ConstructorDeclRef[T]] =
+  ## After `Z3_mk_datatype(s)` has finalised the sort, extract per-
+  ## constructor `func_decl`s and wrap them as managed refs.
+  result = newSeq[Z3ConstructorDeclRef[T]](cons.len)
   for ci, c in cons:
     var conFD, recogFD: RawZ3FuncDecl
     var accFDs = newSeq[RawZ3FuncDecl](c.fields.len)
@@ -295,12 +323,33 @@ proc declareDatatype*[T](
       incRefFuncDecl(ctx, accFDs[fi])
       accs[fi] = (f.fname, accFDs[fi])
 
-    conRefs[ci] = Z3ConstructorDeclRef[T](
+    result[ci] = Z3ConstructorDeclRef[T](
       ctx: ctx, cname: c.cname,
       constructorFD: conFD, recognizerFD: recogFD, accessorsFD: accs)
 
-  # Delete the descriptors — Z3 has consumed them.
-  for con in rawCons:
+proc declareDatatype*[T](
+    ctx: Z3Context,
+    cons: openArray[ConstructorSpec]): Z3DatatypeDecl[T] =
+  ## Finalise an inductive datatype with the supplied constructors.
+  ## The `T` generic is a Nim marker type — typically `type Maybe =
+  ## object` declared above the call. Values are typed
+  ## `Z3DatatypeValue[T]`; the Z3 sort name is `$T`.
+  ##
+  ## For mutually-recursive datatypes (cross-references via
+  ## `crossField`) use `declareDatatypes` instead.
+  let dtSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T).cstring)
+  let emptyMap = initTable[string, int]()
+  var work = buildRawConstructors(ctx, cons, selfIdx = 0,
+                                  nameToIdx = emptyMap)
+  let consPtr =
+    if work.rawCons.len > 0:
+      cast[ptr UncheckedArray[RawZ3Constructor]](addr work.rawCons[0])
+    else: nil
+  let dtSort = ctx.checkErr Z3_mk_datatype(ctx.raw, dtSym,
+    cuint(work.rawCons.len), consPtr)
+
+  let conRefs = queryConstructorsInto[T](ctx, cons, work.rawCons)
+  for con in work.rawCons:
     Z3_del_constructor(ctx.raw, con)
 
   Z3DatatypeDecl[T](ctx: ctx, sort: dtSort, cons: conRefs)
@@ -308,6 +357,135 @@ proc declareDatatype*[T](
 proc declareDatatype*[T](
     cons: openArray[ConstructorSpec]): Z3DatatypeDecl[T] =
   declareDatatype[T](requireCurrentContext(), cons)
+
+# ============================================================================
+# declareDatatypes — mutually recursive
+# ============================================================================
+
+proc declareDatatypes*[T1, T2](
+    ctx: Z3Context, d1: DatatypeSpec[T1], d2: DatatypeSpec[T2]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2]) =
+  ## Finalise two mutually-recursive datatypes simultaneously. Cross-
+  ## references (via `crossField[T2]`) resolve against the sibling
+  ## marker types in this batch; self-references continue to use
+  ## `selfField`.
+  ##
+  ## ```nim
+  ## type Tree = object
+  ## type Forest = object
+  ## let (treeDt, forestDt) = declareDatatypes(
+  ##   forDatatype[Tree](@[
+  ##     constructor("leaf"),
+  ##     constructor("node", @[
+  ##       field("value", Z3Int),
+  ##       crossField[Forest]("children")])]),
+  ##   forDatatype[Forest](@[
+  ##     constructor("empty"),
+  ##     constructor("conscell", @[
+  ##       crossField[Tree]("head"),
+  ##       selfField("tail")])]))
+  ## ```
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0
+  nameToIdx[$T2] = 1
+
+  var work1 = buildRawConstructors(ctx, d1.cons,
+    selfIdx = 0, nameToIdx = nameToIdx)
+  var work2 = buildRawConstructors(ctx, d2.cons,
+    selfIdx = 1, nameToIdx = nameToIdx)
+
+  # Bundle into per-datatype constructor lists.
+  let list1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+    cuint(work1.rawCons.len),
+    cast[ptr UncheckedArray[RawZ3Constructor]](addr work1.rawCons[0]))
+  let list2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+    cuint(work2.rawCons.len),
+    cast[ptr UncheckedArray[RawZ3Constructor]](addr work2.rawCons[0]))
+
+  var sortNames = @[
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring),
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring),
+  ]
+  var sortsOut = newSeq[RawZ3Sort](2)
+  var lists = @[list1, list2]
+
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 2,
+    cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
+    cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
+    cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+
+  let conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
+  let conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
+
+  # Z3 owns the descriptors via the lists; deleting the lists releases
+  # the individual constructors too.
+  Z3_del_constructor_list(ctx.raw, list1)
+  Z3_del_constructor_list(ctx.raw, list2)
+
+  let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
+  let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
+  (dt1, dt2)
+
+proc declareDatatypes*[T1, T2](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2]) =
+  declareDatatypes(requireCurrentContext(), d1, d2)
+
+proc declareDatatypes*[T1, T2, T3](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3]) =
+  ## 3-tuple variant. Same shape as the 2-arity overload — bump if a
+  ## consumer needs N >= 4.
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0
+  nameToIdx[$T2] = 1
+  nameToIdx[$T3] = 2
+
+  var work1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var work2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var work3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+
+  let list1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+    cuint(work1.rawCons.len),
+    cast[ptr UncheckedArray[RawZ3Constructor]](addr work1.rawCons[0]))
+  let list2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+    cuint(work2.rawCons.len),
+    cast[ptr UncheckedArray[RawZ3Constructor]](addr work2.rawCons[0]))
+  let list3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+    cuint(work3.rawCons.len),
+    cast[ptr UncheckedArray[RawZ3Constructor]](addr work3.rawCons[0]))
+
+  var sortNames = @[
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring),
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring),
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring),
+  ]
+  var sortsOut = newSeq[RawZ3Sort](3)
+  var lists = @[list1, list2, list3]
+
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 3,
+    cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
+    cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
+    cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+
+  let conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
+  let conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
+  let conRefs3 = queryConstructorsInto[T3](ctx, d3.cons, work3.rawCons)
+
+  Z3_del_constructor_list(ctx.raw, list1)
+  Z3_del_constructor_list(ctx.raw, list2)
+  Z3_del_constructor_list(ctx.raw, list3)
+
+  let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
+  let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
+  let dt3 = Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: conRefs3)
+  (dt1, dt2, dt3)
+
+proc declareDatatypes*[T1, T2, T3](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3)
 
 # ============================================================================
 # Lookup — con, recognizer, accessor
@@ -423,15 +601,24 @@ proc read*[T, Ret](
     a: Z3AccessorDecl[T, Ret], v: Z3DatatypeValue[T]): Ret =
   ## Read a field. Return type is the `Ret` declared at the accessor
   ## lookup; dispatches on it via `sortOfType`-style branches.
+  ##
+  ## `Z3DatatypeValue` returns work for both self-references and
+  ## cross-references — the dispatch matches any `Z3DatatypeValue[X]`
+  ## generic instantiation, and `Ret` carries the right `X` from the
+  ## accessor lookup so the wrapped value comes out typed correctly.
   let ctx = a.inner.ctx
   let raw = readRawAccessor(a, v)
   when Ret is Z3Int:    wrap[stInt](ctx, raw)
   elif Ret is Z3Real:   wrap[stReal](ctx, raw)
   elif Ret is Z3Bool:   wrap[stBool](ctx, raw)
   elif Ret is Z3BitVec: wrapBv[Ret.W](ctx, raw)
-  elif Ret is Z3DatatypeValue[T]:
-    # Recursive reference. Just wrap as the same-name value.
-    wrapValue[T](ctx, raw)
+  elif Ret is Z3DatatypeValue:
+    # Datatype-valued field — self-recursion or cross-reference.
+    # The inner-Name dispatch happens at the wrapValue level: Ret IS
+    # `Z3DatatypeValue[X]` for some X, and the constructor here
+    # propagates that X through.
+    Ret(raw: (if raw.isNil: raw else: (Z3_inc_ref(ctx.raw, raw); raw)),
+        ctx: ctx)
   else:
     {.error: "accessor read: unsupported Ret type for datatype field.".}
 

@@ -50,10 +50,16 @@ type
     ## datatype's `mk_datatype` call yields. Must be deleted with
     ## `Z3_del_constructor` after `Z3_query_constructor` has extracted
     ## the func_decls — Z3 doesn't refcount the descriptor itself.
+  RawZ3ConstructorList* {.importc: "Z3_constructor_list", header: "z3.h", bycopy.} = object
+    ## Bundle of constructors for one datatype, passed to
+    ## `Z3_mk_datatypes` (plural) when finalising N mutually-recursive
+    ## datatypes in a single call. Cleaned up with
+    ## `Z3_del_constructor_list` after the datatype sorts have been
+    ## extracted.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-            RawZ3AstVector | RawZ3Constructor): bool {.inline.} =
+            RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -67,13 +73,13 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 # cause of a real refcount bug surfaced by step 4-5 testing.
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor](
+          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor](
+          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -301,6 +307,26 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                       constructors: ptr UncheckedArray[RawZ3Constructor]): RawZ3Sort
     {.cdecl, header: "z3.h".}
     ## Finalise a single (non-mutually-recursive) datatype.
+
+  proc Z3_mk_constructor_list(c: RawZ3Context, num_constructors: cuint,
+                              constructors: ptr UncheckedArray[RawZ3Constructor]
+                             ): RawZ3ConstructorList
+    {.cdecl, header: "z3.h".}
+    ## Bundle the constructors for one datatype in a multi-datatype
+    ## (mutually recursive) declaration.
+
+  proc Z3_del_constructor_list(c: RawZ3Context, cl: RawZ3ConstructorList)
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_datatypes(c: RawZ3Context, num_sorts: cuint,
+                       sort_names: ptr UncheckedArray[RawZ3Symbol],
+                       sorts_out: ptr UncheckedArray[RawZ3Sort],
+                       cls: ptr UncheckedArray[RawZ3ConstructorList])
+    {.cdecl, header: "z3.h".}
+    ## Finalise N mutually-recursive datatypes simultaneously. The
+    ## `sort_refs` indices each constructor used at `Z3_mk_constructor`
+    ## time resolve against the N entries here in order. `cls` is
+    ## implicitly `num_sorts` long (one constructor list per datatype).
 
   proc Z3_query_constructor(c: RawZ3Context, con: RawZ3Constructor,
                             num_fields: cuint,

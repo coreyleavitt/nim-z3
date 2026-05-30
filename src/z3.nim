@@ -58,13 +58,14 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
-## - `z3/datatypes` — inductive sums via `declareDatatype[T]`. Phantom
-##   is a Nim marker type (`type Foo = object`), so
-##   `Z3DatatypeValue[Foo]` is distinct from `Z3DatatypeValue[Bar]`.
-##   Surface: `field`, `selfField`, `constructor`, `declareDatatype`,
-##   `.con` / `.recognizer` / `.accessor`, `.apply` / `.test` / `.read`,
-##   `mkDatatypeVar`. Mutually-recursive datatypes are v0.2 step 5.
-##   **v0.2 step 4.**
+## - `z3/datatypes` — inductive sums via `declareDatatype[T]` (single)
+##   or `declareDatatypes(forDatatype[T1]…, forDatatype[T2]…)` (mutually
+##   recursive). Phantom is a Nim marker type (`type Foo = object`),
+##   so `Z3DatatypeValue[Foo]` is distinct from `Z3DatatypeValue[Bar]`.
+##   Surface: `field`, `selfField`, `crossField`, `constructor`,
+##   `declareDatatype` / `forDatatype` / `declareDatatypes`, `.con` /
+##   `.recognizer` / `.accessor`, `.apply` / `.test` / `.read`,
+##   `mkDatatypeVar`. **v0.2 steps 4 + 5.**
 ## - `z3/array` — `Z3Array[Key, Val]` phantom-typed over typedescs
 ##   of AST families (so `Z3Array[Z3BitVec[32], Z3BitVec[8]]` is a
 ##   distinct type from `Z3Array[Z3BitVec[64], Z3BitVec[8]]`).

@@ -227,7 +227,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 9. **Term rewriting** (`z3/rewrite`). ✅ shipped. `substitute` + `substituteVars` generic over `Z3Term`. Also added `mkBound` for manual de-Bruijn bound-var construction.
 
-10. **Cross-context transfer + compatibility** (`z3/translate`). `translate[T: Z3Term]` + `compatibleWith(ctxA, ctxB): bool`.
+10. **Cross-context transfer + compatibility** (`z3/translate`). ✅ shipped. `translate[T: Z3Term]` + `compatibleWith(ctxA, ctxB): bool`.
 
 11. **Quantifier introspection.** Extends `z3/quantifier`. Mechanical wrapping of `Z3_get_quantifier_*`. Bound-var sort dispatch uses `getSortKind` from step 2.
 
@@ -328,6 +328,13 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 10 (cross-context transfer + compatibility)
+
+- **Clean landing.** Smallest module in v0.4; one FFI proc + the smoke-test predicate. No spec corrections.
+- **`compatibleWith` implementation strategy worked.** No direct Z3 predicate exists; the wrapper uses a `Z3_mk_true → Z3_translate` round-trip under exception capture, returning `false` on any failure. Documented as "conservative" and noting the per-call transient-AST allocation.
+- **Typed family preservation verified across Z3Int / Z3Bool / Z3BitVec[W] / Z3Real.** The `Z3Term` constraint + `wrap[T](targetCtx, raw)` round-trips the typed family cleanly; sort identity preserved at the SMT-LIB string level (Z3 emits the same syntactic form regardless of which context owns the AST).
+- **End-to-end solver round-trip works**: build constraint in ctx A, translate to ctx B, B's solver decides identically. This is the canonical multi-threading / multi-solver use case the capability exists for.
 
 ### From step 9 (term rewriting)
 

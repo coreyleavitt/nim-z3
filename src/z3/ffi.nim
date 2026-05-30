@@ -862,6 +862,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## **v0.4 step 9.** Construct a bound-variable AST at the given
     ## de-Bruijn index. Useful for manually building quantifier
     ## bodies; required for testing `Z3_substitute_vars`.
+  proc Z3_translate(srcCtx: RawZ3Context, a: RawZ3Ast,
+                    targetCtx: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 10.** Transfer an AST from `srcCtx` to `targetCtx`.
+    ## The returned AST is owned by `targetCtx`; the source AST is
+    ## independent. Z3 validates that the target context can accept
+    ## the AST; on incompatibility raises a Z3 error.
   proc Z3_get_decl_kind(c: RawZ3Context, d: RawZ3FuncDecl): Z3DeclKindFFI
     {.cdecl, header: "z3.h".}
     ## **v0.4 step 4.** Returns the Z3-internal `Z3_decl_kind` enum

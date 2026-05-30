@@ -142,7 +142,7 @@ type LibZ3UnavailableError* = object of Defect
   ## "not installed" from "missing required symbol" (i.e. libz3 too
   ## old for the symbols we declared).
 
-proc ensureLoaded() =
+proc ensureLoaded*() =
   ## Idempotent first-call hook that loads libz3 via softlink. Called
   ## by `newContext`; users don't normally need to invoke this
   ## directly, but it's idempotent and cheap so calling extra times

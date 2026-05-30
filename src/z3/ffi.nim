@@ -573,6 +573,21 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                       t1, t2: RawZ3Tactic): RawZ3Tactic
     {.cdecl, header: "z3.h".}
 
+  # --- Global parameters (v0.4 step 13) ------------------------------------
+  # Process-wide; no context handle. `_get` populates an out-pointer and
+  # returns Z3_TRUE iff the param was previously set, Z3_FALSE otherwise.
+  proc Z3_global_param_set(param_id, param_value: cstring)
+    {.cdecl, header: "z3.h".}
+  proc Z3_global_param_reset_all()
+    {.cdecl, header: "z3.h".}
+  # `Z3_string_ptr` is `const char **`; Nim's `ptr cstring` decays to
+  # `char **` which a strict cpp compiler rejects. Take an opaque
+  # `pointer` and cast at the call site — semantics are unchanged
+  # since Z3 only writes into the location.
+  proc Z3_global_param_get(param_id: cstring,
+                           param_value: pointer): bool
+    {.cdecl, header: "z3.h".}
+
   proc Z3_tactic_apply(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal): RawZ3ApplyResult
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_apply_ex(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal,

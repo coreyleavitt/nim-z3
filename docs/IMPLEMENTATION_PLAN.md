@@ -279,7 +279,7 @@ Each step closes with a §8 deferral entry if anything surfaced mid-cycle (same 
 
 12. **Probes + condTactic** (`z3/probe`). ✅ shipped. `Z3Probe` ref-handle with `emitRefcountLifecycle`. `mkProbe(name)` / `mkProbeConst(value)` for construction; `apply(p, g): float` for evaluation. Comparison operators (`<`, `<=`, `>`, `>=`, `==`) return **new probes** (not `bool`) so call-site notation reads naturally — auto-lifts `float` literals on both sides. Boolean combinators `and` / `or` / `not`. `condTactic(probe, ifT, elseT)` dispatches between tactics by the probe's truthiness. Required public `raw`/`ctx` accessors on `Z3Tactic`/`Z3Goal` and exported `wrapTactic`. 7 behaviors × 2 backends GREEN; total suite 1090 OKs.
 
-13. **Global parameters** (`z3/globalparams`). Three procs. TDD: `setGlobalParam("verbose", "5")` then `getGlobalParam("verbose")` returns `some("5")`.
+13. **Global parameters** (`z3/globalparams`). ✅ shipped. Three procs: `setGlobalParam(name, value)`, `getGlobalParam(name): Option[string]`, `resetGlobalParams()`. Auto-loads `libz3` via newly-exported `context.ensureLoaded` so calls work before any `Z3Context` is allocated (the common case for `"verbose"` / `"memory_max_size"`). `Option` semantics match Z3's `_get` return — `none` for unknown names, `some(v)` for known names where `v` is the effective value (override or default); Z3 does not distinguish "user-set" from "at default". `Z3_string_ptr` (`const char **`) maps via `pointer` + cast to satisfy strict cpp typechecking. 5 behaviors × 2 backends GREEN; total suite 1100 OKs.
 
 14. **I/O surface refactor** (`z3/io`). Relocate `parseSmt2`/`smt2Script`/`writeSmt2` from `z3/pretty`. Add `parseSmt2File`, `Z3ParserContext` typed handle with step-style API (`newParserContext(ctx); pc.addSort(...); pc.addDecl(...); pc.parseFromString(text)`), streaming parse. TDD: round-trip a complex formula via `smt2Script` → `parseSmt2String`; parse from file; build a parser context with a pre-registered sort and parse against it.
 
@@ -328,6 +328,14 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 13 (Global parameters)
+
+- **`Z3_global_param_get` returns effective value, not user-set value.** The C API's `bool` return is `true` for any parameter Z3 knows about (yielding the override or built-in default), and `false` only for unrecognised names. The initial spec note hinted `none` would mean "at default"; that's not what Z3 offers. Wrapper now documents this faithfully: `none` ⇔ unknown name; `some(v)` ⇔ effective value as a string. To track "did *we* override this?", callers must keep a shadow record — Z3 surfaces no signal.
+- **Numeric/typed params parse on set, normalise on bad input.** Z3 parses each parameter into its declared C type (`unsigned int`, `bool`, `string`) inside `Z3_global_param_set`; a malformed numeric value (e.g. `"  42  "` with leading whitespace) is rejected and the parameter falls back to its built-in default with a `WARNING:` line on Z3's stderr. The wrapper does no pre-validation — surfacing Z3's actual diagnostic is more honest than reimplementing the parse.
+- **`Z3_string_ptr` is `const char **`; Nim's `ptr cstring` decays to `char **`.** Strict `nim cpp` rejects the mismatch. Mapped the `param_value` parameter as opaque `pointer` in the FFI block and cast at the call site — semantics identical (Z3 only writes through it), and the cpp backend compiles.
+- **`ensureLoaded` promoted to public.** Global-param calls reach a libz3 symbol with no `Z3Context` allocated, so callers may invoke them before any `newContext`. Rather than duplicate the softlink load logic, exported the existing idempotent hook from `z3/context`. Useful precedent for any future symbol that's reachable pre-context.
+- **No `withGlobalParam` RAII helper.** Considered and rejected: Z3 offers no per-key unset (only `reset_all`), so a faithful "restore previous value" is unrepresentable when the previous state was `none`. The three-proc surface is exactly what Z3 supports.
 
 ### From step 12 (Probes + condTactic)
 

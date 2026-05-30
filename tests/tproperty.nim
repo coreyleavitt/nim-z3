@@ -98,7 +98,7 @@ suite "property: BV ↔ native arithmetic":
     check report.outcome == otPassed
 
 suite "property: SMT2 round-trip":
-  test "smt2Script → parseSmt2 preserves sat value":
+  test "smt2Script → parseSmt2String preserves sat value":
     let ctx = newContext()
     let report = forAll(
       integers(-1000, 1000),
@@ -108,7 +108,7 @@ suite "property: SMT2 round-trip":
         s1.add x == mkInt(k)
         let script = smt2Script(s1)
 
-        let asserts = parseSmt2(ctx, script)
+        let asserts = parseSmt2String(ctx, script)
         let s2 = newSolver()
         for a in asserts: s2.add a
         ensure s2.check() == zsSat

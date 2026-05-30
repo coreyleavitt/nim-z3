@@ -37,6 +37,13 @@ type
     stInt
     stReal
     stBool
+    stUninterpreted
+      ## **v0.4 step 14.** Opaque sort identified only by its name —
+      ## the SMT-LIB `(declare-sort Color)` primitive. Values of an
+      ## uninterpreted sort have no built-in operations beyond `==` /
+      ## `!=`; the solver picks witnesses freely subject to user
+      ## axioms. Exposed via `mkUninterpretedSort(name)` /
+      ## `declareSort(name)`.
     stBitVec
       ## BitVec width lives on a separate `Z3BitVec[W: static int]` type
       ## (see `z3/bitvec`) rather than as a second generic parameter on
@@ -96,6 +103,31 @@ proc mkBitVecSort*(ctx: Z3Context, w: cuint): Z3Sort[stBitVec] =
   Z3Sort[stBitVec](raw: ctx.checkErr Z3_mk_bv_sort(ctx.raw, w), ctx: ctx)
 proc mkBitVecSort*(w: cuint): Z3Sort[stBitVec] =
   mkBitVecSort(requireCurrentContext(), w)
+
+proc mkUninterpretedSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted] =
+  ## **v0.4 step 14.** Declare a fresh uninterpreted sort. Values of
+  ## this sort are opaque — the solver decides only their equality
+  ## relation, modulo any axioms the caller adds. The `name` becomes
+  ## the sort's identifier in SMT2 emission and inside any
+  ## `Z3ParserContext` it's been registered with.
+  ##
+  ## Two uninterpreted sorts with the same `name` in the same context
+  ## are the same sort.
+  Z3Sort[stUninterpreted](
+    raw: ctx.checkErr Z3_mk_uninterpreted_sort(
+      ctx.raw, Z3_mk_string_symbol(ctx.raw, name.cstring)),
+    ctx: ctx)
+
+proc mkUninterpretedSort*(name: string): Z3Sort[stUninterpreted] =
+  mkUninterpretedSort(requireCurrentContext(), name)
+
+proc declareSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted]
+  {.inline.} = mkUninterpretedSort(ctx, name)
+  ## SMT-LIB-styled alias for `mkUninterpretedSort` — matches the
+  ## `(declare-sort Color)` reading site.
+
+proc declareSort*(name: string): Z3Sort[stUninterpreted] {.inline.} =
+  mkUninterpretedSort(name)
 
 # ============================================================================
 # Pretty-print

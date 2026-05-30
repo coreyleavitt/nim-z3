@@ -9,8 +9,8 @@
 ## - `smt2Script(solver)` — self-contained file with declarations,
 ##   assertions, and `(check-sat)`. Pipe to the `z3` CLI for ablation
 ##   or feed to another solver.
-## - `parseSmt2(ctx, source)` — read a script back into ASTs. Round-
-##   trips with `smt2Script`.
+## - `parseSmt2String(ctx, source)` — read a script back into ASTs.
+##   Round-trips with `smt2Script`.
 
 import std/[strformat, strutils]
 import z3
@@ -41,8 +41,9 @@ proc main() =
   echo script.indent(2)
 
   # Round-trip: parse the script back into a fresh solver under the
-  # same context. Solver state after parseSmt2 is equivalent to s1.
-  let asserts = parseSmt2(ctx, script)
+  # same context. Solver state after parseSmt2String is equivalent
+  # to s1.
+  let asserts = parseSmt2String(ctx, script)
   let s2 = newSolver()
   for a in asserts:
     s2.add a

@@ -31,7 +31,7 @@
 ## the same reformatter on `$node`.
 
 import std/[strutils]
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./solver, ./model
+import ./sort, ./ast, ./bitvec, ./solver, ./model
 
 # ============================================================================
 # Tokeniser
@@ -222,72 +222,6 @@ proc pretty*(s: Z3Solver, indent = 2, width = 80): string =
 proc pretty*(m: Z3Model, indent = 2, width = 80): string =
   reformat($m, indent, width)
 
-# ============================================================================
-# SMT2 script emission
-# ============================================================================
-
-proc smt2Script*(s: Z3Solver): string =
-  ## Emit a self-contained SMT2 script for `s`: every free-constant
-  ## declaration the solver has accumulated, every assertion, terminated
-  ## by `(check-sat)`. The output can be piped to `z3` on the command
-  ## line — useful for ablation / minimisation when a solver hangs or
-  ## returns `unknown`.
-  ##
-  ## ```nim
-  ## echo smt2Script(s)
-  ## # (declare-fun x () Int)
-  ## # (assert (> x 0))
-  ## # (check-sat)
-  ## ```
-  ##
-  ## Implementation: `Z3_solver_to_string` already produces the
-  ## declarations + assertions block; we just append `(check-sat)`.
-  result = $s
-  if not result.endsWith('\n'):
-    result.add '\n'
-  result.add "(check-sat)\n"
-
-proc writeSmt2*(s: Z3Solver, path: string) =
-  ## Write `smt2Script(s)` to `path`. Pure convenience over
-  ## `writeFile(path, smt2Script(s))`.
-  writeFile(path, smt2Script(s))
-
-# ============================================================================
-# SMT2 parser
-# ============================================================================
-
-proc parseSmt2*(ctx: Z3Context, source: string): seq[Z3Bool] =
-  ## Parse SMT2 source into a sequence of boolean assertions. The
-  ## source must be self-contained — every sort, declaration, and
-  ## constant it references should be declared via `declare-...` /
-  ## `define-...` forms within `source`.
-  ##
-  ## ```nim
-  ## let asserts = parseSmt2(ctx,
-  ##   "(declare-const x Int) (assert (> x 0))")
-  ## for a in asserts:
-  ##   s.add a
-  ## ```
-  ##
-  ## Round-trips with `smt2Script(s)` exactly: feeding the script
-  ## emitted by one solver into `parseSmt2` and adding the assertions
-  ## to another reproduces the original constraint set.
-  ##
-  ## Raises `Z3Error` if the parser rejects the input. Z3's parser is
-  ## permissive about extra forms it doesn't recognise (e.g.
-  ## `(check-sat)` is silently ignored — it's a command, not an
-  ## assertion); a true syntax error or an unknown identifier raises.
-  let vec = Z3_parse_smtlib2_string(ctx.raw, source.cstring,
-                                    0, nil, nil, 0, nil, nil)
-  let err = Z3_get_error_code(ctx.raw)
-  if err != Z3_OK:
-    raiseZ3Error(ctx, err)
-  Z3_ast_vector_inc_ref(ctx.raw, vec)
-  try:
-    let n = int(Z3_ast_vector_size(ctx.raw, vec))
-    result = newSeqOfCap[Z3Bool](n)
-    for i in 0 ..< n:
-      let raw = Z3_ast_vector_get(ctx.raw, vec, cuint(i))
-      result.add wrap[Z3Bool](ctx, raw)
-  finally:
-    Z3_ast_vector_dec_ref(ctx.raw, vec)
+# SMT2 emission / parsing / streaming parser live in `z3/io`
+# (v0.4 step 14 relocation). This module retains only the
+# human-facing pretty-printers.

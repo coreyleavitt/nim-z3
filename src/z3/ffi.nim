@@ -87,6 +87,11 @@ type
     ## metadata.
   RawZ3Params* {.importc: "Z3_params", header: "z3.h", bycopy.} = object
     ## Typed parameter bag for tactics / solvers / optimisers.
+  RawZ3ParserContext* {.importc: "Z3_parser_context", header: "z3.h",
+                        bycopy.} = object
+    ## **v0.4 step 14.** Stateful SMT-LIB2 parser. Holds incrementally-
+    ## registered sorts and decls between successive parse calls;
+    ## refcounted via `Z3_parser_context_inc_ref` / `_dec_ref`.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
@@ -95,7 +100,7 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Probe |
             RawZ3Probe | RawZ3Stats | RawZ3Fixedpoint |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
-            RawZ3Params): bool {.inline.} =
+            RawZ3Params | RawZ3ParserContext): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -112,7 +117,8 @@ proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Probe |
-          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
+          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
+          RawZ3ParserContext](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
@@ -121,7 +127,8 @@ proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Probe |
-          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
+          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
+          RawZ3ParserContext](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -314,6 +321,11 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
 
   # --- Symbols (variable names) --------------------------------------------
+
+  proc Z3_mk_uninterpreted_sort(c: RawZ3Context, name: RawZ3Symbol): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** Free / opaque sort identified only by its
+    ## name — the SMT-LIB `(declare-sort Color)` primitive.
 
   proc Z3_mk_string_symbol(c: RawZ3Context, s: cstring): RawZ3Symbol
     {.cdecl, header: "z3.h".}
@@ -1193,6 +1205,56 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## that appear free in the source; passing zero arrays only allows
     ## sources self-contained via their own `declare-...` forms (the
     ## common case). Returns an `ast_vector` of the parsed assertions.
+
+  proc Z3_parse_smtlib2_file(c: RawZ3Context, file_name: cstring,
+                             num_sorts: cuint,
+                             sort_names: ptr UncheckedArray[RawZ3Symbol],
+                             sorts: ptr UncheckedArray[RawZ3Sort],
+                             num_decls: cuint,
+                             decl_names: ptr UncheckedArray[RawZ3Symbol],
+                             decls: ptr UncheckedArray[RawZ3FuncDecl]
+                            ): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** File-input twin of `Z3_parse_smtlib2_string`.
+
+  proc Z3_eval_smtlib2_string(c: RawZ3Context, source: cstring): cstring
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** Execute an SMT2 command script (asserts +
+    ## `(check-sat)` + `(get-model)` etc.) and return the response as
+    ## a string.
+
+  proc Z3_benchmark_to_smtlib_string(c: RawZ3Context,
+                                     name, logic, status, attributes: cstring,
+                                     num_assumptions: cuint,
+                                     assumptions: ptr UncheckedArray[RawZ3Ast],
+                                     formula: RawZ3Ast): cstring
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** Serialise a single formula (plus optional
+    ## assumptions) as a self-contained SMT2 benchmark.
+
+  proc Z3_solver_from_string(c: RawZ3Context, s: RawZ3Solver, src: cstring)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** Parse SMT2 and assert directly into `s`.
+  proc Z3_solver_from_file(c: RawZ3Context, s: RawZ3Solver, file_name: cstring)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 14.** File-input twin of `Z3_solver_from_string`.
+
+  # --- Parser context (incremental SMT2 parser) ----------------------------
+  proc Z3_mk_parser_context(c: RawZ3Context): RawZ3ParserContext
+    {.cdecl, header: "z3.h".}
+  proc Z3_parser_context_inc_ref(c: RawZ3Context, pc: RawZ3ParserContext)
+    {.cdecl, header: "z3.h".}
+  proc Z3_parser_context_dec_ref(c: RawZ3Context, pc: RawZ3ParserContext)
+    {.cdecl, header: "z3.h".}
+  proc Z3_parser_context_add_sort(c: RawZ3Context, pc: RawZ3ParserContext,
+                                  s: RawZ3Sort)
+    {.cdecl, header: "z3.h".}
+  proc Z3_parser_context_add_decl(c: RawZ3Context, pc: RawZ3ParserContext,
+                                  f: RawZ3FuncDecl)
+    {.cdecl, header: "z3.h".}
+  proc Z3_parser_context_from_string(c: RawZ3Context, pc: RawZ3ParserContext,
+                                     src: cstring): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
 
   # --- ast_vector accessors ------------------------------------------------
 

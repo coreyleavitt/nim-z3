@@ -187,10 +187,17 @@
 ##   a solver. Params-customised overloads via `simplify(a, p:
 ##   Z3Params)`. **v0.2 steps 1 + 9.**
 ## - `z3/pretty` — indented multi-line `pretty()` overloads (for
-##   ASTs, sorts, solvers, models), `smt2Script` / `writeSmt2` for
-##   self-contained SMT2 emission, `parseSmt2` for round-trip
-##   parsing. The reformatter is a pure Nim Wadler-style "fit or
-##   stack" pass over Z3's flat output. **Implemented.**
+##   ASTs, sorts, solvers, models). The reformatter is a pure Nim
+##   Wadler-style "fit or stack" pass over Z3's flat output.
+##   **Implemented.**
+## - `z3/io` — SMT-LIB2 input / output: `smt2Script` / `writeSmt2` /
+##   `toSmt2Benchmark` for emission; `parseSmt2String` /
+##   `parseSmt2File` for stateless parsing; `loadSmt2String` /
+##   `loadSmt2File` for direct-to-solver feeds; `evalSmt2` to run
+##   command scripts and read back Z3's response; `Z3ParserContext`
+##   refcount-managed streaming parser with `addSort` / `addDecl` /
+##   `parseFromString`. **v0.4 step 14** (relocated from `z3/pretty`
+##   and extended).
 
 import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
        z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec, z3/pretty,
@@ -198,11 +205,11 @@ import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
        z3/params, z3/tactic, z3/semantics, z3/char, z3/seq, z3/string,
        z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/stats, z3/introspect,
        z3/proof, z3/fixedpoint, z3/rewrite, z3/translate, z3/probe,
-       z3/globalparams
+       z3/globalparams, z3/io
 export ffi, context, sort, sortdispatch, ast, builder, boolean, arith, solver,
        model, bitvec, pretty, simplify, array, datatypes, quantifier, optimize,
        params, tactic, semantics, char, seq, string, regex, fp, funcdecl,
        astvector, stats, introspect, proof, fixedpoint, rewrite, translate,
-       probe, globalparams
+       probe, globalparams, io
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -305,6 +305,14 @@ Bundling proptest as a runtime dep (even guarded by `when defined(...)`) means c
 
 Same discipline as the v0.1 §18 ledger — append-only. Format: **what**, **why**, **where it goes** (v0.3 / dropped). This is the v0.2-specific list; v0.1's deferrals that remain unaddressed live in [`V0.1_PLAN.md` §18](V0.1_PLAN.md#18-deferred-from-v01-running-list-updated-as-we-go).
 
+### From step 1 (simplify)
+
+- **`Z3_simplify_ex` with custom `Z3_params`**. The default-params `simplify` shipped in step 1; `Z3_simplify_ex` takes a `Z3_params` object for per-call tuning (`flat`, `som`, `arith_lhs`, …). `Z3_params` is a refcounted entity in its own right and deserves a typed wrapper alongside the tactics module (step 7), not a one-off lifecycle hack in `simplify.nim`. **Where**: v0.2 step 7. Surfaces with `Z3Params` get added alongside.
+
+### From step 2 (big-width BitVec)
+
+- Nothing genuinely deferred from this step — it absorbed two v0.1 §18 items (big BV construction + extraction) and additionally fixed v0.1's strict-no-simplify behavior on `toUint`/`toInt`. The remaining gap (property tests over BV recipes with W > 8) was already logged in v0.1 §18 step 9; revisit alongside step 8's public `z3/strategies` module when recipes generalise on W.
+
 ### From step 3 (arrays)
 
 - **Nested arrays** (`Z3Array[Z3Int, Z3Array[Z3Int, Z3Int]]`). **Why**: Nim 2.2's typedesc-generic-param reflection doesn't compose cleanly across nesting. We can extract `T.W` from a `T: Z3BitVec`, but reflectively getting `T.Key` and `T.Val` from a `T: Z3Array` to recursively build the sort needs macro-level machinery I don't want to write up front for an edge case. **Where**: v0.2 if a user needs it before datatypes land (step 4), otherwise v0.3.

@@ -159,7 +159,7 @@ proc quantifierImpl(ctx: Z3Context, isForall: bool,
     else:
       ctx.checkErr Z3_mk_exists_const(ctx.raw, 0, cuint(bounds.len),
         boundsPtr, cuint(rawPatterns.len), patternsPtr, body)
-  wrap[stBool](ctx, raw)
+  wrap[Z3Bool](ctx, raw)
 
 template forall*[B1](b1: B1, body: Z3Bool,
                      patterns: openArray[Z3Pattern] = []): Z3Bool =

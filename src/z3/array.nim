@@ -72,41 +72,17 @@ type
 # Lifecycle hooks parallel Z3Ast[S]; same body, two generic params.
 
 proc `=destroy`[Key, Val](a: Z3Array[Key, Val]) {.raises: [].} =
-  try:
-    if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil:
-      Z3_dec_ref(a.ctx.raw, a.raw)
-  except CatchableError:
-    discard
+  termDestroy(a, Z3_dec_ref)
 
 proc `=copy`[Key, Val](dst: var Z3Array[Key, Val],
                       src: Z3Array[Key, Val]) {.raises: [].} =
-  if dst.raw != src.raw:
-    try:
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_dec_ref(dst.ctx.raw, dst.raw)
-      dst.raw = src.raw
-      dst.ctx = src.ctx
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_inc_ref(dst.ctx.raw, dst.raw)
-    except CatchableError:
-      discard
+  termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
 proc `=dup`[Key, Val](src: Z3Array[Key, Val]): Z3Array[Key, Val] {.raises: [].} =
-  result.raw = src.raw
-  result.ctx = src.ctx
-  if not result.raw.isNil and result.ctx != nil and not result.ctx.raw.isNil:
-    try:
-      Z3_inc_ref(result.ctx.raw, result.raw)
-    except CatchableError:
-      discard
+  termDup(result, src, Z3_inc_ref)
 
-template wrapArray*[Key, Val](theCtx: Z3Context,
-                              theRaw: RawZ3Ast): Z3Array[Key, Val] =
-  block:
-    let r = theRaw
-    if not r.isNil:
-      Z3_inc_ref(theCtx.raw, r)
-    Z3Array[Key, Val](raw: r, ctx: theCtx)
+# `wrapArray` removed v0.3 step 1 — call sites use the unified
+# `wrap[Z3Array[Key, Val]](ctx, raw)` from `z3/lifecycle` directly.
 
 # ============================================================================
 # Construction
@@ -123,7 +99,7 @@ proc mkConstArray*[Key, Val](
   ##   ctx, mkBitVec(0'u8, 8))
   ## ```
   let kSort = sortOfType[Key](ctx)
-  wrapArray[Key, Val](ctx,
+  wrap[Z3Array[Key, Val]](ctx,
     ctx.checkErr Z3_mk_const_array(ctx.raw, kSort, default.raw))
 
 proc mkConstArray*[Key, Val](default: Val): Z3Array[Key, Val] =
@@ -140,7 +116,7 @@ proc mkArrayVar*[Key, Val](
   let vSort = sortOfType[Val](ctx)
   let aSort = ctx.checkErr Z3_mk_array_sort(ctx.raw, kSort, vSort)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  wrapArray[Key, Val](ctx,
+  wrap[Z3Array[Key, Val]](ctx,
     ctx.checkErr Z3_mk_const(ctx.raw, sym, aSort))
 
 proc mkArrayVar*[Key, Val](name: string): Z3Array[Key, Val] =
@@ -154,20 +130,19 @@ proc store*[Key, Val](
     a: Z3Array[Key, Val], i: Key, v: Val): Z3Array[Key, Val] =
   ## Functional update: `result[i] = v`, `result[j] = a[j]` for `j ≠ i`.
   ## Returns a new array; `a` is unchanged.
-  wrapArray[Key, Val](a.ctx,
+  wrap[Z3Array[Key, Val]](a.ctx,
     a.ctx.checkErr Z3_mk_store(a.ctx.raw, a.raw, i.raw, v.raw))
 
 proc select*[Key, Val](a: Z3Array[Key, Val], i: Key): Val =
   ## Read `a[i]`. Returns a `Val`-typed AST.
-  # `Val` is a typedesc here, so the return type is computed; we
-  # construct the value of that type via the same raw-wrap path each
-  # typed-AST family uses.
-  when Val is Z3Int:    wrap[stInt](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
-  elif Val is Z3Real:   wrap[stReal](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
-  elif Val is Z3Bool:   wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
-  elif Val is Z3BitVec: wrapBv[Val.W](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
-  else:
-    {.error: "select: unsupported Val type. Same set as sortOfType.".}
+  ##
+  ## v0.3 step 1: the previous four-branch `when Val is X` dispatch
+  ## collapsed to a single call to the unified `wrap[T]` template from
+  ## `z3/lifecycle`. Works for any `Val` that's one of the typed AST
+  ## families (Z3Int, Z3Real, Z3Bool, Z3BitVec[W], Z3DatatypeValue[T],
+  ## or another Z3Array — though nested arrays remain blocked on
+  ## `sortOfType`'s typedesc-reflection limit; see plan §1 goal 1.6).
+  wrap[Val](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
 
 proc `[]`*[Key, Val](a: Z3Array[Key, Val], i: Key): Val {.inline.} =
   ## Sugar for `select(a, i)`.
@@ -180,11 +155,11 @@ proc `[]`*[Key, Val](a: Z3Array[Key, Val], i: Key): Val {.inline.} =
 proc `==`*[Key, Val](a, b: Z3Array[Key, Val]): Z3Bool =
   ## SMT equality. Returns `(= a b)`. With Z3's array extensionality
   ## axiom, this is true iff `a` and `b` agree at every index.
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
 
 proc `!=`*[Key, Val](a, b: Z3Array[Key, Val]): Z3Bool =
   let eq = a == b
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
 proc `$`*[Key, Val](a: Z3Array[Key, Val]): string =
   ## SMT-LIB rendering.

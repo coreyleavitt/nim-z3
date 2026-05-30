@@ -31,7 +31,7 @@
 ## `assert` because Nim has a built-in `assert` template; overloading
 ## would create distracting ambiguity in user code.
 
-import ./ffi, ./context, ./ast, ./builder, ./boolean
+import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle
 export builder, boolean
 
 type
@@ -57,12 +57,7 @@ type
 # Lifecycle
 # ============================================================================
 
-proc `=destroy`(s: Z3SolverOwn) {.raises: [].} =
-  try:
-    if not s.raw.isNil and s.ctx != nil and not s.ctx.raw.isNil:
-      Z3_solver_dec_ref(s.ctx.raw, s.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3SolverOwn, Z3_solver_dec_ref)
 
 proc newSolver*(ctx: Z3Context): Z3Solver =
   ## Fresh solver bound to `ctx`. The solver retains a strong reference
@@ -208,7 +203,7 @@ proc smtValid*(p: Z3Bool): bool =
   ## not valid" from "couldn't decide", use a solver manually and case
   ## on `Z3Status`.
   let s = newSolver(p.ctx)
-  s.add wrap[stBool](p.ctx,
+  s.add wrap[Z3Bool](p.ctx,
     p.ctx.checkErr Z3_mk_not(p.ctx.raw, p.raw))
   s.check() == zsUnsat
 

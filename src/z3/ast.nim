@@ -32,8 +32,12 @@
 ## centralised refcount-discipline point — every place we create a new
 ## Nim handle to a Z3 AST goes through here.
 
-import ./ffi, ./context, ./sort
-export sort   # so users get Z3Sort + SortTag from `import z3/ast`
+import ./ffi, ./context, ./sort, ./lifecycle
+# Re-export so users get Z3Sort + SortTag and the unified `wrap[T]`
+# + lifecycle generators from `import z3/ast`. Every downstream module
+# already imports ast; piggy-backing the lifecycle surface here avoids
+# touching every import site.
+export sort, lifecycle
 
 type
   Z3Ast*[S: static SortTag] = object
@@ -57,27 +61,10 @@ type
 # ============================================================================
 
 proc `=destroy`[S: static SortTag](a: Z3Ast[S]) {.raises: [].} =
-  try:
-    if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil:
-      Z3_dec_ref(a.ctx.raw, a.raw)
-  except CatchableError:
-    discard
+  termDestroy(a, Z3_dec_ref)
 
 proc `=copy`[S: static SortTag](dst: var Z3Ast[S], src: Z3Ast[S]) {.raises: [].} =
-  if dst.raw != src.raw:
-    try:
-      # Drop the destination's old reference (if any) before adopting
-      # the source's. Order matters: if dst and src share a parent
-      # context, decrementing first then re-incrementing is correct
-      # net (and goes through the same refcount path).
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_dec_ref(dst.ctx.raw, dst.raw)
-      dst.raw = src.raw
-      dst.ctx = src.ctx
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_inc_ref(dst.ctx.raw, dst.raw)
-    except CatchableError:
-      discard
+  termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
 proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [].} =
   ## Nim 2's preferred copy hook (used for `let y = expr`-style
@@ -87,32 +74,18 @@ proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [].} =
   ## that breaks our refcount discipline — see
   ## https://nim-lang.org/docs/destructors.html#move-semantics on
   ## `=dup` vs `=copy`. Defining both is the safe story.
-  result.raw = src.raw
-  result.ctx = src.ctx
-  if not result.raw.isNil and result.ctx != nil and not result.ctx.raw.isNil:
-    try:
-      Z3_inc_ref(result.ctx.raw, result.raw)
-    except CatchableError:
-      discard
+  termDup(result, src, Z3_inc_ref)
 
 # ============================================================================
-# `wrap` — the refcount-discipline entry point
+# `wrap` — the refcount-discipline entry point now lives in z3/lifecycle
 # ============================================================================
-
-template wrap*[S: static SortTag](theCtx: Z3Context, theRaw: RawZ3Ast): Z3Ast[S] =
-  ## Construct a `Z3Ast[S]` from a freshly-returned `RawZ3Ast`, taking
-  ## responsibility for the inc_ref. Z3 returns ASTs with refcount 0
-  ## initially; this template owns the first inc_ref. Subsequent copies
-  ## are handled by the `=copy` hook.
-  ##
-  ## Template (not proc) so the inc_ref happens at the call site and
-  ## the result is constructed in-place; otherwise =copy/=sink would
-  ## fire spuriously on the proc return value.
-  block:
-    let r = theRaw
-    if not r.isNil:
-      Z3_inc_ref(theCtx.raw, r)
-    Z3Ast[S](raw: r, ctx: theCtx)
+#
+# Pre-v0.3 this module exposed `wrap*[S: static SortTag](ctx, raw): Z3Ast[S]`.
+# v0.3 step 1 unified that and the parallel `wrapBv` / `wrapArray` /
+# `wrapValue` helpers into a single `wrap*[T](ctx, raw): T` in
+# `z3/lifecycle`, dispatched via the typedesc rather than a SortTag
+# value. Existing call sites migrated to the typedesc form
+# (`wrap[Z3Int](...)` instead of `wrap[stInt](...)`).
 
 # ============================================================================
 # Identity check (not value equality — that's a Z3 operator producing an AST)
@@ -150,12 +123,12 @@ proc astEqual*[S: static SortTag](a, b: Z3Ast[S]): bool {.inline.} =
 
 proc `==`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
   ## SMT equality. Returns a `Z3Bool` AST `(= a b)`.
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
 
 proc `!=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
   ## SMT non-equality. Equivalent to `not (a == b)`.
   let eq = a == b
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
 proc `$`*[S: static SortTag](a: Z3Ast[S]): string =
   ## SMT-LIB rendering of the AST. Useful for debugging:

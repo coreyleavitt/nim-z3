@@ -183,45 +183,18 @@ proc `=destroy`[T](
 # Z3_mk_datatype's sort registers with the context and is freed when
 # the context goes away, so no per-decl sort cleanup is needed.
 
-proc `=destroy`[T](
-    v: Z3DatatypeValue[T]) {.raises: [].} =
-  try:
-    if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
-      Z3_dec_ref(v.ctx.raw, v.raw)
-  except CatchableError:
-    discard
+proc `=destroy`[T](v: Z3DatatypeValue[T]) {.raises: [].} =
+  termDestroy(v, Z3_dec_ref)
 
-proc `=copy`[T](
-    dst: var Z3DatatypeValue[T],
-    src: Z3DatatypeValue[T]) {.raises: [].} =
-  if dst.raw != src.raw:
-    try:
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_dec_ref(dst.ctx.raw, dst.raw)
-      dst.raw = src.raw
-      dst.ctx = src.ctx
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_inc_ref(dst.ctx.raw, dst.raw)
-    except CatchableError:
-      discard
+proc `=copy`[T](dst: var Z3DatatypeValue[T],
+                src: Z3DatatypeValue[T]) {.raises: [].} =
+  termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[T](
-    src: Z3DatatypeValue[T]): Z3DatatypeValue[T] {.raises: [].} =
-  result.raw = src.raw
-  result.ctx = src.ctx
-  if not result.raw.isNil and result.ctx != nil and not result.ctx.raw.isNil:
-    try:
-      Z3_inc_ref(result.ctx.raw, result.raw)
-    except CatchableError:
-      discard
+proc `=dup`[T](src: Z3DatatypeValue[T]): Z3DatatypeValue[T] {.raises: [].} =
+  termDup(result, src, Z3_inc_ref)
 
-template wrapValue[T](
-    theCtx: Z3Context, theRaw: RawZ3Ast): Z3DatatypeValue[T] =
-  block:
-    let r = theRaw
-    if not r.isNil:
-      Z3_inc_ref(theCtx.raw, r)
-    Z3DatatypeValue[T](raw: r, ctx: theCtx)
+# `wrapValue` removed v0.3 step 1 — call sites use the unified
+# `wrap[Z3DatatypeValue[T]](ctx, raw)` from `z3/lifecycle` directly.
 
 # ============================================================================
 # declareDatatype
@@ -550,7 +523,7 @@ proc applyImpl[T](
     if args.len > 0:
       cast[ptr UncheckedArray[RawZ3Ast]](unsafeAddr args[0])
     else: nil
-  wrapValue[T](ctx, ctx.checkErr Z3_mk_app(ctx.raw,
+  wrap[Z3DatatypeValue[T]](ctx, ctx.checkErr Z3_mk_app(ctx.raw,
     c.inner.constructorFD, cuint(args.len), argsPtr))
 
 template apply*[T](
@@ -583,7 +556,7 @@ proc test*[T](
   var arg = v.raw
   let raw = ctx.checkErr Z3_mk_app(ctx.raw,
     r.inner.recognizerFD, 1, cast[ptr UncheckedArray[RawZ3Ast]](addr arg))
-  wrap[stBool](ctx, raw)
+  wrap[Z3Bool](ctx, raw)
 
 proc readRawAccessor[T, Ret](
     a: Z3AccessorDecl[T, Ret], v: Z3DatatypeValue[T]): RawZ3Ast =
@@ -600,27 +573,14 @@ proc readRawAccessor[T, Ret](
 proc read*[T, Ret](
     a: Z3AccessorDecl[T, Ret], v: Z3DatatypeValue[T]): Ret =
   ## Read a field. Return type is the `Ret` declared at the accessor
-  ## lookup; dispatches on it via `sortOfType`-style branches.
+  ## lookup.
   ##
-  ## `Z3DatatypeValue` returns work for both self-references and
-  ## cross-references — the dispatch matches any `Z3DatatypeValue[X]`
-  ## generic instantiation, and `Ret` carries the right `X` from the
-  ## accessor lookup so the wrapped value comes out typed correctly.
-  let ctx = a.inner.ctx
-  let raw = readRawAccessor(a, v)
-  when Ret is Z3Int:    wrap[stInt](ctx, raw)
-  elif Ret is Z3Real:   wrap[stReal](ctx, raw)
-  elif Ret is Z3Bool:   wrap[stBool](ctx, raw)
-  elif Ret is Z3BitVec: wrapBv[Ret.W](ctx, raw)
-  elif Ret is Z3DatatypeValue:
-    # Datatype-valued field — self-recursion or cross-reference.
-    # The inner-Name dispatch happens at the wrapValue level: Ret IS
-    # `Z3DatatypeValue[X]` for some X, and the constructor here
-    # propagates that X through.
-    Ret(raw: (if raw.isNil: raw else: (Z3_inc_ref(ctx.raw, raw); raw)),
-        ctx: ctx)
-  else:
-    {.error: "accessor read: unsupported Ret type for datatype field.".}
+  ## v0.3 step 1: the previous five-branch `when Ret is X` dispatch
+  ## collapsed to one call to the unified `wrap[T]` template from
+  ## `z3/lifecycle`. Self-references and cross-references both fall
+  ## out: `Ret` is `Z3DatatypeValue[X]` for some marker X, and the
+  ## constructor inside `wrap[Ret]` propagates X through.
+  wrap[Ret](a.inner.ctx, readRawAccessor(a, v))
 
 # ============================================================================
 # Equality + pretty
@@ -628,12 +588,12 @@ proc read*[T, Ret](
 
 proc `==`*[T](
     a, b: Z3DatatypeValue[T]): Z3Bool =
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
 
 proc `!=`*[T](
     a, b: Z3DatatypeValue[T]): Z3Bool =
   let eq = a == b
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
 proc `$`*[T](v: Z3DatatypeValue[T]): string =
   $Z3_ast_to_string(v.ctx.raw, v.raw)
@@ -646,4 +606,4 @@ proc mkDatatypeVar*[T](
     dt: Z3DatatypeDecl[T], name: string): Z3DatatypeValue[T] =
   ## Free variable of the datatype sort.
   let sym = dt.ctx.checkErr Z3_mk_string_symbol(dt.ctx.raw, name.cstring)
-  wrapValue[T](dt.ctx, dt.ctx.checkErr Z3_mk_const(dt.ctx.raw, sym, dt.sort))
+  wrap[Z3DatatypeValue[T]](dt.ctx, dt.ctx.checkErr Z3_mk_const(dt.ctx.raw, sym, dt.sort))

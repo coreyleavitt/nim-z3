@@ -34,7 +34,7 @@ export builder
 
 proc `and`*(a, b: Z3Bool): Z3Bool =
   var args = [a.raw, b.raw]
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_and(
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_and(
     a.ctx.raw, 2.cuint,
     cast[ptr UncheckedArray[RawZ3Ast]](addr args[0])))
 
@@ -47,7 +47,7 @@ proc `and`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) and b
 
 proc `or`*(a, b: Z3Bool): Z3Bool =
   var args = [a.raw, b.raw]
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_or(
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_or(
     a.ctx.raw, 2.cuint,
     cast[ptr UncheckedArray[RawZ3Ast]](addr args[0])))
 
@@ -59,14 +59,14 @@ proc `or`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) or b
 # ----------------------------------------------------------------------------
 
 proc `not`*(a: Z3Bool): Z3Bool =
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, a.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, a.raw))
 
 # ----------------------------------------------------------------------------
 # `xor`
 # ----------------------------------------------------------------------------
 
 proc `xor`*(a, b: Z3Bool): Z3Bool =
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_xor(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_xor(a.ctx.raw, a.raw, b.raw))
 
 proc `xor`*(a: Z3Bool, b: bool): Z3Bool {.inline.} = a xor mkBool(a.ctx, b)
 proc `xor`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) xor b
@@ -81,13 +81,13 @@ proc `xor`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) xor b
 # the user can choose readability per context.
 
 proc implies*(a, b: Z3Bool): Z3Bool =
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_implies(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_implies(a.ctx.raw, a.raw, b.raw))
 
 proc implies*(a: Z3Bool, b: bool): Z3Bool {.inline.} = implies(a, mkBool(a.ctx, b))
 proc implies*(a: bool, b: Z3Bool): Z3Bool {.inline.} = implies(mkBool(b.ctx, a), b)
 
 proc iff*(a, b: Z3Bool): Z3Bool =
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_iff(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_iff(a.ctx.raw, a.raw, b.raw))
 
 proc iff*(a: Z3Bool, b: bool): Z3Bool {.inline.} = iff(a, mkBool(a.ctx, b))
 proc iff*(a: bool, b: Z3Bool): Z3Bool {.inline.} = iff(mkBool(b.ctx, a), b)
@@ -116,7 +116,7 @@ proc ite*[S: static SortTag](cond: Z3Bool, t, e: Z3Ast[S]): Z3Ast[S] =
   ## let r = ite(p, mkInt(1), mkInt(0))          # Z3Int
   ## let q = ite(p, mkBool(true), mkBool(false)) # Z3Bool
   ## ```
-  wrap[S](cond.ctx, cond.ctx.checkErr Z3_mk_ite(
+  wrap[Z3Ast[S]](cond.ctx, cond.ctx.checkErr Z3_mk_ite(
     cond.ctx.raw, cond.raw, t.raw, e.raw))
 
 # ----------------------------------------------------------------------------
@@ -140,7 +140,7 @@ proc mkAnd*(args: varargs[Z3Bool]): Z3Bool =
   var raws = newSeq[RawZ3Ast](args.len)
   for i, a in args:
     raws[i] = a.raw
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_and(
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_and(
     ctx.raw, cuint(args.len),
     cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
 
@@ -154,7 +154,7 @@ proc mkOr*(args: varargs[Z3Bool]): Z3Bool =
   var raws = newSeq[RawZ3Ast](args.len)
   for i, a in args:
     raws[i] = a.raw
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_or(
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_or(
     ctx.raw, cuint(args.len),
     cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
 
@@ -176,6 +176,6 @@ proc mkDistinct*[S: static SortTag](args: varargs[Z3Ast[S]]): Z3Bool =
   var raws = newSeq[RawZ3Ast](args.len)
   for i, a in args:
     raws[i] = a.raw
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_distinct(
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_distinct(
     ctx.raw, cuint(args.len),
     cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))

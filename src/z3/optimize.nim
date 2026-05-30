@@ -52,12 +52,7 @@ type
     idx: cuint
     parent: Z3Optimize
 
-proc `=destroy`(o: Z3OptimizeOwn) {.raises: [].} =
-  try:
-    if not o.raw.isNil and o.ctx != nil and not o.ctx.raw.isNil:
-      Z3_optimize_dec_ref(o.ctx.raw, o.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3OptimizeOwn, Z3_optimize_dec_ref)
 
 proc newOptimize*(ctx: Z3Context): Z3Optimize =
   ## Fresh optimiser bound to `ctx`.
@@ -165,20 +160,18 @@ proc rawBound(h: Z3OptHandle, isUpper: bool): RawZ3Ast =
     ctx.checkErr Z3_optimize_get_lower(ctx.raw, h.parent.raw, h.idx)
 
 proc wrapBound[T](ctx: Z3Context, raw: RawZ3Ast): T =
-  ## Dispatch: Z3's `optimize_get_upper`/`lower` returns the bound
-  ## typed by Z3's internal representation — `Int` for Int objectives,
-  ## `Real` for Real objectives, **also `Int`** for BV objectives
-  ## (Z3 internally maps BV to its unsigned-magnitude Int). For the
-  ## BV branch we convert the Int back via `Z3_mk_int2bv` so the
-  ## return type matches the user-facing typed promise.
-  when T is Z3Int:    wrap[stInt](ctx, raw)
-  elif T is Z3Real:   wrap[stReal](ctx, raw)
-  elif T is Z3Bool:   wrap[stBool](ctx, raw)
-  elif T is Z3BitVec:
+  ## Z3's `optimize_get_upper`/`lower` returns the bound typed by
+  ## Z3's internal representation — `Int` for Int objectives, `Real`
+  ## for Real objectives, and *also Int* for BV objectives (Z3
+  ## internally maps BV to its unsigned-magnitude Int). For the BV
+  ## branch we convert the Int back via `Z3_mk_int2bv` so the typed
+  ## return promise holds. Everything else routes through the unified
+  ## `wrap[T]` template from `z3/lifecycle`.
+  when T is Z3BitVec:
     let bvRaw = ctx.checkErr Z3_mk_int2bv(ctx.raw, cuint(T.W), raw)
-    wrapBv[T.W](ctx, bvRaw)
+    wrap[T](ctx, bvRaw)
   else:
-    {.error: "Z3OptHandle: unsupported objective type.".}
+    wrap[T](ctx, raw)
 
 proc upper*[T](h: Z3OptHandle[T]): T =
   ## Upper bound for the objective. May be a literal, an

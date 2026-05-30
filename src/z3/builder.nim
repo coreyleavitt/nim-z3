@@ -38,12 +38,12 @@ export ast      # Z3Ast[S], $, astEqual; ast re-exports sort
 
 proc mkTrue*(ctx: Z3Context): Z3Bool =
   ## The boolean literal `true`.
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
 proc mkTrue*(): Z3Bool = mkTrue(requireCurrentContext())
 
 proc mkFalse*(ctx: Z3Context): Z3Bool =
   ## The boolean literal `false`.
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_false(ctx.raw))
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_false(ctx.raw))
 proc mkFalse*(): Z3Bool = mkFalse(requireCurrentContext())
 
 proc mkBool*(ctx: Z3Context, b: bool): Z3Bool =
@@ -61,7 +61,7 @@ proc mkInt*(ctx: Z3Context, n: int): Z3Int =
   ## Integer literal in Z3's `Int` sort. For values outside `cint`
   ## range (32-bit on most platforms), use `mkBigInt(numeral_string)`.
   let s = ctx.checkErr Z3_mk_int_sort(ctx.raw)
-  wrap[stInt](ctx, ctx.checkErr Z3_mk_int(ctx.raw, cint(n), s))
+  wrap[Z3Int](ctx, ctx.checkErr Z3_mk_int(ctx.raw, cint(n), s))
 proc mkInt*(n: int): Z3Int = mkInt(requireCurrentContext(), n)
 
 proc mkBigInt*(ctx: Z3Context, numeral: string): Z3Int =
@@ -72,7 +72,7 @@ proc mkBigInt*(ctx: Z3Context, numeral: string): Z3Int =
   ## let big = mkBigInt("123456789012345678901234567890")
   ## ```
   let s = ctx.checkErr Z3_mk_int_sort(ctx.raw)
-  wrap[stInt](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
+  wrap[Z3Int](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
 proc mkBigInt*(numeral: string): Z3Int =
   mkBigInt(requireCurrentContext(), numeral)
 
@@ -88,7 +88,7 @@ proc mkReal*(ctx: Z3Context, num, den: int): Z3Real =
   ## ```
   ##
   ## `den == 0` is a sort error caught by Z3 and surfaced as `Z3Error`.
-  wrap[stReal](ctx, ctx.checkErr Z3_mk_real(ctx.raw, cint(num), cint(den)))
+  wrap[Z3Real](ctx, ctx.checkErr Z3_mk_real(ctx.raw, cint(num), cint(den)))
 proc mkReal*(num, den: int): Z3Real =
   mkReal(requireCurrentContext(), num, den)
 
@@ -101,7 +101,7 @@ proc mkBigReal*(ctx: Z3Context, numeral: string): Z3Real =
   ## Arbitrary-precision rational literal from its string form
   ## (`"1/2"`, `"3.14"`, `"1234567890.1234567890"`).
   let s = ctx.checkErr Z3_mk_real_sort(ctx.raw)
-  wrap[stReal](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
+  wrap[Z3Real](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
 proc mkBigReal*(numeral: string): Z3Real =
   mkBigReal(requireCurrentContext(), numeral)
 
@@ -119,20 +119,20 @@ proc mkIntVar*(ctx: Z3Context, name: string): Z3Int =
   ## `(define-fun name () Int ...)`).
   let s = ctx.checkErr Z3_mk_int_sort(ctx.raw)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  wrap[stInt](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
+  wrap[Z3Int](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
 proc mkIntVar*(name: string): Z3Int =
   mkIntVar(requireCurrentContext(), name)
 
 proc mkRealVar*(ctx: Z3Context, name: string): Z3Real =
   let s = ctx.checkErr Z3_mk_real_sort(ctx.raw)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  wrap[stReal](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
+  wrap[Z3Real](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
 proc mkRealVar*(name: string): Z3Real =
   mkRealVar(requireCurrentContext(), name)
 
 proc mkBoolVar*(ctx: Z3Context, name: string): Z3Bool =
   let s = ctx.checkErr Z3_mk_bool_sort(ctx.raw)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  wrap[stBool](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
 proc mkBoolVar*(name: string): Z3Bool =
   mkBoolVar(requireCurrentContext(), name)

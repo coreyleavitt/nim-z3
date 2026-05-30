@@ -56,12 +56,7 @@ type
     ctx: Z3Context
   Z3Goal* = ref Z3GoalOwn
 
-proc `=destroy`(g: Z3GoalOwn) {.raises: [].} =
-  try:
-    if not g.raw.isNil and g.ctx != nil and not g.ctx.raw.isNil:
-      Z3_goal_dec_ref(g.ctx.raw, g.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3GoalOwn, Z3_goal_dec_ref)
 
 proc newGoal*(ctx: Z3Context, models = true, unsatCores = false,
               proofs = false): Z3Goal =
@@ -86,7 +81,7 @@ proc size*(g: Z3Goal): int =
 proc formula*(g: Z3Goal, idx: int): Z3Bool =
   ## The `idx`-th formula in the goal. Useful for inspecting what
   ## tactics produced.
-  wrap[stBool](g.ctx, g.ctx.checkErr Z3_goal_formula(g.ctx.raw, g.raw, cuint(idx)))
+  wrap[Z3Bool](g.ctx, g.ctx.checkErr Z3_goal_formula(g.ctx.raw, g.raw, cuint(idx)))
 
 proc inconsistent*(g: Z3Goal): bool =
   ## True iff the goal contains an obviously-`false` formula. Doesn't
@@ -125,12 +120,7 @@ type
     ctx: Z3Context
   Z3Tactic* = ref Z3TacticOwn
 
-proc `=destroy`(t: Z3TacticOwn) {.raises: [].} =
-  try:
-    if not t.raw.isNil and t.ctx != nil and not t.ctx.raw.isNil:
-      Z3_tactic_dec_ref(t.ctx.raw, t.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3TacticOwn, Z3_tactic_dec_ref)
 
 proc wrapTactic(ctx: Z3Context, raw: RawZ3Tactic): Z3Tactic =
   if raw.isNil:
@@ -200,12 +190,7 @@ type
     ctx: Z3Context
   Z3ApplyResult* = ref Z3ApplyResultOwn
 
-proc `=destroy`(r: Z3ApplyResultOwn) {.raises: [].} =
-  try:
-    if not r.raw.isNil and r.ctx != nil and not r.ctx.raw.isNil:
-      Z3_apply_result_dec_ref(r.ctx.raw, r.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3ApplyResultOwn, Z3_apply_result_dec_ref)
 
 proc wrapApplyResult(ctx: Z3Context, raw: RawZ3ApplyResult): Z3ApplyResult =
   if raw.isNil:

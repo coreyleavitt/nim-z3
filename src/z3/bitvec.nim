@@ -50,43 +50,16 @@ type
 # ============================================================================
 
 proc `=destroy`[W: static int](a: Z3BitVec[W]) {.raises: [].} =
-  try:
-    if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil:
-      Z3_dec_ref(a.ctx.raw, a.raw)
-  except CatchableError:
-    discard
+  termDestroy(a, Z3_dec_ref)
 
 proc `=copy`[W: static int](dst: var Z3BitVec[W], src: Z3BitVec[W]) {.raises: [].} =
-  if dst.raw != src.raw:
-    try:
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_dec_ref(dst.ctx.raw, dst.raw)
-      dst.raw = src.raw
-      dst.ctx = src.ctx
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        Z3_inc_ref(dst.ctx.raw, dst.raw)
-    except CatchableError:
-      discard
+  termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
 proc `=dup`[W: static int](src: Z3BitVec[W]): Z3BitVec[W] {.raises: [].} =
-  result.raw = src.raw
-  result.ctx = src.ctx
-  if not result.raw.isNil and result.ctx != nil and not result.ctx.raw.isNil:
-    try:
-      Z3_inc_ref(result.ctx.raw, result.raw)
-    except CatchableError:
-      discard
+  termDup(result, src, Z3_inc_ref)
 
-# ============================================================================
-# Wrap — refcount-discipline entry point (parallels ast.nim's `wrap`)
-# ============================================================================
-
-template wrapBv*[W: static int](theCtx: Z3Context, theRaw: RawZ3Ast): Z3BitVec[W] =
-  block:
-    let r = theRaw
-    if not r.isNil:
-      Z3_inc_ref(theCtx.raw, r)
-    Z3BitVec[W](raw: r, ctx: theCtx)
+# `wrapBv` removed v0.3 step 1 — call sites use the unified
+# `wrap[Z3BitVec[W]](ctx, raw)` from `z3/lifecycle` directly.
 
 # ============================================================================
 # Construction
@@ -102,7 +75,7 @@ proc mkBitVecVar*[W: static int](ctx: Z3Context, name: string): Z3BitVec[W] =
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
-  wrapBv[W](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
+  wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
 proc mkBitVecVar*[W: static int](name: string): Z3BitVec[W] =
   mkBitVecVar[W](requireCurrentContext(), name)
 
@@ -123,7 +96,7 @@ proc mkBitVec*[T: SomeInteger](
   ## for values exceeding that range use `mkBigBitVec(numeralString, W)`.
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
-  wrapBv[W](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, uint64(v), s))
+  wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, uint64(v), s))
 proc mkBitVec*[T: SomeInteger](v: T, W: static int): Z3BitVec[W] =
   mkBitVec(requireCurrentContext(), v, W)
 
@@ -143,7 +116,7 @@ proc mkBigBitVec*[W: static int](
   ## same semantics SMT-LIB itself uses.
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
-  wrapBv[W](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
+  wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
 proc mkBigBitVec*[W: static int](numeral: string): Z3BitVec[W] =
   mkBigBitVec[W](requireCurrentContext(), numeral)
 
@@ -158,7 +131,7 @@ proc mkBigBitVec*[W: static int](numeral: string): Z3BitVec[W] =
 
 template binBv(name: untyped, ffi: untyped) =
   proc name*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
-    wrapBv[W](a.ctx, a.ctx.checkErr ffi(a.ctx.raw, a.raw, b.raw))
+    wrap[Z3BitVec[W]](a.ctx, a.ctx.checkErr ffi(a.ctx.raw, a.raw, b.raw))
 
 binBv(`+`, Z3_mk_bvadd)
 binBv(`-`, Z3_mk_bvsub)
@@ -186,7 +159,7 @@ proc `-`*[W: static int](a: Z3BitVec[W]): Z3BitVec[W] =
   ## inverse mod 2^W, for signed it's the 2's-complement negation
   ## (with the documented `-INT_MIN == INT_MIN` quirk for the minimum
   ## signed value).
-  wrapBv[W](a.ctx, a.ctx.checkErr Z3_mk_bvneg(a.ctx.raw, a.raw))
+  wrap[Z3BitVec[W]](a.ctx, a.ctx.checkErr Z3_mk_bvneg(a.ctx.raw, a.raw))
 
 # ============================================================================
 # Bitwise — overloaded normally (sign-independent at the bit level)
@@ -199,7 +172,7 @@ binBv(`xor`, Z3_mk_bvxor)
 proc `not`*[W: static int](a: Z3BitVec[W]): Z3BitVec[W] =
   ## Bitwise complement — flips every bit. Unlike `not` on `Z3Bool`,
   ## this is the bitwise operator, not boolean negation.
-  wrapBv[W](a.ctx, a.ctx.checkErr Z3_mk_bvnot(a.ctx.raw, a.raw))
+  wrap[Z3BitVec[W]](a.ctx, a.ctx.checkErr Z3_mk_bvnot(a.ctx.raw, a.raw))
 
 # ============================================================================
 # Shifts — `shl` is sign-independent; right shifts split explicitly
@@ -221,7 +194,7 @@ binBv(ashr, Z3_mk_bvashr)
 
 template cmpBv(name: untyped, ffi: untyped) =
   proc name*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
-    wrap[stBool](a.ctx, a.ctx.checkErr ffi(a.ctx.raw, a.raw, b.raw))
+    wrap[Z3Bool](a.ctx, a.ctx.checkErr ffi(a.ctx.raw, a.raw, b.raw))
 
 cmpBv(bvult, Z3_mk_bvult)
 cmpBv(bvule, Z3_mk_bvule)
@@ -239,12 +212,12 @@ cmpBv(bvsge, Z3_mk_bvsge)
 proc `==`*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
   ## SMT equality on same-width BVs. Returns a `Z3Bool` AST `(= a b)`.
   ## Different widths are a compile error (W must match).
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
 
 proc `!=`*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
   ## Negation of `==`. Same width discipline.
   let eq = a == b
-  wrap[stBool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
 # ============================================================================
 # Width manipulation — extract, concat, zeroExtend, signExtend, repeat
@@ -265,13 +238,13 @@ proc extractImpl*[hi, lo: static int; W: static int](
     assert hi < W, "extract: hi must be < W"
     assert lo <= hi, "extract: lo must be <= hi"
     assert lo >= 0, "extract: lo must be >= 0"
-  wrapBv[hi - lo + 1](a.ctx,
+  wrap[Z3BitVec[hi - lo + 1]](a.ctx,
     a.ctx.checkErr Z3_mk_extract(a.ctx.raw, cuint(hi), cuint(lo), a.raw))
 
 proc concatImpl*[W1, W2: static int](
     a: Z3BitVec[W1], b: Z3BitVec[W2]): Z3BitVec[W1 + W2] =
   ## Implementation for `concat`. `a` becomes the high-order bits.
-  wrapBv[W1 + W2](a.ctx,
+  wrap[Z3BitVec[W1 + W2]](a.ctx,
     a.ctx.checkErr Z3_mk_concat(a.ctx.raw, a.raw, b.raw))
 
 proc concat*[W1, W2: static int](
@@ -282,7 +255,7 @@ proc concat*[W1, W2: static int](
 
 proc zeroExtendImpl*[N, W: static int](a: Z3BitVec[W]): Z3BitVec[W + N] =
   static: assert N >= 0, "zeroExtend: N must be >= 0"
-  wrapBv[W + N](a.ctx,
+  wrap[Z3BitVec[W + N]](a.ctx,
     a.ctx.checkErr Z3_mk_zero_ext(a.ctx.raw, cuint(N), a.raw))
 
 template zeroExtend*(a: Z3BitVec, N: static int): untyped =
@@ -295,7 +268,7 @@ template zeroExtend*(a: Z3BitVec, N: static int): untyped =
 
 proc signExtendImpl*[N, W: static int](a: Z3BitVec[W]): Z3BitVec[W + N] =
   static: assert N >= 0, "signExtend: N must be >= 0"
-  wrapBv[W + N](a.ctx,
+  wrap[Z3BitVec[W + N]](a.ctx,
     a.ctx.checkErr Z3_mk_sign_ext(a.ctx.raw, cuint(N), a.raw))
 
 template signExtend*(a: Z3BitVec, N: static int): untyped =
@@ -304,7 +277,7 @@ template signExtend*(a: Z3BitVec, N: static int): untyped =
 
 proc repeatImpl*[N, W: static int](a: Z3BitVec[W]): Z3BitVec[W * N] =
   static: assert N >= 1, "repeat: N must be >= 1"
-  wrapBv[W * N](a.ctx,
+  wrap[Z3BitVec[W * N]](a.ctx,
     a.ctx.checkErr Z3_mk_repeat(a.ctx.raw, cuint(N), a.raw))
 
 template repeat*(a: Z3BitVec, N: static int): untyped =
@@ -336,19 +309,19 @@ template extract*(a: Z3BitVec, hi, lo: static int): untyped =
 proc ite*[W: static int](cond: Z3Bool, t, e: Z3BitVec[W]): Z3BitVec[W] =
   ## If-then-else on bit-vectors. Same-width branches enforced at the
   ## type level; cross-width is a compile error.
-  wrapBv[W](cond.ctx,
+  wrap[Z3BitVec[W]](cond.ctx,
     cond.ctx.checkErr Z3_mk_ite(cond.ctx.raw, cond.raw, t.raw, e.raw))
 
 proc mkDistinct*[W: static int](xs: varargs[Z3BitVec[W]]): Z3Bool =
   ## All-pairs-distinct constraint on a sequence of same-width BVs.
   ## Returns a `Z3Bool`. Empty / singleton inputs are trivially true.
   if xs.len <= 1:
-    return wrap[stBool](xs[0].ctx,
+    return wrap[Z3Bool](xs[0].ctx,
       xs[0].ctx.checkErr Z3_mk_true(xs[0].ctx.raw))
   var raws = newSeq[RawZ3Ast](xs.len)
   for i, x in xs:
     raws[i] = x.raw
-  wrap[stBool](xs[0].ctx, xs[0].ctx.checkErr Z3_mk_distinct(
+  wrap[Z3Bool](xs[0].ctx, xs[0].ctx.checkErr Z3_mk_distinct(
     xs[0].ctx.raw, cuint(raws.len),
     cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
 
@@ -517,7 +490,7 @@ proc eval*[W: static int](m: Z3Model, a: Z3BitVec[W],
       "Z3_model_eval returned false for a BV AST.")
     e.code = Z3_INVALID_USAGE
     raise e
-  wrapBv[W](m.ctx, outRaw)
+  wrap[Z3BitVec[W]](m.ctx, outRaw)
 
 proc `[]`*[W: static int](m: Z3Model, a: Z3BitVec[W]): Z3BitVec[W] =
   ## Sugar for `m.eval(a)`.

@@ -288,6 +288,6 @@ proc parseSmt2*(ctx: Z3Context, source: string): seq[Z3Bool] =
     result = newSeqOfCap[Z3Bool](n)
     for i in 0 ..< n:
       let raw = Z3_ast_vector_get(ctx.raw, vec, cuint(i))
-      result.add wrap[stBool](ctx, raw)
+      result.add wrap[Z3Bool](ctx, raw)
   finally:
     Z3_ast_vector_dec_ref(ctx.raw, vec)

@@ -36,12 +36,7 @@ type
 # Lifecycle
 # ============================================================================
 
-proc `=destroy`(m: Z3ModelOwn) {.raises: [].} =
-  try:
-    if not m.raw.isNil and m.ctx != nil and not m.ctx.raw.isNil:
-      Z3_model_dec_ref(m.ctx.raw, m.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3ModelOwn, Z3_model_dec_ref)
 
 # Internal: wrap a freshly-returned Z3_model into a managed Z3Model.
 proc wrapModel*(ctx: Z3Context, raw: RawZ3Model): Z3Model =
@@ -99,7 +94,7 @@ proc eval*[S: static SortTag](m: Z3Model, a: Z3Ast[S],
       "constrain.")
     e.code = Z3_INVALID_USAGE
     raise e
-  wrap[S](m.ctx, outRaw)
+  wrap[Z3Ast[S]](m.ctx, outRaw)
 
 proc `[]`*[S: static SortTag](m: Z3Model, a: Z3Ast[S]): Z3Ast[S] =
   ## Sugar for `m.eval(a)`.

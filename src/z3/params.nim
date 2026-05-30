@@ -10,7 +10,7 @@
 ## step 8 (tactics) needs `using_params`. Landing it here as the
 ## general primitive every consumer can pick up.
 
-import ./ffi, ./context
+import ./ffi, ./context, ./lifecycle
 
 type
   Z3ParamsOwn = object
@@ -18,12 +18,7 @@ type
     ctx: Z3Context
   Z3Params* = ref Z3ParamsOwn
 
-proc `=destroy`(p: Z3ParamsOwn) {.raises: [].} =
-  try:
-    if not p.raw.isNil and p.ctx != nil and not p.ctx.raw.isNil:
-      Z3_params_dec_ref(p.ctx.raw, p.raw)
-  except CatchableError:
-    discard
+emitRefcountLifecycle(Z3ParamsOwn, Z3_params_dec_ref)
 
 proc newParams*(ctx: Z3Context): Z3Params =
   ## Fresh empty parameter bag bound to `ctx`.

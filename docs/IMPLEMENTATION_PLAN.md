@@ -335,6 +335,17 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 - **A `declareDatatypes:` block-DSL macro.** Considered during planning — would let the user write `declareDatatypes: forDatatype[Tree]: ...; forDatatype[Forest]: ...` and emit the right return tuple. Costs 200+ lines for an arity ceiling Nim itself enforces. Per-arity overloads are simpler. **Where**: revisit only if the arity overloads become a maintenance burden, otherwise drop.
 - **Carry-forward from step 4: `Z3Model.eval` overload for `Z3DatatypeValue[T]`.** Still not landed; touches the model surface in the same way for both single and mutual datatypes. **Where**: alongside the next module that needs model-side datatype reads (likely v0.2 step 6 quantifiers via patterns that match on constructors, or a follow-up).
 
+### From step 6 (quantifiers + patterns)
+
+- **`forall`/`exists` arity ≥ 6.** Per-arity templates 1–5 in place; bump for higher arity is one ~5-line template per arity added.
+- **Compile-time "missing patterns" warning.** Quantifiers without patterns are the most common cause of "my SMT problem ran forever." A compile-time `{.warning.}` whenever `forall`/`exists` is called with `patterns=[]` and a body that references anything beyond pure arithmetic (arrays / datatypes / uninterpreted functions) would guide users toward the right idiom. Selective compile-time warnings in Nim are awkward — the simple "warn always when patterns is empty" form is too noisy. **Where**: v0.2 step 7 or v0.3 — likely couples with tactics where the same diagnostic story applies to user-supplied tactic chains that hang.
+- **Multi-pattern macro (`varargs[typed]`)** for `mkPattern`. Same trade-off as constructor apply in step 4 — per-arity templates keep error messages clean.
+- **Quantifier weight parameter.** `Z3_mk_forall_const` accepts a `weight` argument that de-prioritises this quantifier vs. others; we hardcode 0. Useful for tuning solver heuristics on hard problems but not user-facing for v0.2. **Where**: v0.3 if a real user hits it.
+
+### Spec divergence (step 6, captured for the precedent)
+
+v0.2 plan §7 Q2 leaned toward a `Z3BoundVar` typeclass with `mkBoundVar[S]()` explicit boxing. We diverged to **per-arity templates over any typed AST family** — `forall(x, p, body)` where `x: Z3Int` and `p: Z3Bool` works directly because each generic position binds independently. Same precedent as step 4's constructor `apply` template family. The Q2 alternative would have forced the user to wrap every variable: `forall([mkBoundVar(x), mkBoundVar(p)], body)`. Strictly worse ergonomics for the same expressive power.
+
 ### Spec divergence (step 4, captured here for the precedent)
 
 v0.2 plan §7 Q1 sketched **runtime decl-pointer comparison** as the leaning, against a `static string`-phantom alternative. We diverged in two steps:

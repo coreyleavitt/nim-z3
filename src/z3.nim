@@ -58,6 +58,14 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
+## - `z3/quantifier` — `forall(b1, …, body, patterns=[…])` and
+##   `exists(...)` with per-arity templates (1–5 bound vars). Bound
+##   vars can be any typed AST family (`Z3Int`, `Z3BitVec[W]`,
+##   `Z3DatatypeValue[T]`, …); each must be a free constant.
+##   `Z3Pattern` is a refcount-managed trigger; `mkPattern(t1, …)`
+##   builds a multi-trigger (conjunction within), and passing several
+##   patterns to `forall` is alternative-trigger (disjunction across).
+##   **v0.2 step 6.**
 ## - `z3/datatypes` — inductive sums via `declareDatatype[T]` (single)
 ##   or `declareDatatypes(forDatatype[T1]…, forDatatype[T2]…)` (mutually
 ##   recursive). Phantom is a Nim marker type (`type Foo = object`),
@@ -84,8 +92,8 @@
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
-       z3/datatypes
+       z3/datatypes, z3/quantifier
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array, datatypes
+       pretty, simplify, array, datatypes, quantifier
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

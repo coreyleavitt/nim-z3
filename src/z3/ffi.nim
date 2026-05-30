@@ -56,10 +56,17 @@ type
     ## datatypes in a single call. Cleaned up with
     ## `Z3_del_constructor_list` after the datatype sorts have been
     ## extracted.
+  RawZ3Pattern* {.importc: "Z3_pattern", header: "z3.h", bycopy.} = object
+    ## Quantifier instantiation trigger. Z3 only instantiates a
+    ## quantifier when ground terms in the context match one of its
+    ## attached patterns. Refcounted through `Z3_pattern_to_ast` —
+    ## same trick used for `Z3_func_decl` (Z3 doesn't expose a
+    ## dedicated `Z3_pattern_inc_ref`).
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-            RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList): bool {.inline.} =
+            RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
+            RawZ3Pattern): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -73,13 +80,15 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 # cause of a real refcount bug surfaced by step 4-5 testing.
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList](
+          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
+          RawZ3Pattern](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList](
+          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
+          RawZ3Pattern](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -342,6 +351,47 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Apply a function declaration to arguments. Used for constructor /
     ## recognizer / accessor invocations.
+
+  proc Z3_to_app(c: RawZ3Context, a: RawZ3Ast): RawZ3App
+    {.cdecl, header: "z3.h".}
+    ## Cast a constant `Ast` to its `App` form. `Z3_mk_forall_const`
+    ## takes bound variables as `Z3_app[]`, not `Z3_ast[]` — every
+    ## bound var must be a constant constructed via `Z3_mk_const`
+    ## (or equivalently `mkIntVar` / `mkBitVecVar` / `mkDatatypeVar`).
+
+  # --- Quantifiers + patterns ---------------------------------------------
+
+  proc Z3_mk_pattern(c: RawZ3Context, num_patterns: cuint,
+                     terms: ptr UncheckedArray[RawZ3Ast]): RawZ3Pattern
+    {.cdecl, header: "z3.h".}
+    ## Construct a multi-trigger pattern. Each pattern is a *conjunction*
+    ## of trigger terms; Z3 instantiates the quantifier when ground
+    ## terms in the context match all trigger terms simultaneously.
+
+  proc Z3_pattern_to_ast(c: RawZ3Context, p: RawZ3Pattern): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Cast a pattern to its underlying AST for refcounting via the
+    ## general `Z3_inc_ref` / `Z3_dec_ref` calls.
+
+  proc Z3_mk_forall_const(c: RawZ3Context, weight: cuint,
+                          num_bound: cuint,
+                          bound: ptr UncheckedArray[RawZ3App],
+                          num_patterns: cuint,
+                          patterns: ptr UncheckedArray[RawZ3Pattern],
+                          body: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Universal quantification over free constants `bound[]`, which
+    ## Z3 re-binds inside `body`. `weight` defaults to 0 (no
+    ## de-prioritisation); patterns may be empty (Z3 picks its own).
+
+  proc Z3_mk_exists_const(c: RawZ3Context, weight: cuint,
+                          num_bound: cuint,
+                          bound: ptr UncheckedArray[RawZ3App],
+                          num_patterns: cuint,
+                          patterns: ptr UncheckedArray[RawZ3Pattern],
+                          body: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Existential variant of `Z3_mk_forall_const`.
 
   proc Z3_func_decl_to_ast(c: RawZ3Context, d: RawZ3FuncDecl): RawZ3Ast
     {.cdecl, header: "z3.h".}

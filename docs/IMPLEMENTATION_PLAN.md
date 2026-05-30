@@ -275,7 +275,7 @@ Each step closes with a §8 deferral entry if anything surfaced mid-cycle (same 
 
 10. **Cross-context transfer + compatibility** (`z3/translate`). `translate*[T: Z3Term](t: T, targetCtx: Z3Context): T`. `compatibleWith(ctxA, ctxB: Z3Context): bool` — uses a no-op translation under exception capture if Z3 doesn't expose a direct predicate. TDD: build `x: Z3Int` in ctx A, `compatibleWith(A, B)` returns true, translate to ctx B, evaluate to same SMT-LIB string.
 
-11. **Quantifier introspection** (extends `z3/quantifier`). Wraps `Z3_get_quantifier_*` family. Bound-var sort dispatch uses step 2's `getSortKind`. TDD: build `forall x: Z3Int. p(x)`, introspect bound-var count = 1, name = `"x"`, sort kind = `skInt`, body is `p(x)`.
+11. **Quantifier introspection** (extends `z3/quantifier`). ✅ shipped. Wraps `Z3_get_quantifier_*` family. Bound-var sort dispatch uses step 2's `getSortKind`.
 
 12. **Probes + condTactic** (`z3/probe`). `Z3Probe` ref-handle. `mkProbe("name")`. Numeric/boolean combinators. `condTactic(p, t1, t2)`. TDD: `mkProbe("num-consts") < 100.0` returns a probe; `condTactic(thatProbe, mkTactic("smt"), mkTactic("simplify"))` constructs a tactic.
 
@@ -328,6 +328,12 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 11 (quantifier introspection)
+
+- **Clean landing.** Extended `z3/quantifier` with the full `Z3_get_quantifier_*` surface: bound vars (count / name / sort), body, kind discriminators (`isForall` / `isExists` / `isLambda`), weight, patterns + no-patterns. No spec corrections.
+- **Bound-var sort returns `RawZ3Sort`** per plan; users dispatch via step 2's `getSortKind` (`skInt`, `skBool`, …). The plan's §7 open question (Q2: "do we ship a runtime sort→typedesc dispatcher?") is resolved as planned: no, document the comparison pattern. The `getSortKind` route is sufficient for every introspection use case shipped so far.
+- **`assertIsQuantifier` template** added as a private precondition guard. Every getter calls it first to surface a clear "AST is not a quantifier" error rather than Z3's opaque `Z3_INVALID_USAGE`.
 
 ### From step 10 (cross-context transfer + compatibility)
 

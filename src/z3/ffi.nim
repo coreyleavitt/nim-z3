@@ -865,6 +865,37 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_translate(srcCtx: RawZ3Context, a: RawZ3Ast,
                     targetCtx: RawZ3Context): RawZ3Ast
     {.cdecl, header: "z3.h".}
+
+  # --- Quantifier introspection (v0.4 step 11) -----------------------------
+
+  proc Z3_get_quantifier_num_bound(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_bound_name(c: RawZ3Context, a: RawZ3Ast,
+                                    i: cuint): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_bound_sort(c: RawZ3Context, a: RawZ3Ast,
+                                    i: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_body(c: RawZ3Context, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_num_patterns(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_pattern_ast(c: RawZ3Context, a: RawZ3Ast,
+                                     i: cuint): RawZ3Pattern
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_num_no_patterns(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_no_pattern_ast(c: RawZ3Context, a: RawZ3Ast,
+                                        i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_is_quantifier_forall(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_is_quantifier_exists(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_is_lambda(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_weight(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
     ## **v0.4 step 10.** Transfer an AST from `srcCtx` to `targetCtx`.
     ## The returned AST is owned by `targetCtx`; the source AST is
     ## independent. Z3 validates that the target context can accept

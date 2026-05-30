@@ -219,3 +219,106 @@ template exists*[B1, B2, B3, B4, B5](
     patterns: openArray[Z3Pattern] = []): Z3Bool =
   quantifierImpl(body.ctx, false,
     [b1.raw, b2.raw, b3.raw, b4.raw, b5.raw], body.raw, patterns)
+
+# ============================================================================
+# Quantifier introspection (v0.4 step 11)
+# ============================================================================
+#
+# Read-side dual of the construction templates above. Once a quantifier AST
+# is built (or extracted from a larger formula), these accessors expose its
+# bound variables, body, patterns, and metadata.
+#
+# All getters expect a `Z3Bool` that's actually a quantifier AST — i.e. the
+# result of `forall(...)` / `exists(...)` / a `Z3_mk_lambda*` call, or one
+# that round-tripped through SMT-LIB parsing. Passing a non-quantifier AST
+# raises `Z3Error`.
+
+template assertIsQuantifier(q: Z3Bool, fnName: static string) =
+  # Z3 emits Z3_INVALID_USAGE for non-quantifier inputs; we surface that
+  # with a clearer message naming the calling proc.
+  if not (Z3_is_quantifier_forall(q.ctx.raw, q.raw) or
+          Z3_is_quantifier_exists(q.ctx.raw, q.raw) or
+          Z3_is_lambda(q.ctx.raw, q.raw)):
+    var e = newException(Z3Error,
+      fnName & ": AST is not a quantifier (forall / exists / lambda).")
+    e.code = Z3_INVALID_USAGE
+    raise e
+
+proc getQuantifierNumBoundVars*(q: Z3Bool): int =
+  ## Number of bound variables — i.e. the arity of the quantifier.
+  ## `forall(x, body)` has 1, `forall(x, y, body)` has 2, etc.
+  assertIsQuantifier(q, "getQuantifierNumBoundVars")
+  int(Z3_get_quantifier_num_bound(q.ctx.raw, q.raw))
+
+proc getQuantifierBoundVarName*(q: Z3Bool, i: int): string =
+  ## Name (symbol) of the i-th bound variable.
+  assertIsQuantifier(q, "getQuantifierBoundVarName")
+  doAssert i >= 0 and i < getQuantifierNumBoundVars(q),
+    "getQuantifierBoundVarName: index " & $i & " out of range"
+  let sym = Z3_get_quantifier_bound_name(q.ctx.raw, q.raw, cuint(i))
+  $Z3_get_symbol_string(q.ctx.raw, sym)
+
+proc getQuantifierBoundVarSort*(q: Z3Bool, i: int): RawZ3Sort =
+  ## Sort of the i-th bound variable. Returns the raw handle; dispatch
+  ## via `getSortKind` (from v0.4 step 2's `z3/introspect`).
+  assertIsQuantifier(q, "getQuantifierBoundVarSort")
+  doAssert i >= 0 and i < getQuantifierNumBoundVars(q),
+    "getQuantifierBoundVarSort: index " & $i & " out of range"
+  Z3_get_quantifier_bound_sort(q.ctx.raw, q.raw, cuint(i))
+
+proc getQuantifierBody*(q: Z3Bool): Z3Bool =
+  ## The body AST with bound vars in their de-Bruijn form. Combine
+  ## with `substituteVars` (v0.4 step 9) to instantiate.
+  assertIsQuantifier(q, "getQuantifierBody")
+  wrap[Z3Bool](q.ctx,
+    q.ctx.checkErr Z3_get_quantifier_body(q.ctx.raw, q.raw))
+
+proc isForall*(q: Z3Bool): bool {.inline.} =
+  ## True iff `q` is a `forall` quantifier.
+  Z3_is_quantifier_forall(q.ctx.raw, q.raw)
+
+proc isExists*(q: Z3Bool): bool {.inline.} =
+  ## True iff `q` is an `exists` quantifier.
+  Z3_is_quantifier_exists(q.ctx.raw, q.raw)
+
+proc isLambda*(q: Z3Bool): bool {.inline.} =
+  ## True iff `q` is a `lambda` (anonymous-function) quantifier.
+  Z3_is_lambda(q.ctx.raw, q.raw)
+
+proc getQuantifierWeight*(q: Z3Bool): int =
+  ## Weight metadata (an instantiation-cost hint Z3 uses for MBQI).
+  ## Default is 0 unless `mkQuantifier` was called with a non-zero
+  ## weight.
+  assertIsQuantifier(q, "getQuantifierWeight")
+  int(Z3_get_quantifier_weight(q.ctx.raw, q.raw))
+
+proc getQuantifierNumPatterns*(q: Z3Bool): int =
+  ## Number of explicit instantiation patterns attached to the
+  ## quantifier.
+  assertIsQuantifier(q, "getQuantifierNumPatterns")
+  int(Z3_get_quantifier_num_patterns(q.ctx.raw, q.raw))
+
+proc getQuantifierPattern*(q: Z3Bool, i: int): Z3Pattern =
+  ## The i-th instantiation pattern.
+  assertIsQuantifier(q, "getQuantifierPattern")
+  doAssert i >= 0 and i < getQuantifierNumPatterns(q),
+    "getQuantifierPattern: index " & $i & " out of range"
+  let rawPat = Z3_get_quantifier_pattern_ast(q.ctx.raw, q.raw, cuint(i))
+  let asAst = Z3_pattern_to_ast(q.ctx.raw, rawPat)
+  Z3_inc_ref(q.ctx.raw, asAst)
+  Z3Pattern(raw: rawPat, ctx: q.ctx)
+
+proc getQuantifierNumNoPatterns*(q: Z3Bool): int =
+  ## Number of explicit no-patterns (Z3 will avoid instantiating
+  ## against these matching expressions).
+  assertIsQuantifier(q, "getQuantifierNumNoPatterns")
+  int(Z3_get_quantifier_num_no_patterns(q.ctx.raw, q.raw))
+
+proc getQuantifierNoPattern*(q: Z3Bool, i: int): Z3Bool =
+  ## The i-th no-pattern.
+  assertIsQuantifier(q, "getQuantifierNoPattern")
+  doAssert i >= 0 and i < getQuantifierNumNoPatterns(q),
+    "getQuantifierNoPattern: index " & $i & " out of range"
+  wrap[Z3Bool](q.ctx,
+    q.ctx.checkErr Z3_get_quantifier_no_pattern_ast(q.ctx.raw,
+                                                    q.raw, cuint(i)))

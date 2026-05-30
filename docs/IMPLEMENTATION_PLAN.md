@@ -10,9 +10,14 @@ What changes between v0.2 and v0.3:
 
 - v0.1 covered the **core**: sorts (Int, Real, Bool, BitVec), Boolean and arithmetic ops, solver, model, pretty/SMT2 round-trip, version probes.
 - v0.2 covered the **theories that turn SMT from "arithmetic checker" into "general decision procedure for software verification"**: arrays, datatypes, quantifiers, optimisation, tactics + goals + params.
-- v0.3 covers the **remaining theory families** (strings, sequences, FloatingPoint), the **carried-forward gaps** from v0.2 (model conversion across tactics + arrays + datatypes, evalReal, DOT export, …), and the **upstream-blocker resolution work** (multi-platform CI, nim-doc Pages) that's currently filed as [#1](https://github.com/coreyleavitt/nim-z3/issues/1).
+- v0.3 covers, in priority order:
+  1. **Architectural unification** — a post-v0.2 audit ([conversation log + audit findings, summarised in §2 below](#2-the-shape-of-the-v03-expansion)) surfaced that v0.2's five typed-value families (`Z3Ast[S]`, `Z3BitVec[W]`, `Z3Array[K,V]`, `Z3DatatypeValue[T]`, `Z3Pattern`) reimplement the same `=destroy`/`=copy`/`=dup` refcount hooks verbatim — 22 nearly-identical instances across 9 modules. The same pattern shows up in `wrap*` helpers (`wrap[S]`, `wrapBv[W]`, `wrapArray[K,V]`, `wrapValue[T]`) and in per-arity templates (`apply` × 6, `mkPattern` × 5, `forall` × 5, `exists` × 5). All three are symptoms of one missing abstraction: a `Z3Term` concept that binds the typed families and generates their lifecycle + wrap surface from a single declaration. Fixing it before adding the four new typed families v0.3 wants (`Z3String`, `Z3Seq[E]`, `Z3Fp[E,S]`, `Z3FuncDecl[…]`) saves ~90 lines of boilerplate and makes the new families an obvious instantiation, not another five copies.
+  2. **Carried-forward gaps from v0.2 + small cleanups** that the post-v0.2 audit catalogued. Folded into v0.3 because there are no consumers and a v0.2.1 point release would be bureaucratic overhead.
+  3. **The remaining theory families** — strings + regexes, sequences, FloatingPoint, uninterpreted functions.
+  4. **Solver–tactic bridges** (`Z3_mk_solver_from_tactic`, `Z3_solver_set_params`).
+  5. **Upstream-blocker resolution work** (multi-platform CI, nim-doc Pages) currently filed as [#1](https://github.com/coreyleavitt/nim-z3/issues/1) — still blocked on private deps; will land here if the blocker clears mid-v0.3, otherwise rolls forward.
 
-The architectural foundation (typedesc-phantoms, refcount lifecycle, current-context threadvar, error-on-FFI-call template, marker-type-as-phantom for datatypes) carries forward unchanged. v0.3 is feature completion across the remaining first-class SMT theories plus the polish that the v0.2 audit identified as missing.
+v0.2's typedesc-phantom design + refcount lifecycle discipline + current-context threadvar all carry forward as the *contract*. v0.3 step 1 changes how the contract is *implemented* — without changing observable behaviour for users.
 
 ---
 
@@ -20,53 +25,114 @@ The architectural foundation (typedesc-phantoms, refcount lifecycle, current-con
 
 ### Goals
 
-1. **Carried-forward gaps from v0.2** (per V0.2_PLAN.md §8 "Pre-tag audit"):
-   - `Z3Model.eval`/`[]` overloads for `Z3DatatypeValue[T]` and `Z3Array[K, V]`.
-   - `smtEquiv` overloads for those types.
-   - `Z3_apply_result_convert_model` for tactic-pipeline witnesses.
-   - `evalReal` / `toRealApprox(precision)` composer with a documented precision policy.
-   - DOT / GraphViz AST export (`z3/dot`) with `Z3_get_ast_id`-based hash-consing awareness.
-   - Wider-width BV recipes (W > 8) in `tests/recipes.nim`.
-   - Differential testing against the `z3` CLI binary as a CI job (depends on #1).
-   - valgrind job alongside ASAN (depends on #1).
-   - `{.optional.}` softlink declarations once a v0.3 module uses a 4.13+ symbol.
+1. **Architectural unification** — `Z3Term` concept + unified lifecycle/wrap generation. Detail in §2; the headline:
+   - A `Z3Term` concept binds the five typed value families (`Z3Ast[S]`, `Z3BitVec[W]`, `Z3Array[K,V]`, `Z3DatatypeValue[T]`, `Z3Pattern`) by their shared shape — every member carries a `raw: RawZ3Ast` (or refcountable equivalent) and a `ctx: Z3Context`.
+   - A single `wrap[T: Z3Term](ctx, raw): T` template replaces `wrap[S]` / `wrapBv[W]` / `wrapArray[K,V]` / `wrapValue[T]` / inline `when T is X` dispatch blocks scattered across `array.nim`, `optimize.nim`, `datatypes.nim`, the forthcoming `model.eval[Z3Array]` / `model.eval[Z3DatatypeValue]` overloads, and more.
+   - A `mixin lifecycle T` (template-generated or macro-generated) replaces the 22 verbatim copies of `=destroy` / `=copy` / `=dup` across the five families. New families opt-in by satisfying the concept.
+   - **`Z3Refcountable` super-concept** covering the ref-typed handles (`Z3Solver`, `Z3Model`, `Z3Optimize`, `Z3Goal`, `Z3Tactic`, `Z3ApplyResult`, `Z3Params`, `Z3Context`) — same lifecycle generator, different inc_ref/dec_ref symbols.
+   - Per-arity template families (`apply` × 6, `mkPattern` × 5, `forall` × 5, `exists` × 5) collapse to `varargs[Z3Term]` once the concept exists.
+   - **Behaviour-preserving**: external API stays the same. Users can't tell whether their type's `=destroy` came from a hand-written hook or a generated one.
 
-2. **String theory** — `Z3String` phantom-typed values, `mkString` literals, `mkStringVar`, operators (`concat`, `length`, `at`, `substr`, `contains`, `prefix-of`, `suffix-of`), regex (`Z3_mk_re_*`).
+2. **Carried-forward gaps from v0.2 + small cleanups** (the post-v0.2 audit's full Category B + the architectural audit's polish items, folded together — no v0.2.1 point release):
+   - **`z3/semantics`** module relocating `smtValid` (currently in `solver.nim`) and `smtEquiv` (currently split between `solver.nim` and `bitvec.nim`), with the missing overloads for `Z3Array[K,V]` and `Z3DatatypeValue[T]`. Discoverability + audit close in one move.
+   - **`Z3Model.eval` / `[]` overloads for `Z3Array[K, V]` and `Z3DatatypeValue[T]`** — the most user-visible v0.2-promised-but-missed gap. Naturally falls out of the unified `wrap[T: Z3Term]` from goal 1.
+   - **`Z3_apply_result_convert_model`** — tactic-pipeline witness round-trip.
+   - **`evalReal` / `toRealApprox(precision)` composer** with a precision policy doc-noted (default 15 decimal digits; matches float64).
+   - **Retire dead `SortTag` enum members** (`stArray`, `stDatatype`) or document them clearly as "scaffolding only — the typed families don't use them." Currently they exist but produce no `Z3Sort[stArray]` / `Z3Sort[stDatatype]` values anywhere.
+   - **Normalise `mkBitVec` signature** — current `mkBitVec(v, 8)` takes width as a trailing positional `static int`, every other family uses generic brackets (`mkBitVecVar[8]`, `mkConstArray[K,V]`, `mkBigBitVec[128]`, `declareDatatype[T]`). Breaking change: `mkBitVec[8](5'u32)`. No consumers; pre-1.0 is the right time.
+   - **DOT / GraphViz AST export** (`z3/dot`) with `Z3_get_ast_id` hash-consing awareness.
+   - **Wider-width BV recipes** (W > 8) in `tests/recipes.nim`.
 
-3. **Sequence theory** — generalisation of strings; `Z3Seq[E]` phantom-typed over element type. `seq.empty`, `unit`, `concat`, `length`, `nth`, `extract`, `replace`, `seq-in-re`, …
+3. **String theory + regex** — `Z3String` phantom-typed values, `mkString` literals, `mkStringVar`, operators (`concat`, `length`, `at`, `substr`, `contains`, `prefixOf`, `suffixOf`), regex (`Z3_mk_re_*`).
 
-4. **FloatingPoint theory** — IEEE 754 / SMT-LIB FP arithmetic. `Z3Fp[E, S]` parameterised over exponent width / significand width (`Z3Fp[8, 24]` = float32, `Z3Fp[11, 53]` = float64). Rounding modes via `Z3RoundingMode`.
+4. **Sequence theory** — `Z3Seq[E]` phantom-typed over element type. `mkSeqEmpty`, `mkSeqUnit`, `concat`, `length`, `nth`, `extract`, `replace`, …
 
-5. **Uninterpreted functions** — `Z3FuncDecl` typed wrapper, `mkFuncDecl[T1, …, Ret](name, …)`, `apply` template that produces the right `Ret`-typed AST. Lets users encode their own theories axiomatically: `forall x. f(g(x)) == x`.
+5. **FloatingPoint theory** — IEEE 754 / SMT-LIB FP arithmetic. `Z3Fp[E, S]` parameterised over exponent width / significand width (`Z3Fp[8, 24]` = float32, `Z3Fp[11, 53]` = float64). Rounding modes via `Z3RoundingMode`.
 
-6. **`Z3_mk_solver_from_tactic`** — wrap a tactic chain into a `Z3Solver`. Bridges the tactic surface with the standard solver API for users who want a custom solving strategy without abandoning `add` / `check`.
+6. **Uninterpreted functions** — `Z3FuncDecl[ArgsTup, Ret]` typed wrapper, `mkFuncDecl[ArgsTup, Ret](name)`, per-arity `apply` template that produces the right `Ret`-typed AST. Lets users encode their own theories axiomatically: `forall x. f(g(x)) == x`.
 
-7. **`Z3_solver_set_params`** for the existing `Z3Solver` — now that `Z3Params` exists, the solver can take params too.
+7. **Solver–tactic bridges** — `Z3_mk_solver_from_tactic` (wrap a tactic chain into a `Z3Solver`) + `Z3_solver_set_params` (params API for existing `Z3Solver` now that `Z3Params` exists).
 
-8. **Fixedpoint engine** — `Z3Fixedpoint` for Horn-clause solving. Lower priority within v0.3; might roll to v0.4 if it has scope drift.
+8. **Fixedpoint engine** — `Z3Fixedpoint` for Horn-clause solving. Lower priority; may roll to v0.4 if it has scope drift.
 
-9. **Pre-tag audit for v0.3** — the same discipline v0.2 introduced: a §8 sub-block enumerating every v0.3-promised item that didn't land before the tag.
+9. **Carried-forward CI work** if [#1](https://github.com/coreyleavitt/nim-z3/issues/1) unblocks during v0.3: macOS / aarch64 rows, nim-doc Pages, valgrind, differential testing against `z3` CLI. Logged as conditional — doesn't gate the tag.
+
+10. **`{.optional.}` softlink declarations** once a v0.3 module uses a 4.13+ symbol.
+
+11. **Pre-tag audit for v0.3** — the same discipline v0.2 introduced: a §8 sub-block enumerating every v0.3-promised item that didn't land before the tag.
 
 ### Non-goals
 
 - **Custom theories via user propagators** (`Z3_solver_propagate_*`). Powerful but a substantial surface; v0.4+ unless a clear use case appears.
 - **High-level macro DSL** (`solve: forall x in Int, x + 1 > x`). Same review status as v0.2 §1 non-goals — the wrapper IS the API call.
-- **Pareto-mode per-point model extraction** and **`Z3_apply_result_convert_model`** are listed above as *goals* (carried forward); they're not non-goals.
-- **Re-architecting v0.1 or v0.2.** v0.3 is feature completion + polish; not a redesign.
+- **Differential testing against Python z3**. Bigger lift than the CLI variant under goal 9; v0.4 follow-up.
 
 ---
 
 ## 2. The shape of the v0.3 expansion
 
-v0.2 settled five phantom-type families:
+### 2.0 Architectural unification (the v0.3 step-1 work)
+
+The post-v0.2 audit (full notes in the conversation log; the headline findings are in §1 goal 1) flagged that the five typed value families share an unstated contract that's currently encoded by repetition rather than abstraction:
+
+| Family | Lifecycle hooks | Wrap helper | Inline `when T is X` callers |
+|---|---|---|---|
+| `Z3Ast[S]` | `=destroy[S]`, `=copy[S]`, `=dup[S]` in `ast.nim` | `wrap[S]` | — |
+| `Z3BitVec[W]` | same shape, in `bitvec.nim` | `wrapBv[W]` | dispatched by `array.select` / `optimize.upper` / `optimize.lower` / `datatypes.read` / `model.eval` |
+| `Z3Array[K, V]` | same, in `array.nim` | `wrapArray[K, V]` | dispatched by `array.select` (return type) |
+| `Z3DatatypeValue[T]` | same, in `datatypes.nim` | `wrapValue[T]` (**private**) | dispatched by `datatypes.read` |
+| `Z3Pattern` | same shape, in `quantifier.nim` | inline | — |
+
+Total: 22 verbatim copies of the three lifecycle hooks across 9 modules, 5 separately-named `wrap*` helpers, 6+ inline `when T is X` dispatch blocks, plus 24 per-arity templates over `typed` (`apply` × 6, `mkPattern` × 5, `forall` × 5, `exists` × 5) that exist because there's no concept binding the families.
+
+These are three symptoms of one missing abstraction. v0.3 step 1 introduces it before adding the next four typed families (which would otherwise copy the boilerplate four more times):
+
+```nim
+# Sketch — actual interface decided in the cycle.
+
+type Z3Term* = concept x
+  x.raw is RawZ3Ast
+  x.ctx is Z3Context
+  type x.RawSym is RawZ3Ast   # marker for "uses Z3_inc_ref / Z3_dec_ref"
+
+type Z3Refcountable* = concept x
+  x.raw is (RawZ3Solver | RawZ3Model | RawZ3Optimize | RawZ3Goal |
+            RawZ3Tactic | RawZ3ApplyResult | RawZ3Params | RawZ3Context)
+  x.ctx is Z3Context
+  # different inc_ref / dec_ref symbol per raw type, looked up via the concept
+
+template emitLifecycle*(T: typedesc, RawType: typedesc) =
+  ## Generate =destroy / =copy / =dup hooks for a Z3Term-shaped type T
+  ## whose underlying raw handle is RawType. Called once per typed
+  ## family declaration; replaces the 22 hand-written copies.
+
+template wrap*[T: Z3Term](theCtx: Z3Context, theRaw: RawZ3Ast): T =
+  block:
+    let r = theRaw
+    if not r.isNil: Z3_inc_ref(theCtx.raw, r)
+    T(raw: r, ctx: theCtx)
+```
+
+Critically, **this is behaviour-preserving**. The external API stays identical; users can't tell their type's `=destroy` came from a generated template rather than a hand-written copy. The new typed families v0.3 adds (`Z3String`, `Z3Seq[E]`, `Z3Fp[E,S]`, `Z3FuncDecl[…]`) then become one-line concept satisfactions, not 22-line repetitions.
+
+The §7 open questions list one genuinely uncertain point: whether the concept cleanly handles `Z3ConstructorDeclOwn[T]` (whose lifecycle dec_refs a *list* of `RawZ3FuncDecl`, not a single AST handle). The cycle-1 TDD work answers it.
+
+### 2.1 The typed value families (post-unification)
+
+v0.2 settled five phantom-type families; v0.3 adds four more. All satisfy `Z3Term` after step 1:
 
 - `Z3Ast[S: static SortTag]` for sorts where width / parameters don't matter at the type level (Int, Real, Bool).
 - `Z3BitVec[W: static int]` for width-tracked BVs.
 - `Z3Array[Key, Val]` typedesc-phantom over key/value AST types.
 - `Z3DatatypeValue[T]` marker-type phantom (`type Maybe = object` → `Z3DatatypeValue[Maybe]`).
-- (Each family parallels the others in lifecycle, dispatch, and pretty-printing.)
+- `Z3Pattern` (no phantom; quantifier trigger).
+- **NEW** `Z3String` (type alias under `Z3Ast[stString]`).
+- **NEW** `Z3Regex` (type alias under `Z3Ast[stRegex]`).
+- **NEW** `Z3Seq[E]` typedesc-phantom over element type.
+- **NEW** `Z3Fp[Ebits, Sbits: static int]` width-parameterised over IEEE 754 sizes.
+- **NEW** `Z3FuncDecl[ArgsTup, Ret]` typedesc-phantom over (arg tuple, return type).
 
-v0.3 introduces three more sort families. Each follows the same precedent: the minimum type-level information that catches a real bug at compile time, and nothing more.
+Each follows the same precedent: the minimum type-level information that catches a real bug at compile time, and nothing more.
 
 ### Strings — `Z3String`
 
@@ -209,21 +275,19 @@ examples/
 
 ## 4. Phasing — what ships when
 
-### v0.3.0 — theory completion
+### v0.3.0 — architectural unification + theory completion
 
-1. **Carried-forward gaps from v0.2** (Pre-tag audit, v0.2.1 bucket):
-   - `Z3Model.eval`/`[]` for `Z3DatatypeValue[T]` and `Z3Array[K, V]`.
-   - `smtEquiv` overloads for those types.
-   - `Z3_apply_result_convert_model`.
-2. `evalReal` / `toRealApprox` composer with a documented precision policy.
-3. DOT / GraphViz AST export.
-4. Wider-width BV recipes in `tests/recipes.nim`.
-5. Strings + regexes.
-6. Sequences.
-7. FloatingPoint.
-8. Uninterpreted functions (`Z3FuncDecl`).
-9. `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
-10. v0.3 tag.
+1. **Architectural unification.** `Z3Term` + `Z3Refcountable` concepts, unified lifecycle/wrap surface, behaviour-preserving migration of every existing typed family.
+2. **`z3/semantics` module + carryover gaps.** `smtValid` / `smtEquiv` relocated with the missing `Z3Array` / `Z3DatatypeValue` overloads. `Z3Model.eval` / `[]` for those types. `Z3_apply_result_convert_model`. `evalReal` / `toRealApprox`.
+3. **Small cleanups.** Dead `SortTag` retirement + `mkBitVec` signature normalisation.
+4. DOT / GraphViz AST export.
+5. Wider-width BV recipes in `tests/recipes.nim`.
+6. Strings + regexes.
+7. Sequences.
+8. FloatingPoint.
+9. Uninterpreted functions (`Z3FuncDecl`).
+10. Bridges: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
+11. v0.3 tag.
 
 ### v0.4+ — frontier features
 
@@ -236,33 +300,41 @@ examples/
 
 ## 5. Implementation sequence
 
-The order is chosen so each step's tests can exercise the new surface end-to-end against an already-working stack.
+Architectural work first (so subsequent steps inherit the unified surface and don't reintroduce boilerplate); carryover gaps and small cleanups next (so the audit closes before new theories pile on); then the new theory families; then bridges and tag.
 
-1. **Carried-forward gaps from v0.2.1 bucket** (`m.eval` / `m[v]` / `smtEquiv` for `Z3Array` and `Z3DatatypeValue`). Small, mechanical, closes the most visible user-facing gaps. First because v0.2.1 was the rollover target.
+1. **Architectural unification.** `Z3Term` + `Z3Refcountable` concepts. Lifecycle-hook generator template. Unified `wrap[T: Z3Term]` template replacing `wrap[S]` / `wrapBv[W]` / `wrapArray[K,V]` / `wrapValue[T]` and the inline `when T is X` dispatches. Migrate each of the five typed value families + the seven refcountable handles to the new generators, preserving every test. The cycle's tracer is "all 652 v0.2 tests still pass after the migration." TDD discipline: one family at a time, full suite green after each.
 
-2. **`Z3_apply_result_convert_model`** (also v0.2.1 bucket). Round-trips tactic-pipeline models.
+2. **`z3/semantics` module + missing overloads + carried-forward gaps.** Relocate `smtValid` (from `solver.nim`) and `smtEquiv` (from `solver.nim` + `bitvec.nim`) into a single `z3/semantics` module; add the missing overloads for `Z3Array[K,V]` and `Z3DatatypeValue[T]`. Land `Z3Model.eval` / `[]` for `Z3Array` and `Z3DatatypeValue` (trivial after step 1's unified `wrap`). Land `Z3_apply_result_convert_model`. Land `evalReal` / `toRealApprox(precision = 15)`.
 
-3. **`evalReal` / `toRealApprox(precision)`** with a precision policy doc-noted.
+3. **Small cleanups.** Retire (or clearly document) the unused `stArray` and `stDatatype` SortTag values. Normalise `mkBitVec` signature to `mkBitVec[W: static int](v: SomeInteger): Z3BitVec[W]` (breaking change pre-1.0; update tests + examples in the same commit).
 
-4. **DOT / GraphViz AST export** — small standalone module, lifts hash-consing-aware structure into a visualisation users can `xdot` / `dot -Tpng`.
+4. **DOT / GraphViz AST export** (`z3/dot`) with `Z3_get_ast_id` hash-consing awareness.
 
-5. **Strings + regexes** (`z3/string`, `z3/regex`). Tests verify common idioms (`contains` / `replace` / regex matching) decide correctly.
+5. **Wider-width BV recipes** (W > 8) in `tests/recipes.nim`.
 
-6. **Sequences** (`z3/seq`). Generalisation of strings; same dispatch story.
+6. **Strings + regexes** (`z3/string`, `z3/regex`). Tests verify common idioms (`contains` / `replace` / regex matching) decide correctly. **First new typed family using the step-1 unified concept.**
 
-7. **FloatingPoint** (`z3/fp`). Rounding-mode parameterised arithmetic; type-level width safety per IEEE 754.
+7. **Sequences** (`z3/seq`). Generalisation of strings; same dispatch story.
 
-8. **Uninterpreted functions** (`z3/funcdecl`). Phantom-typed over argument and return types; per-arity `apply` templates.
+8. **FloatingPoint** (`z3/fp`). Rounding-mode parameterised arithmetic; type-level width safety per IEEE 754.
 
-9. **`Z3_mk_solver_from_tactic`** + **`Z3_solver_set_params`** for `Z3Solver`. Bridge work.
+9. **Uninterpreted functions** (`z3/funcdecl`). Phantom-typed over `(ArgsTup, Ret)`; per-arity `apply` templates (under step 1, these may be unifiable with `varargs[Z3Term]`).
 
-10. **Pre-tag audit + rollforward annotations** per the v0.2 precedent.
+10. **Bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
 
-11. **v0.3 tag.**
+11. **Pre-tag audit + rollforward annotations** per the v0.2 precedent.
+
+12. **v0.3 tag.**
 
 ---
 
 ## 6. Risks specific to v0.3
+
+### The architectural unification touches every existing module
+
+Step 1 migrates 22 hand-written lifecycle hooks + 5 wrap helpers + multiple inline `when T is X` dispatch blocks to a single generator. Migration is behaviour-preserving by design — the contract callers see doesn't change — but the blast radius covers every typed module in v0.2.
+
+Mitigation: TDD discipline at the granularity of one *type family* per cycle. The full 652-test v0.2 suite must stay green after each migration. Anomalies (e.g. `Z3ConstructorDeclOwn[T]`'s list-of-func-decls dec_ref pattern not fitting the concept; flagged in §7 Q1) get resolved by either widening the concept or keeping the offender as a hand-written hook with a clear documented exception. If the concept doesn't cleanly cover all five families, the unification falls back to *partial* unification — still a win, but a smaller one. The cycle reports honestly.
 
 ### Strings + regexes are not always decidable
 
@@ -284,13 +356,15 @@ A non-trivial number of v0.2-promised items rolled to v0.3 (per V0.2_PLAN.md "Pr
 
 ## 7. Open questions (genuinely open — answer during implementation)
 
-1. **`Z3Fp[Ebits, Sbits]` vs `Z3Fp32` / `Z3Fp64` aliases.** Should we expose typed aliases for the common widths? Lean yes — `Z3Fp[8, 24]` reads poorly compared to `Z3Float32`.
+1. **`Z3ConstructorDeclOwn[T]` fit in the `Z3Refcountable` concept.** Its `=destroy` dec_refs a *list* of `RawZ3FuncDecl` (the constructor's accessors), not a single AST handle. Does the v0.3 step-1 unified lifecycle generator handle "N inc_refs / N dec_refs per instance," or does this stay as a hand-written exception? Lean: widen the concept to take a `releaseAll(self)` proc the type provides — the generator calls that instead of issuing dec_ref directly. Decide during cycle 1.
 
-2. **`toRealApprox(precision)` policy.** What's "precision" — number of decimal digits, an explicit epsilon, a tolerance? Z3 itself uses string-form rationals exactly; the approximation is purely our extraction. Lean: precision = number of decimal digits, default 15 (matches float64 precision).
+2. **`Z3Fp[Ebits, Sbits]` vs `Z3Fp32` / `Z3Fp64` aliases.** Should we expose typed aliases for the common widths? Lean yes — `Z3Fp[8, 24]` reads poorly compared to `Z3Float32`.
 
-3. **String element type.** SMT-LIB strings are sequences of Unicode characters; Z3 represents them as `Z3_string` (UTF-8). The Nim representation should be `string` (UTF-8 idiomatic in Nim 2). Lean: yes, with a tested round-trip.
+3. **`toRealApprox(precision)` policy.** What's "precision" — number of decimal digits, an explicit epsilon, a tolerance? Z3 itself uses string-form rationals exactly; the approximation is purely our extraction. Lean: precision = number of decimal digits, default 15 (matches float64 precision).
 
-4. **`Z3FuncDecl` arg type encoding.** `Z3FuncDecl[(A, B, C), Ret]` uses a tuple typedesc. Alternative: separate generic per arg. Tuple is cleaner for type inference; arities are visible in the type. Lean: tuple form.
+4. **String element type.** SMT-LIB strings are sequences of Unicode characters; Z3 represents them as `Z3_string` (UTF-8). The Nim representation should be `string` (UTF-8 idiomatic in Nim 2). Lean: yes, with a tested round-trip.
+
+5. **`Z3FuncDecl` arg type encoding.** `Z3FuncDecl[(A, B, C), Ret]` uses a tuple typedesc. Alternative: separate generic per arg. Tuple is cleaner for type inference; arities are visible in the type. Lean: tuple form.
 
 ---
 

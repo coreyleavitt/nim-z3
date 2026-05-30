@@ -66,16 +66,19 @@ into "general decision procedure for software verification."
   `tests/tproperty.nim` into shared `tests/recipes.nim`. Now used by
   `tproperty.nim`, `tsimplify.nim`, and `tarray.nim`.
 
-### Deferred to v0.2.1 / v0.3 (per `docs/V0.2_PLAN.md`)
+### Deferred to v0.3 (per `docs/V0.2_PLAN.md` + the live `docs/IMPLEMENTATION_PLAN.md`)
 
-Promised-v0.2 items that didn't land before the tag:
+Promised-v0.2 items that didn't land before the tag — all rolled
+forward to v0.3 (a v0.2.1 point release was considered and rejected;
+no consumers, no point in a separate vehicle):
 
-- v0.2.1: `Z3Model.eval`/`[]` overloads for `Z3DatatypeValue[T]` and
+- `Z3Model.eval`/`[]` overloads for `Z3DatatypeValue[T]` and
   `Z3Array[K, V]`; `smtEquiv` overloads for those types;
   `Z3_apply_result_convert_model` for tactic-pipeline witnesses.
-- v0.3: `evalReal` / `toRealApprox`, DOT / GraphViz AST export,
-  wider-width BV recipes, differential testing against `z3` CLI,
-  valgrind job, `.optional` softlink declarations.
+  (v0.3 plan §5 step 2.)
+- `evalReal` / `toRealApprox`, DOT / GraphViz AST export, wider-width
+  BV recipes, differential testing against `z3` CLI, valgrind job,
+  `.optional` softlink declarations. (v0.3 plan §5 steps 2, 4, 5.)
 - Dropped: colourised pretty output, public `z3/strategies` module
   (proptest will depend on nim-z3, not the other way round).
 - macOS / aarch64 CI rows + `nim doc --project` Pages publishing —
@@ -83,6 +86,11 @@ Promised-v0.2 items that didn't land before the tag:
   blocked on the same private-dep upstream that's keeping v0.1's CI
   red. Rolls back into scope when `coreyleavitt/milpa` and
   `coreyleavitt/proptest` go public (or a deploy key is wired).
+
+Plus a post-v0.2 architectural audit surfaced unification opportunities
+(refcount lifecycle boilerplate × 22 instances, fragmented `wrap*`
+helpers × 5, per-arity templates × 24) that fold into v0.3 plan §1
+goal 1 as the step-1 work.
 
 652 tests pass on both Nim backends (c + cpp); zero failures.
 

@@ -277,7 +277,7 @@ Each step closes with a §8 deferral entry if anything surfaced mid-cycle (same 
 
 11. **Quantifier introspection** (extends `z3/quantifier`). ✅ shipped. Wraps `Z3_get_quantifier_*` family. Bound-var sort dispatch uses step 2's `getSortKind`.
 
-12. **Probes + condTactic** (`z3/probe`). `Z3Probe` ref-handle. `mkProbe("name")`. Numeric/boolean combinators. `condTactic(p, t1, t2)`. TDD: `mkProbe("num-consts") < 100.0` returns a probe; `condTactic(thatProbe, mkTactic("smt"), mkTactic("simplify"))` constructs a tactic.
+12. **Probes + condTactic** (`z3/probe`). ✅ shipped. `Z3Probe` ref-handle with `emitRefcountLifecycle`. `mkProbe(name)` / `mkProbeConst(value)` for construction; `apply(p, g): float` for evaluation. Comparison operators (`<`, `<=`, `>`, `>=`, `==`) return **new probes** (not `bool`) so call-site notation reads naturally — auto-lifts `float` literals on both sides. Boolean combinators `and` / `or` / `not`. `condTactic(probe, ifT, elseT)` dispatches between tactics by the probe's truthiness. Required public `raw`/`ctx` accessors on `Z3Tactic`/`Z3Goal` and exported `wrapTactic`. 7 behaviors × 2 backends GREEN; total suite 1090 OKs.
 
 13. **Global parameters** (`z3/globalparams`). Three procs. TDD: `setGlobalParam("verbose", "5")` then `getGlobalParam("verbose")` returns `some("5")`.
 
@@ -328,6 +328,14 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 12 (Probes + condTactic)
+
+- **Operator return type — design decision.** Comparison operators on `Z3Probe` (`<`, `<=`, `>`, `>=`, `==`) return **`Z3Probe`**, not `bool`. This matches Z3's underlying API (`Z3_probe_lt` produces a probe) and lets the call site read naturally — `mkProbe("num-consts") < 100.0` builds a predicate probe instead of fighting the eye. Documented loudly in the module header.
+- **Float-literal auto-lift.** Each comparator has three overloads — `(probe, probe)`, `(probe, float)`, `(float, probe)` — emitted by a single `emitCmp` template. `mkProbeConst` is the lifting bridge. No spec correction; this is purely ergonomic.
+- **`Z3Tactic` / `Z3Goal` accessor lift.** `wrapTactic`, `Z3Tactic.raw`, `Z3Tactic.ctx`, `Z3Goal.raw`, `Z3Goal.ctx` were promoted from private to public in `z3/tactic` so `z3/probe` can build a `Z3Tactic` from `Z3_tactic_cond` and evaluate probes against `Z3Goal`s without a cyclic dep. Mirrors the precedent set for `Z3FuncDecl` in step 5.
+- **Test technique — observable dispatch.** `condTactic`'s dispatch is verified by giving one branch `mkTactic("smt")` (decision procedure → `zsSat`) and the other `mkTactic("fail")` (always-fail). The probe value then determines whether `check()` returns `zsSat`, making dispatch directly observable in the test without any side-channel. Worth recording for future tactic-combinator tests.
+- **Nothing deferred to v0.5.** The Z3 probe surface is fully covered: `Z3_mk_probe`, `Z3_probe_const`, `Z3_probe_apply`, all six comparators (`lt`/`le`/`gt`/`ge`/`eq`), all three booleans (`and`/`or`/`not`), and `Z3_tactic_cond`.
 
 ### From step 11 (quantifier introspection)
 

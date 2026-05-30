@@ -78,6 +78,10 @@ type
     ## Conjunction of formulas a tactic operates on. Refcounted.
   RawZ3Tactic* {.importc: "Z3_tactic", header: "z3.h", bycopy.} = object
     ## Strategy combinator that rewrites goals.
+  RawZ3Probe* {.importc: "Z3_probe", header: "z3.h", bycopy.} = object
+    ## **v0.4 step 12.** Goal-property predicate. Numeric output;
+    ## refcounted via `Z3_probe_inc_ref` / `_dec_ref`. Used with
+    ## `Z3_tactic_cond` for conditional tactic dispatch.
   RawZ3ApplyResult* {.importc: "Z3_apply_result", header: "z3.h", bycopy.} = object
     ## Output of a tactic — N sub-goals plus model/proof conversion
     ## metadata.
@@ -87,7 +91,9 @@ type
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats | RawZ3Stats | RawZ3Fixedpoint |
+            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
+          RawZ3Probe |
+            RawZ3Probe | RawZ3Stats | RawZ3Fixedpoint |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
             RawZ3Params): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
@@ -105,6 +111,7 @@ proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
+          RawZ3Probe |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
@@ -113,6 +120,7 @@ proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
+          RawZ3Probe |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
@@ -532,6 +540,38 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_skip(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
   proc Z3_tactic_fail(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
+
+  # --- Probes + condTactic (v0.4 step 12) ----------------------------------
+
+  proc Z3_mk_probe(c: RawZ3Context, name: cstring): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_inc_ref(c: RawZ3Context, p: RawZ3Probe)
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_dec_ref(c: RawZ3Context, p: RawZ3Probe)
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_apply(c: RawZ3Context, p: RawZ3Probe, g: RawZ3Goal): cdouble
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_const(c: RawZ3Context, value: cdouble): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_lt(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_le(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_gt(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_ge(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_eq(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_and(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_or(c: RawZ3Context, p1, p2: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_probe_not(c: RawZ3Context, p: RawZ3Probe): RawZ3Probe
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_cond(c: RawZ3Context, p: RawZ3Probe,
+                      t1, t2: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
 
   proc Z3_tactic_apply(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal): RawZ3ApplyResult
     {.cdecl, header: "z3.h".}

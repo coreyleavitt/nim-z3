@@ -124,7 +124,14 @@ type
 
 emitRefcountLifecycle(Z3TacticOwn, Z3_tactic_dec_ref)
 
-proc wrapTactic(ctx: Z3Context, raw: RawZ3Tactic): Z3Tactic =
+proc raw*(t: Z3Tactic): RawZ3Tactic {.inline.} = t.raw
+proc ctx*(t: Z3Tactic): Z3Context {.inline.} = t.ctx
+proc raw*(g: Z3Goal): RawZ3Goal {.inline.} = g.raw
+proc ctx*(g: Z3Goal): Z3Context {.inline.} = g.ctx
+  ## Underlying-handle accessors — used by sibling modules (notably
+  ## `z3/probe` for `condTactic` / `applyProbe`).
+
+proc wrapTactic*(ctx: Z3Context, raw: RawZ3Tactic): Z3Tactic =
   if raw.isNil:
     var e = newException(Z3Error,
       "Z3 returned a nil tactic handle.")

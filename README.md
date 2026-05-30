@@ -79,13 +79,14 @@ Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble e
 
 ## Design
 
-- [`docs/V0.1_PLAN.md`](docs/V0.1_PLAN.md) — the archived v0.1 plan. Phantom sort types, refcount discipline, current-context threadvar, the lifetime story, and the §18 deferral ledger documenting what we punted from v0.1 (and why).
+- [`docs/V0.1_PLAN.md`](docs/V0.1_PLAN.md) — the archived v0.1 plan. Phantom sort types, refcount discipline, current-context threadvar, the lifetime story, and the §18 deferral ledger from v0.1.
+- [`docs/V0.2_PLAN.md`](docs/V0.2_PLAN.md) — the archived v0.2 plan. Arrays (typedesc phantoms), datatypes (marker-type phantoms, single + mutually recursive), quantifiers + patterns, optimisation, tactics + goals + params, and the §8 deferral ledger / "Pre-tag audit" from v0.2.
 - [`docs/SPIKE_FINDINGS.md`](docs/SPIKE_FINDINGS.md) — the up-front validation log; every assumption in the v0.1 plan was checked against Z3 4.13.3 before the wrapper landed.
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — the **live** plan, currently scoped to v0.2: arrays, datatypes, quantifiers, optimisation, tactics, the strategies-as-public-API module.
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — the **live** plan, currently scoped to v0.3: carried-forward gaps from v0.2 (model `eval` for arrays + datatypes, `smtEquiv` overloads, `Z3_apply_result_convert_model`, `evalReal`, DOT export), then strings + regexes, sequences, FloatingPoint, uninterpreted functions.
 
 ## Versioning
 
-Pre-1.0 the public surface may shift between minor versions. We track deferrals and design changes in `docs/IMPLEMENTATION_PLAN.md`'s deferral section (and the archived `V0.1_PLAN.md` §18 for v0.1-era deferrals); consult `CHANGELOG.md` for the per-release diff.
+Pre-1.0 the public surface may shift between minor versions. We track deferrals and design changes in the live `docs/IMPLEMENTATION_PLAN.md` (and the archived `V0.1_PLAN.md` §18 / `V0.2_PLAN.md` §8 for prior-version deferrals); consult `CHANGELOG.md` for the per-release diff.
 
 ## License
 

@@ -6,7 +6,87 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-— Work toward v0.2; see `docs/IMPLEMENTATION_PLAN.md`.
+— Work toward v0.3; see `docs/IMPLEMENTATION_PLAN.md`.
+
+## [0.2.0] — 2026-05-29
+
+The theory-expansion release. v0.1 covered the core SMT primitives;
+v0.2 covers the theories that turn SMT from "arithmetic checker"
+into "general decision procedure for software verification."
+
+### Added
+
+- **`Z3_simplify` + `z3/simplify`** — phantom-type-preserving simplifier
+  overloads for `Z3Ast[S]` and `Z3BitVec[W]`. Default-params and
+  customised (`simplify(a, p: Z3Params)`) forms.
+- **Big-width `Z3BitVec[W]`** — `mkBigBitVec[W](numeral: string)`
+  for arbitrary-precision construction; `toBigUintStr` / `toBigIntStr`
+  for arbitrary-width extraction (signed via `Z3_mk_bv2int` round-trip).
+  `mkBitVec(v, W)` now works for any `W` (v0.1 capped it at `W ≤ 64`
+  defensively; the cap was wrong — `Z3_mk_unsigned_int64` accepts any
+  width). `toUint`/`toInt` simplify-then-extract, so concrete
+  expression trees (`mkBitVec(0xFF, 8) + mkBitVec(1, 8)`) extract
+  directly without manual `simplify`.
+- **`z3/array`** — `Z3Array[Key, Val]` phantom-typed over typedescs of
+  AST families. Surface: `mkConstArray`, `mkArrayVar`, `store`,
+  `select` / `[]`, `==`, `!=`. Supports the canonical memory model
+  (`Array[BV[32], BV[8]]`); nested arrays deferred to v0.3.
+- **`z3/datatypes`** — inductive sums via marker-type phantoms.
+  `declareDatatype[T]` for single datatypes, `declareDatatypes(fd1,
+  fd2, …)` for mutually recursive families (arity 2 and 3). Surface:
+  `field` / `selfField` / `crossField`, `constructor`, `.con` /
+  `.recognizer` / `.accessor`, `.apply` (arity 0–5) / `.test` /
+  `.read`, `mkDatatypeVar`.
+- **`z3/quantifier`** — `forall` / `exists` with per-arity templates
+  (1–5 bound vars). Bound vars can be any typed AST family. `Z3Pattern`
+  refcount-managed trigger; `mkPattern(t1, …)` for multi-trigger
+  conjunction, multiple patterns in `forall(…, patterns=[p1, p2])` for
+  alternative-trigger disjunction.
+- **`z3/optimize`** — `Z3Optimize` with hard / soft constraints,
+  `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
+  `upper` / `lower`, `push` / `pop`, `setParams(o, p)` exposing
+  `priority="lex"` (default) / `"box"` / `"pareto"` multi-objective
+  modes. BV-objective bounds re-typed through `Z3_mk_int2bv` so the
+  typed return promise holds.
+- **`z3/params`** — `Z3Params` typed parameter bag for tactics,
+  solvers, optimisers. `newParams` + overloaded `set(key, value)`
+  for `bool` / `uint` / `int` / `float` / `string`.
+- **`z3/tactic`** — `Z3Goal`, `Z3Tactic`, `Z3ApplyResult` with
+  combinators: `mkTactic`, `tacticSkip` / `tacticFail`, `andThen` /
+  `orElse` / `repeat` / `tryFor` / `withParams`, `apply` (with and
+  without params), `numSubgoals` / `subgoal(i)`.
+
+### Other changes
+
+- `z3/model`'s `wrapModel(ctx, raw)` is now public so sibling
+  modules (`z3/optimize`, future tactics, …) can wrap models they
+  obtain from their own FFI paths.
+- Test infrastructure refactor: `IntRecipe` / `BoolRecipe` /
+  `BvRecipe` ADTs + strategies + interpreters extracted from
+  `tests/tproperty.nim` into shared `tests/recipes.nim`. Now used by
+  `tproperty.nim`, `tsimplify.nim`, and `tarray.nim`.
+
+### Deferred to v0.2.1 / v0.3 (per `docs/V0.2_PLAN.md`)
+
+Promised-v0.2 items that didn't land before the tag:
+
+- v0.2.1: `Z3Model.eval`/`[]` overloads for `Z3DatatypeValue[T]` and
+  `Z3Array[K, V]`; `smtEquiv` overloads for those types;
+  `Z3_apply_result_convert_model` for tactic-pipeline witnesses.
+- v0.3: `evalReal` / `toRealApprox`, DOT / GraphViz AST export,
+  wider-width BV recipes, differential testing against `z3` CLI,
+  valgrind job, `.optional` softlink declarations.
+- Dropped: colourised pretty output, public `z3/strategies` module
+  (proptest will depend on nim-z3, not the other way round).
+- macOS / aarch64 CI rows + `nim doc --project` Pages publishing —
+  filed as [#1](https://github.com/coreyleavitt/nim-z3/issues/1),
+  blocked on the same private-dep upstream that's keeping v0.1's CI
+  red. Rolls back into scope when `coreyleavitt/milpa` and
+  `coreyleavitt/proptest` go public (or a deploy key is wired).
+
+652 tests pass on both Nim backends (c + cpp); zero failures.
+
+## [0.1.0] — 2026-05-29
 
 ## [0.1.0] — 2026-05-29
 

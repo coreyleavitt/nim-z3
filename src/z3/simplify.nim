@@ -31,7 +31,7 @@
 ## this module. The default-params form covers the overwhelming
 ## majority of user calls anyway.
 
-import ./ffi, ./context, ./sort, ./ast, ./bitvec
+import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./params
 
 proc simplify*[S: static SortTag](a: Z3Ast[S]): Z3Ast[S] =
   ## Apply Z3's default simplifier to `a`. Result has the same sort
@@ -44,3 +44,23 @@ proc simplify*[W: static int](a: Z3BitVec[W]): Z3BitVec[W] =
   ## (`bvadd(0x10, 0x01) ⇒ 0x11`) and rewrites obvious identities
   ## (`bvxor(x, x) ⇒ 0`) but doesn't change the width.
   wrapBv[W](a.ctx, a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw))
+
+# ============================================================================
+# Params-customised overloads (Z3_simplify_ex)
+# ============================================================================
+#
+# The carryover from v0.2 step 1's §8 deferral. Now that step 8 has
+# landed `Z3Params`, we can take a params arg cleanly. Both overloads
+# preserve the phantom type the same way the default-params forms do.
+
+proc simplify*[S: static SortTag](a: Z3Ast[S], p: Z3Params): Z3Ast[S] =
+  ## Params-customised simplifier. See `Z3_simplify_ex` for the param
+  ## keys that affect normalisation behaviour (`arith_lhs`, `som`,
+  ## `flat`, `elim_and`, …). Result has the same sort and is
+  ## semantically equivalent.
+  wrap[S](a.ctx, a.ctx.checkErr Z3_simplify_ex(a.ctx.raw, a.raw, p.raw))
+
+proc simplify*[W: static int](a: Z3BitVec[W], p: Z3Params): Z3BitVec[W] =
+  ## Params-customised BV simplifier. Width-preserving like its
+  ## default-params sibling.
+  wrapBv[W](a.ctx, a.ctx.checkErr Z3_simplify_ex(a.ctx.raw, a.raw, p.raw))

@@ -67,9 +67,9 @@
 ##   subgoal iteration. **v0.2 step 8.**
 ## - `z3/optimize` — `Z3Optimize` with hard / soft constraints,
 ##   `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
-##   `upper` / `lower` bound retrieval, `push` / `pop` scopes. Default
-##   multi-objective semantics are lex (lexicographic); box / Pareto
-##   modes need `Z3Params` (deferred). **v0.2 step 7.**
+##   `upper` / `lower` bound retrieval, `push` / `pop` scopes,
+##   `setParams(o, p)` for `priority = "lex"` (default) / `"box"` /
+##   `"pareto"` multi-objective modes. **v0.2 steps 7 + 9.**
 ## - `z3/quantifier` — `forall(b1, …, body, patterns=[…])` and
 ##   `exists(...)` with per-arity templates (1–5 bound vars). Bound
 ##   vars can be any typed AST family (`Z3Int`, `Z3BitVec[W]`,
@@ -95,7 +95,8 @@
 ##   preservation. `simplify[S](a: Z3Ast[S]): Z3Ast[S]` for Int/Real/
 ##   Bool and a parallel `simplify[W](a: Z3BitVec[W]): Z3BitVec[W]`
 ##   overload. Folds constants and known identities without spinning
-##   a solver. **v0.2 step 1.**
+##   a solver. Params-customised overloads via `simplify(a, p:
+##   Z3Params)`. **v0.2 steps 1 + 9.**
 ## - `z3/pretty` — indented multi-line `pretty()` overloads (for
 ##   ASTs, sorts, solvers, models), `smt2Script` / `writeSmt2` for
 ##   self-contained SMT2 emission, `parseSmt2` for round-trip

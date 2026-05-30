@@ -92,3 +92,42 @@ suite "simplify — semantic preservation over random trees":
       ensure smtEquiv(b, simplify(b))
     let report = forAll(bvRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
+
+suite "simplify — params-customised":
+  test "simplify(e, params) preserves SMT equivalence":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let p = newParams()
+    p.set("arith_lhs", true)
+    let e = (x + mkInt(0)) * mkInt(2) + mkInt(3)
+    check smtEquiv(e, simplify(e, p))
+
+  test "simplify(_, params) preserves equivalence over random int trees":
+    let ctx = newContext()
+    let p = newParams()
+    p.set("arith_lhs", true)
+    let prop = proc(r: IntRecipe) =
+      let e = interpret(r, ctx)
+      ensure smtEquiv(e, simplify(e, p))
+    let report = forAll(intRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "simplify(_, params) preserves equivalence over random bool trees":
+    let ctx = newContext()
+    let p = newParams()
+    p.set("elim_and", true)
+    let prop = proc(r: BoolRecipe) =
+      let b = interpret(r, ctx)
+      ensure smtEquiv(b, simplify(b, p))
+    let report = forAll(boolRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "simplify(_, params) preserves equivalence over random BV[8] trees":
+    let ctx = newContext()
+    let p = newParams()
+    p.set("bv_le_extra", true)
+    let prop = proc(r: BvRecipe) =
+      let b = interpret(r, ctx)
+      ensure smtEquiv(b, simplify(b, p))
+    let report = forAll(bvRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed

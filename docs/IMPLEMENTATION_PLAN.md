@@ -361,9 +361,13 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 - **`Z3_apply_result_convert_model`** (and proof conversion). The metadata on an apply-result lets you take a model satisfying a subgoal and convert it back to one satisfying the original goal. Needed for any real use of `apply` beyond inspection. **Where**: v0.2 follow-up if a property-test or example demands it.
 - **`Z3_solver_set_params` for the existing `Z3Solver`** — now that `Z3Params` exists, the solver can take params too. Logged here for symmetry; the solver currently uses Z3's defaults.
 - **Reabsorbed carryovers from earlier steps that this step *enables*:**
-  - **`Z3_simplify_ex` + a `simplify(ast, params)` overload** (step 1 deferral) is now unblocked; not yet implemented.
-  - **`Z3_optimize_set_params` for box/Pareto multi-objective** (step 7 deferral) is now unblocked; not yet implemented.
-  Both are mechanical follow-ups any time a user needs them.
+  - ~~**`Z3_simplify_ex` + a `simplify(ast, params)` overload** (step 1 deferral) is now unblocked; not yet implemented.~~ **Landed in step 9.**
+  - ~~**`Z3_optimize_set_params` for box/Pareto multi-objective** (step 7 deferral) is now unblocked; not yet implemented.~~ **Landed in step 9.**
+
+### From step 9 (reabsorbed carryovers)
+
+- **Nothing newly deferred from this step** — it absorbed the two carryovers from steps 1 and 7 that step 8's `Z3Params` had unblocked. Surface added: `simplify[S](a, params)` / `simplify[W](a, params)` overloads on `z3/simplify`, `setParams(o, p)` on `Z3Optimize`. Tests: 4 new in `tsimplify.nim` (tracer + 3 shape-property tests over random int/bool/BV trees), 2 new in `toptimize.nim` (box mode gives independent objective bounds; pareto mode enumerates frontier points then returns unsat).
+- Pareto-mode model conversion for `Z3Optimize` — each `check()` returns sat with a different model on the frontier; we exercise the enumeration but don't separately test extracting each model. Same gap as the §8 `Z3_apply_result_convert_model` deferral. **Where**: follow-up alongside the next step's user-facing demo of Pareto.
 
 ### Spec divergence (step 8, captured for the precedent)
 

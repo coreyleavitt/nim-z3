@@ -27,7 +27,7 @@
 ## (see plan §8) — they require setting `Z3_optimize_set_params` with
 ## a typed `Z3Params` object, which is the v0.2 step-1 deferral.
 
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./model, ./solver
+import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./model, ./solver, ./params
 
 # ============================================================================
 # Z3Optimize — lifecycle
@@ -68,6 +68,27 @@ proc newOptimize*(ctx: Z3Context): Z3Optimize =
 proc newOptimize*(): Z3Optimize =
   ## Fresh optimiser bound to `currentContext()`.
   newOptimize(requireCurrentContext())
+
+proc setParams*(o: Z3Optimize, p: Z3Params) =
+  ## Configure the optimiser. The most user-visible knob is
+  ## `priority` — set it as a string param to one of:
+  ##
+  ## - `"lex"` (default) — lexicographic; first objective is
+  ##   maximised, then second is maximised subject to the first's
+  ##   optimum, and so on.
+  ## - `"box"` — each objective optimised independently; `upper(h)`
+  ##   gives that objective's true maximum, but no single model
+  ##   simultaneously witnesses all of them.
+  ## - `"pareto"` — Pareto-frontier enumeration; each `check()` call
+  ##   returns one frontier point as `zsSat`; once the frontier is
+  ##   exhausted `check()` returns `zsUnsat`.
+  ##
+  ## ```nim
+  ## let p = newParams()
+  ## p.set("priority", "box")
+  ## o.setParams(p)
+  ## ```
+  o.ctx.checkErrVoid Z3_optimize_set_params(o.ctx.raw, o.raw, p.raw)
 
 # ============================================================================
 # Hard + soft constraints

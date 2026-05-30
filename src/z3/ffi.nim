@@ -514,6 +514,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_optimize_to_string(c: RawZ3Context, o: RawZ3Optimize): cstring
     {.cdecl, header: "z3.h".}
 
+  proc Z3_optimize_set_params(c: RawZ3Context, o: RawZ3Optimize, p: RawZ3Params)
+    {.cdecl, header: "z3.h".}
+    ## Configure the optimiser. The most user-visible knob is the
+    ## `priority` symbol value — `lex` (default), `box`, or `pareto`.
+    ## See v0.2 plan §1 and `z3/optimize` docs for the semantic
+    ## differences.
+
   # --- Quantifiers + patterns ---------------------------------------------
 
   proc Z3_mk_pattern(c: RawZ3Context, num_patterns: cuint,
@@ -755,6 +762,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## decision procedure. The returned AST is semantically equivalent
     ## to the input (same value under every interpretation) and has
     ## the same sort.
+
+  proc Z3_simplify_ex(c: RawZ3Context, a: RawZ3Ast, p: RawZ3Params): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Params-customised simplifier. Same semantic guarantees as
+    ## `Z3_simplify`; the params let you toggle normalisation knobs
+    ## like `arith_lhs`, `som`, `flat`, `elim_and`, … Get the full
+    ## list via `(get-help simplify)` in a Z3 CLI session.
 
   # --- SMT2 parser ---------------------------------------------------------
 

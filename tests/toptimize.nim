@@ -140,3 +140,49 @@ suite "Z3Optimize — reasonUnknown":
     # must not crash.
     discard o.reasonUnknown()
     check true
+
+suite "Z3Optimize — priority modes (setParams)":
+  test "priority=box makes both objectives reach 10 independently":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")
+    let o = newOptimize()
+    let p = newParams()
+    p.set("priority", "box")
+    o.setParams(p)
+    o.add(x >= mkInt(0))
+    o.add(y >= mkInt(0))
+    o.add(x + y == mkInt(10))
+    let hx = o.maximize(x)
+    let hy = o.maximize(y)
+    check o.check() == zsSat
+    # Box mode: each objective gets its true maximum independently —
+    # x can reach 10 (with y at 0), y can reach 10 (with x at 0).
+    # Compare with the default lex test in this file where hy → 0.
+    check smtEquiv(hx.upper, mkInt(10))
+    check smtEquiv(hy.upper, mkInt(10))
+
+  test "priority=pareto enumerates frontier points then returns unsat":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")
+    let o = newOptimize()
+    let p = newParams()
+    p.set("priority", "pareto")
+    o.setParams(p)
+    o.add(x >= mkInt(0))
+    o.add(x <= mkInt(3))
+    o.add(y >= mkInt(0))
+    o.add(y <= mkInt(3))
+    o.add(x + y >= mkInt(2))   # leave some interior so Pareto has
+                               # multiple frontier points
+    discard o.maximize(x)
+    discard o.maximize(y)
+
+    # Pareto: repeatedly call check() until it returns unsat.
+    var frontier = 0
+    while o.check() == zsSat:
+      inc frontier
+      if frontier > 100: break   # safety: never spin forever
+    check frontier >= 1          # at least one Pareto-optimal point
+    check frontier <= 100        # frontier eventually exhausted

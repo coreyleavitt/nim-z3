@@ -48,7 +48,7 @@
 ## `=destroy` on the decl decrements them in bulk.
 
 import std/[strformat, tables]
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./array
+import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./array, ./sortdispatch
 
 # ============================================================================
 # Field + constructor specs — user-facing builders
@@ -197,6 +197,41 @@ proc `=dup`[T](src: Z3DatatypeValue[T]): Z3DatatypeValue[T] {.raises: [].} =
 # `wrap[Z3DatatypeValue[T]](ctx, raw)` from `z3/lifecycle` directly.
 
 # ============================================================================
+# sortOf overload (v0.4 step 3 — closes v0.3 §8 carryover)
+# ============================================================================
+#
+# Datatype sorts are built at runtime by `declareDatatype` / `declareDatatypes`,
+# which register the produced sort under `$T` in the context's
+# datatypeRegistry. The sortOf overload does the lookup; raises if the
+# user references Z3DatatypeValue[T] before `declareDatatype[T]` ran.
+#
+# This is the only `sortOf` overload in the wrapper that does runtime
+# table lookup — every other overload is purely compile-time. The
+# departure is justified because datatype sort identity literally
+# cannot be encoded at compile time (the sort's Z3 handle is dynamic).
+
+proc sortOf*[T](_: typedesc[Z3DatatypeValue[T]],
+                ctx: Z3Context): RawZ3Sort =
+  ## Per-context lookup of `T`'s registered datatype sort. Raises
+  ## `Z3Error` (`Z3_INVALID_USAGE`) if the datatype hasn't been
+  ## declared in this context — call `declareDatatype[T](...)` (or
+  ## `declareDatatypes(...)` if mutually-recursive) before any code
+  ## path that builds `Z3DatatypeValue[T]` as an element of another
+  ## family (`Z3Array[K, Z3DatatypeValue[T]]`, `Z3Seq[Z3DatatypeValue[T]]`,
+  ## `Z3FuncDecl[..., Z3DatatypeValue[T]]`, …).
+  let name = $T
+  if not ctx.datatypeRegistry.hasKey(name):
+    var e = newException(Z3Error,
+      "Z3DatatypeValue[" & name & "] is not registered in this context " &
+      "— call `declareDatatype[" & name & "](...)` first (or " &
+      "`declareDatatypes(...)` if mutually-recursive). " &
+      "v0.4 step 3 looks up datatype sorts by marker-type name; the " &
+      "table is per-context and is populated only by the declare* APIs.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  ctx.datatypeRegistry[name]
+
+# ============================================================================
 # declareDatatype
 # ============================================================================
 
@@ -325,6 +360,11 @@ proc declareDatatype*[T](
   for con in work.rawCons:
     Z3_del_constructor(ctx.raw, con)
 
+  # v0.4 step 3: register the produced sort for sortdispatch lookup by
+  # marker-type name. Re-registering the same T overwrites — Z3 would
+  # build a fresh sort anyway; we just track the most recent.
+  ctx.datatypeRegistry[$T] = dtSort
+
   Z3DatatypeDecl[T](ctx: ctx, sort: dtSort, cons: conRefs)
 
 proc declareDatatype*[T](
@@ -397,6 +437,9 @@ proc declareDatatypes*[T1, T2](
 
   let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
   let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
+  # v0.4 step 3: sortdispatch registry — both sides land in one batch.
+  ctx.datatypeRegistry[$T1] = sortsOut[0]
+  ctx.datatypeRegistry[$T2] = sortsOut[1]
   (dt1, dt2)
 
 proc declareDatatypes*[T1, T2](
@@ -453,6 +496,10 @@ proc declareDatatypes*[T1, T2, T3](
   let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
   let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
   let dt3 = Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: conRefs3)
+  # v0.4 step 3: sortdispatch registry — all three sides land in one batch.
+  ctx.datatypeRegistry[$T1] = sortsOut[0]
+  ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]
   (dt1, dt2, dt3)
 
 proc declareDatatypes*[T1, T2, T3](

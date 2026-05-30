@@ -213,7 +213,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 2. **Structural introspection** (`z3/introspect`). ✅ shipped. Both AST-side (`Z3AstKind`, `getAppDecl`, `getAppArg`, `unpackApp`) and sort-side (`Z3SortKind`, `bitVecWidth`, `arrayKey`, `fpEbits`, …) capabilities, with the `Z3AnyAst` erased type and the per-family typed lifters.
 
-3. **`Z3DatatypeValue` as `sortOf` element type.** Closes the v0.3 §8 carryover. Adds the per-context `datatypeRegistry`, updates `declareDatatype` registration, adds the `sortOf` overload. Subsequent steps can put `Z3DatatypeValue` in any element position.
+3. **`Z3DatatypeValue` as `sortOf` element type.** ✅ shipped. Closes the v0.3 §8 carryover. Added the per-context `datatypeRegistry`, updated all `declareDatatype` / `declareDatatypes` variants to register, added the `sortOf` overload that does runtime lookup with helpful error on miss.
 
 4. **`Z3Proof` family + `ProofRule` enum + `unpackProof`.** Lives in `z3/proof`. Self-contained but needed before goal 4's `getProof`.
 
@@ -328,6 +328,13 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 3 (Z3DatatypeValue as sortOf element type)
+
+- **Clean landing.** The runtime decl-table mechanism worked exactly as planned: `Z3ContextOwn` gained a `datatypeRegistry: Table[string, RawZ3Sort]` keyed by marker-type name (`$T`); all four `declareDatatype` / `declareDatatypes` variants register the produced sort(s) at finalisation; the `sortOf*[T](_: typedesc[Z3DatatypeValue[T]], ctx)` overload looks up `$T` and raises `Z3Error` with a precise registration-required message on miss. No spec corrections surfaced.
+- **Idempotency policy: overwrite.** Re-registering the same `T` overwrites the previous sort handle. Z3 itself would build a fresh sort on duplicate `declareDatatype` calls anyway, so the registry tracks only the most recent. Documented in the `sortOf` docstring; no user-facing error on duplicate registration.
+- **One departure from compile-time sortdispatch.** This is the only `sortOf` overload in the wrapper that does runtime table lookup — every other typed family's sort is determined entirely at compile time. The departure is justified because Z3 datatype sort identity literally cannot be encoded compile-time (the underlying sort handle is dynamic). Comment in `z3/datatypes.nim` calls this out as the one principled exception to the sortdispatch discipline.
+- **Headline capability unlocked**: `Z3Array[Z3Int, Z3DatatypeValue[Color]]`, `Z3Seq[Z3DatatypeValue[Color]]`, `Z3FuncDecl[(Z3DatatypeValue[Color],), Z3Bool]` all construct + round-trip through models. Mutually-recursive datatypes (`declareDatatypes(forDatatype[Tree], forDatatype[Forest])`) register both sides in one batch.
 
 ### From step 2 (structural introspection)
 

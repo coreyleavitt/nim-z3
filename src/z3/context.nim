@@ -39,6 +39,7 @@
 ## - `Z3_MEMOUT_FAIL` — out of memory during solving.
 
 import ./ffi
+import std/tables
 import softlink
 
 # ============================================================================
@@ -49,6 +50,15 @@ type
   Z3ContextOwn = object
     raw: RawZ3Context
     cfg: RawZ3Config
+    datatypeRegistry*: Table[string, RawZ3Sort]
+      ## **v0.4 step 3.** Per-context lookup table keyed by marker-type
+      ## name (`$T`), populated by `declareDatatype[T]` / `declareDatatypes`
+      ## with the resulting `RawZ3Sort`. Read at sortdispatch time by
+      ## `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` — the only way
+      ## to resolve a runtime-built datatype sort from a compile-time
+      ## typedesc. The `*` export is needed so the sibling module
+      ## `z3/datatypes` (which lives outside `z3/context`) can write
+      ## into the table; user code should not touch it directly.
   Z3Context* = ref Z3ContextOwn
     ## Heap-allocated, ref-counted by Nim's ORC. Held alive by anyone
     ## who needs the underlying Z3 context (ASTs, solvers, models).

@@ -219,7 +219,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 5. **`Z3Fixedpoint`** (`z3/fixedpoint`). ✅ shipped. Largest single module added in v0.4 — comparable to `z3/optimize`. Spec corrections logged in §8 (push/pop, get_ground_sat_answer don't exist).
 
-6. **Solver extensions — `assertConstraintAndTrack` + `getUnsatCore`.** First half of goal 4. Uses `Z3AstVector` from step 1.
+6. **Solver extensions — `assertConstraintAndTrack` + `getUnsatCore`.** ✅ shipped. First half of goal 4. Uses `Z3AstVector` from step 1.
 
 7. **Solver extensions — `getProof`.** ✅ shipped together with step 4 (merged — see §8). Returns the `Z3Proof` from step 4.
 
@@ -328,6 +328,12 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 6 (assertConstraintAndTrack + getUnsatCore)
+
+- **Clean landing.** Closes the v0.3 step-8 half-implementation (could set `unsat_core=true` but couldn't extract). `Z3AstVector.toSeq(Z3Bool)` from v0.4 step 1 carries the typed extraction. No spec corrections.
+- **Two user-facing surfaces ship side-by-side**: `assertConstraintAndTrack(s, c, tracker: Z3Bool)` (explicit-tracker form matching the C API) and `track(s, c, name: string)` (convenience that auto-creates `mkBoolVar(name)` and returns it). Both return the tracker; both are `{.discardable.}` so users can ignore the return when they captured the tracker via the input or via a named helper.
+- **Optional `unsat_core=true` param turned out not to be required.** Z3 enables unsat-core extraction implicitly whenever any `assert_and_track` is used. The v0.3 step-8 `setParams("unsat_core", true)` path still works but is redundant; tests don't set it. **No work deferred.**
 
 ### From step 5 (Z3Fixedpoint)
 

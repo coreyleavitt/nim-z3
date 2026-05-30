@@ -31,7 +31,8 @@
 ## `assert` because Nim has a built-in `assert` template; overloading
 ## would create distracting ambiguity in user code.
 
-import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle, ./params
+import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle, ./params,
+       ./astvector
 export builder, boolean
 
 type
@@ -139,6 +140,58 @@ proc assertConstraint*(s: Z3Solver, constraint: Z3Bool) {.inline.} =
   ## Alias for `add` — closer to Z3's SMT-LIB terminology. Use whichever
   ## reads better at the call site.
   s.add(constraint)
+
+# ============================================================================
+# Tracked assertions + unsat core (v0.4 step 6)
+# ============================================================================
+
+proc assertConstraintAndTrack*(s: Z3Solver, constraint: Z3Bool,
+                               tracker: Z3Bool): Z3Bool {.discardable.} =
+  ## Assert `constraint` tagged by `tracker` — a fresh Bool literal
+  ## (typically built via `mkBoolVar`). After `check()` returns
+  ## `zsUnsat`, `getUnsatCore` returns the subset of trackers whose
+  ## assertions appear in the minimal unsatisfiable core.
+  ##
+  ## Returns `tracker` for fluent capture:
+  ##
+  ## ```nim
+  ## let t1 = s.assertConstraintAndTrack(x > 5, mkBoolVar("t1"))
+  ## let t2 = s.assertConstraintAndTrack(x < 3, mkBoolVar("t2"))
+  ## doAssert s.check() == zsUnsat
+  ## let core = s.getUnsatCore()  # @[t1, t2]
+  ## ```
+  s.ctx.checkErrVoid Z3_solver_assert_and_track(
+    s.ctx.raw, s.raw, constraint.raw, tracker.raw)
+  tracker
+
+proc track*(s: Z3Solver, constraint: Z3Bool, name: string): Z3Bool
+    {.discardable.} =
+  ## Convenience: create a fresh `Z3Bool` tracker named `name` and
+  ## assert `constraint` tracked by it. Returns the tracker.
+  ##
+  ## ```nim
+  ## let t1 = s.track(x > 5, "x-too-big")
+  ## let t2 = s.track(x < 3, "x-too-small")
+  ## doAssert s.check() == zsUnsat
+  ## for tr in s.getUnsatCore():
+  ##   echo $tr   # "x-too-big" / "x-too-small"
+  ## ```
+  let tracker = mkBoolVar(s.ctx, name)
+  s.assertConstraintAndTrack(constraint, tracker)
+  tracker
+
+proc getUnsatCore*(s: Z3Solver): seq[Z3Bool] =
+  ## Extract the minimal unsatisfiable core after `check() == zsUnsat`.
+  ## Returns the subset of tracker propositions (the second argument
+  ## to `assertConstraintAndTrack` or the proposition returned by
+  ## `track`) whose assertions participate in the contradiction.
+  ##
+  ## Returns the empty sequence if no tracked assertions are in the
+  ## core (e.g. if `check()` returned sat / unknown, or if no
+  ## tracked assertions were added).
+  let raw = s.ctx.checkErr Z3_solver_get_unsat_core(s.ctx.raw, s.raw)
+  let vec = wrapAstVector(s.ctx, raw)
+  vec.toSeq(Z3Bool)
 
 # Convenience: assert several constraints at once.
 proc add*(s: Z3Solver, constraints: varargs[Z3Bool]) =

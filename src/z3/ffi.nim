@@ -934,6 +934,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
 
   proc Z3_solver_assert(c: RawZ3Context, s: RawZ3Solver, a: RawZ3Ast)
     {.cdecl, header: "z3.h".}
+  proc Z3_solver_assert_and_track(c: RawZ3Context, s: RawZ3Solver,
+                                  a: RawZ3Ast, p: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 6.** Assert `a` tagged by tracker proposition `p`
+    ## (a fresh Boolean literal). After an unsat `check()`,
+    ## `Z3_solver_get_unsat_core` returns the subset of trackers
+    ## whose assertions are in the minimal unsatisfiable core.
+  proc Z3_solver_get_unsat_core(c: RawZ3Context, s: RawZ3Solver): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 6.** Extract the unsat core after `check() == zsUnsat`.
+    ## Returns an `ast_vector` of tracker literals that participate in
+    ## the contradiction.
   proc Z3_solver_check(c: RawZ3Context, s: RawZ3Solver): Z3LBool
     {.cdecl, header: "z3.h".}
   proc Z3_solver_get_model(c: RawZ3Context, s: RawZ3Solver): RawZ3Model

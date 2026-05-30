@@ -26,8 +26,13 @@ The architectural foundation (phantom-sort discipline, refcount lifecycle, curre
 5. **Tactics and goals** — composable `Z3Tactic` (`mkTactic`, `then`, `orElse`, `repeat`, `tryFor`, `with` for parameter overrides), `Z3Goal` (`add`, `simplify`, `to_string`), and `applyTactic(t, g)` returning a `Z3ApplyResult` so users can ablate solver strategies on a goal before handing to the main solver.
 6. **`Z3_simplify` + wrapper** — surfaced in v0.1's §18 as deferred. Now the canonical "fold constants and known identities" primitive that property tests, datatype recognisers, and tactic composition all want.
 7. **Big-width BitVec literals + extraction** — `mkBigBitVec(numeral, W)` for `W > 64`, `toBigUintStr` / `toBigIntStr` on `Z3BitVec[W]`. Also deferred from v0.1.
-8. **Public `z3/strategies` module** exposing the `IntRecipe` / `BoolRecipe` / `BvRecipe` shape strategies + interpreters that v0.1 buried in `tests/tproperty.nim`. Bundles proptest as an optional runtime dep behind `when defined(z3WithProptest):`.
+8. **Reabsorbed carryovers from step 1 and step 7**, now unblocked by step 8's `Z3Params` landing:
+   - `Z3_simplify_ex(ast, params)` — params-customised simplifier.
+   - `Z3_optimize_set_params(o, params)` for `priority = "box"` / `"pareto"` multi-objective on `Z3Optimize`.
+   Both deferrals were logged in §8 at the time; this step lands them.
 9. **Multi-version + multi-platform CI** — add macOS-x64 / macOS-aarch64 rows to the existing 4-version Z3 matrix; consider adding a valgrind job behind ASAN.
+
+**Dropped from the plan**: a "public `z3/strategies` module" exposing the recipe ADTs from `tests/recipes.nim` was originally on the list. Dropped because (a) proptest is going to depend on `nim-z3` (for symbolic-shrinking / constraint-backed strategies), so inverting that dep direction is a design smell even guarded by `-d:z3WithProptest`; (b) no real consumer wants random *Z3 expression trees* as a library feature — it was test infrastructure dressed up as a goal. Recipes stay test-only in `tests/recipes.nim`.
 
 ### Non-goals
 
@@ -229,7 +234,7 @@ Naming follows the v0.1 convention: lowercase module file, idiomatic `Z3X` types
 5. Quantifiers + patterns.
 6. Optimisation.
 7. Tactics + goals.
-8. Public `z3/strategies` module.
+8. Reabsorbed carryovers (`Z3_simplify_ex`, `Z3_optimize_set_params` box / Pareto).
 9. macOS / aarch64 CI rows.
 10. Generated API reference via `nim doc --project`.
 11. v0.2 tag.
@@ -264,11 +269,15 @@ The order is chosen so each step's tests can exercise the new surface end-to-end
 
 8. **Tactics + goals** (`Z3Tactic`, `Z3Goal`, `applyTactic`, combinator surface). Tests verify standard pipelines (`simplify` → `solve-eqs` → `smt`) produce equivalent results to the default solver.
 
-9. **Public `z3/strategies` module**. Refactor recipes out of `tests/tproperty.nim`; expose via `when defined(z3WithProptest)` guard so the runtime dep stays optional. New `examples/properties.nim` showcase using the public strategies.
+9. **Reabsorbed carryovers** unblocked by step 8's `Z3Params`:
+   - `Z3_simplify_ex(ast, params)` (carryover from step 1).
+   - `Z3_optimize_set_params(o, params)` exposing box / Pareto multi-objective modes on `Z3Optimize` (carryover from step 7).
 
 10. **macOS / aarch64 CI rows** + `nim doc --project` artifact publishing.
 
 11. **v0.2 tag.**
+
+**Dropped from this sequence**: the public `z3/strategies` module that originally sat at step 9. See §1's "Dropped from the plan" note for why; recipes stay in `tests/recipes.nim`.
 
 ---
 
@@ -285,10 +294,6 @@ Z3 will silently run forever on a quantified problem with a bad / missing patter
 ### Optimisation + tactics ABI churn across Z3 versions
 
 Optimisation and tactics gained features across 4.10 → 4.13. Some symbols we'll want (e.g. lex / Pareto mode controls) appeared after 4.10. The matrix CI from v0.1 §12 will surface this immediately — at which point the `.optional` softlink declaration becomes mandatory (v0.1 §18 deferral that finally fires).
-
-### Recipes-as-public-API + proptest dep ergonomics
-
-Bundling proptest as a runtime dep (even guarded by `when defined(...)`) means consumers need to opt in explicitly. A non-opt-in user importing `z3/strategies` should get a helpful compile error pointing them at `-d:z3WithProptest`, not a cryptic "module not found".
 
 ---
 
@@ -311,7 +316,7 @@ Same discipline as the v0.1 §18 ledger — append-only. Format: **what**, **why
 
 ### From step 2 (big-width BitVec)
 
-- Nothing genuinely deferred from this step — it absorbed two v0.1 §18 items (big BV construction + extraction) and additionally fixed v0.1's strict-no-simplify behavior on `toUint`/`toInt`. The remaining gap (property tests over BV recipes with W > 8) was already logged in v0.1 §18 step 9; revisit alongside step 8's public `z3/strategies` module when recipes generalise on W.
+- Nothing genuinely deferred from this step — it absorbed two v0.1 §18 items (big BV construction + extraction) and additionally fixed v0.1's strict-no-simplify behavior on `toUint`/`toInt`. The remaining gap (property tests over BV recipes with W > 8) was already logged in v0.1 §18 step 9; revisit if `tests/recipes.nim` ever grows BV-width generalisation. (Originally this entry pointed at a public `z3/strategies` module — that module was dropped from the plan; see §1.)
 
 ### From step 3 (arrays)
 

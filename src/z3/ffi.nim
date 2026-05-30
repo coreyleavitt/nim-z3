@@ -370,6 +370,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Apply a function declaration to arguments. Used for constructor /
     ## recognizer / accessor invocations.
 
+  proc Z3_mk_func_decl(c: RawZ3Context, s: RawZ3Symbol,
+                       domain_size: cuint,
+                       domain: ptr UncheckedArray[RawZ3Sort],
+                       range: RawZ3Sort): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Declare an uninterpreted function with the given signature.
+    ## Refcount discipline: route through `Z3_func_decl_to_ast` +
+    ## `Z3_inc_ref` / `Z3_dec_ref` (datatypes.nim does the same).
+    ## **v0.3 step 7.**
+
   proc Z3_to_app(c: RawZ3Context, a: RawZ3Ast): RawZ3App
     {.cdecl, header: "z3.h".}
     ## Cast a constant `Ast` to its `App` form. `Z3_mk_forall_const`

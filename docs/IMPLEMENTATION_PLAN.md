@@ -283,7 +283,7 @@ examples/
 4. **Strings + regexes** (`z3/char`, `z3/string`, `z3/regex`). ✅ shipped.
 5. **Sequences** (`z3/seq`). ✅ shipped.
 6. **FloatingPoint** (`z3/fp`). ✅ shipped.
-7. **Uninterpreted functions** (`Z3FuncDecl`).
+7. **Uninterpreted functions** (`Z3FuncDecl`). ✅ shipped.
 8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
 9. Pre-tag audit.
 10. v0.3 tag.
@@ -385,6 +385,12 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+### From step 7 (uninterpreted functions)
+
+- **`Z3_func_interp` tabular interpretation extraction deferred.** Z3 ships `Z3_model_get_func_interp(model, fd)` returning a `Z3_func_interp` handle: a sequence of explicit (args → value) entries plus an "else" default. The headline use case ("what value does f take at point x?") is covered by `evalAt(m, f, args)`. The full tabular surface (ref-typed handle, entry iteration, else-value extraction) is a richer feature and deserves its own focused design pass. **Where**: v0.4 if a real user needs to enumerate the model's full interpretation table. Not blocking the v0.3 tag.
+- **`sortOfType` / `sortOfTypeSeq` / `sortOfTypeFD` duplication consolidation.** Step 7's `sortOfTypeFD` is the third cascade dispatcher (after `array.sortOfType` covering Int/Real/Bool/BV and `seq.sortOfTypeSeq` adding Char and recursive Seq). It now covers the full v0.3 family set including `Z3Fp[E, S]`. The three cascades are 80% identical; the right consolidation is a single `z3/sortdispatch` module that all three import from. **Where**: v0.3 step 9 (pre-tag audit / cleanup commit). Moved up from "future cleanup" to "blocking before tag" because every new typed family now requires updating three cascades.
+- **`{.experimental: "callOperator".}` is module-local in `z3/funcdecl`.** Needed to make `f(x, y)` work as a call on the `Z3FuncDecl` value. Scoped via the `experimental` pragma at module head, not globally enabled. No knock-on effect on other modules. Documented in the module header.
 
 ### From step 6 (FloatingPoint)
 

@@ -110,6 +110,16 @@
 ##   `toReal` / `toSbv` / `toUbv`. Model extraction
 ##   `toFloat32` / `toFloat64` / `evalFloat32` / `evalFloat64`.
 ##   **v0.3 step 6.**
+## - `z3/funcdecl` — `Z3FuncDecl[ArgsTup, Ret]` phantom-typed handle
+##   to an uninterpreted function. The tuple captures arity + per-
+##   position element type, `Ret` the return type. `mkFuncDecl[Args,
+##   Ret](name)` walks the tuple's field types at compile time to
+##   build the domain sort array. Per-arity `apply` overloads + `()`
+##   callable hooks (0..6 args) let users write `f(x, y)` naturally.
+##   `evalAt(m, f, args)` composes apply + `m.eval` for "what value
+##   does f take at this specific point?" Sort dispatch covers the
+##   full v0.3 family set (Int / Real / Bool / BV[W] / Char /
+##   String / Seq[E] / Fp[E,S]). **v0.3 step 7.**
 ## - `z3/regex` — `Z3Regex[Basis]` phantom-typed over the basis
 ##   sequence sort (v0.3 step 4: `Z3Regex[Z3String]` only; step 5
 ##   widens to `Z3Regex[Z3Seq[E]]`). `mkRegex` / `mkRegexEmpty` /
@@ -159,9 +169,10 @@
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
        z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
-       z3/semantics, z3/char, z3/seq, z3/string, z3/regex, z3/fp
+       z3/semantics, z3/char, z3/seq, z3/string, z3/regex, z3/fp,
+       z3/funcdecl
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
        pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
-       semantics, char, seq, string, regex, fp
+       semantics, char, seq, string, regex, fp, funcdecl
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

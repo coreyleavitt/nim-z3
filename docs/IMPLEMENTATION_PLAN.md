@@ -30,7 +30,7 @@ The architectural foundation (phantom-sort discipline, refcount lifecycle, curre
    - `Z3_simplify_ex(ast, params)` — params-customised simplifier.
    - `Z3_optimize_set_params(o, params)` for `priority = "box"` / `"pareto"` multi-objective on `Z3Optimize`.
    Both deferrals were logged in §8 at the time; this step lands them.
-9. **Multi-version + multi-platform CI** — add macOS-x64 / macOS-aarch64 rows to the existing 4-version Z3 matrix; consider adding a valgrind job behind ASAN.
+9. ~~**Multi-version + multi-platform CI** — add macOS-x64 / macOS-aarch64 rows to the existing 4-version Z3 matrix; consider adding a valgrind job behind ASAN.~~ **Deferred** — see issue [#1](https://github.com/coreyleavitt/nim-z3/issues/1). Blocked on the same private-dep upstream that's keeping v0.1's CI red; rolls back into scope when `coreyleavitt/milpa` and `coreyleavitt/proptest` go public (or a deploy-key / PAT is configured).
 
 **Dropped from the plan**: a "public `z3/strategies` module" exposing the recipe ADTs from `tests/recipes.nim` was originally on the list. Dropped because (a) proptest is going to depend on `nim-z3` (for symbolic-shrinking / constraint-backed strategies), so inverting that dep direction is a design smell even guarded by `-d:z3WithProptest`; (b) no real consumer wants random *Z3 expression trees* as a library feature — it was test infrastructure dressed up as a goal. Recipes stay test-only in `tests/recipes.nim`.
 
@@ -273,7 +273,7 @@ The order is chosen so each step's tests can exercise the new surface end-to-end
    - `Z3_simplify_ex(ast, params)` (carryover from step 1).
    - `Z3_optimize_set_params(o, params)` exposing box / Pareto multi-objective modes on `Z3Optimize` (carryover from step 7).
 
-10. **macOS / aarch64 CI rows** + `nim doc --project` artifact publishing.
+10. ~~**macOS / aarch64 CI rows** + `nim doc --project` artifact publishing.~~ **Deferred — issue [#1](https://github.com/coreyleavitt/nim-z3/issues/1).** Blocked on the same private-dep blocker that's keeping v0.1's CI red (`coreyleavitt/milpa` and `coreyleavitt/proptest`). Rolls back into scope when that clears.
 
 11. **v0.2 tag.**
 
@@ -368,6 +368,10 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 
 - **Nothing newly deferred from this step** — it absorbed the two carryovers from steps 1 and 7 that step 8's `Z3Params` had unblocked. Surface added: `simplify[S](a, params)` / `simplify[W](a, params)` overloads on `z3/simplify`, `setParams(o, p)` on `Z3Optimize`. Tests: 4 new in `tsimplify.nim` (tracer + 3 shape-property tests over random int/bool/BV trees), 2 new in `toptimize.nim` (box mode gives independent objective bounds; pareto mode enumerates frontier points then returns unsat).
 - Pareto-mode model conversion for `Z3Optimize` — each `check()` returns sat with a different model on the frontier; we exercise the enumeration but don't separately test extracting each model. Same gap as the §8 `Z3_apply_result_convert_model` deferral. **Where**: follow-up alongside the next step's user-facing demo of Pareto.
+
+### From step 10 (multi-platform CI + nim-doc publishing) — entire step deferred
+
+**Whole step deferred and filed as [#1](https://github.com/coreyleavitt/nim-z3/issues/1)**. The existing Linux CI matrix workflow YAML is correct but red because `coreyleavitt/milpa` and `coreyleavitt/proptest` are private — `pipx install` and `milpa fetch` both 404. Adding macOS / aarch64 rows or a `nim doc --project` Pages job today would just multiply the number of red jobs without changing the actionable signal. Issue #1 rolls back into scope the moment the upstream private-dep blocker clears (deps go public, or a deploy-key / PAT is wired). v0.2 ships without it; rolls forward to v0.2.1 / v0.3 once #1 closes.
 
 ### Spec divergence (step 8, captured for the precedent)
 

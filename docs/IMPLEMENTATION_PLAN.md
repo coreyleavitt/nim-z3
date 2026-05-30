@@ -211,7 +211,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 1. **`Z3AstVector` typed handle** (`z3/astvector`). ✅ shipped. Needed by goals 4 (unsat-core, consequences), 7 (quantifier patterns), 11 (parser-context output). Also landed the `Z3Term` concept properly in `z3/lifecycle` — see §8 spec correction.
 
-2. **Structural introspection** (`z3/introspect`). Both AST-side (`Z3AstKind`, `getAppDecl`, `getAppArg`, `unpackApp`) and sort-side (`Z3SortKind`, `bitVecWidth`, `arrayKey`, `fpEbits`, …) capabilities, with the `Z3AnyAst` erased type and the per-family typed lifters. The largest single foundational step; everything downstream may want to walk terms or inspect sorts.
+2. **Structural introspection** (`z3/introspect`). ✅ shipped. Both AST-side (`Z3AstKind`, `getAppDecl`, `getAppArg`, `unpackApp`) and sort-side (`Z3SortKind`, `bitVecWidth`, `arrayKey`, `fpEbits`, …) capabilities, with the `Z3AnyAst` erased type and the per-family typed lifters.
 
 3. **`Z3DatatypeValue` as `sortOf` element type.** Closes the v0.3 §8 carryover. Adds the per-context `datatypeRegistry`, updates `declareDatatype` registration, adds the `sortOf` overload. Subsequent steps can put `Z3DatatypeValue` in any element position.
 
@@ -328,6 +328,12 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 2 (structural introspection)
+
+- **Spec correction**: Z3's FP sort-parameter extractors are `Z3_fpa_get_ebits` / `Z3_fpa_get_sbits`, NOT `Z3_get_fpa_sort_ebits` / `_sbits` as the plan's draft spec assumed. The naming convention isn't perfectly consistent across Z3's sort-introspection family (`Z3_get_bv_sort_size`, `Z3_get_array_sort_domain`, `Z3_get_seq_sort_basis` follow `Z3_get_*_sort_*`, but FP and Char use `Z3_fpa_*` / `Z3_*_char_sort` variants). Resolution: name FFI bindings after the actual C symbols; the Nim wrapper presents a clean unified surface (`fpEbits` / `fpSbits` / `bitVecWidth` / `arrayKey` / `seqElement`). **No work deferred.**
+- **Z3 represents `Bool` literals as 0-arity applications.** `mkBool(true)` has `getAstKind == akApp`, not `akNumeral` — Z3 treats `true` / `false` as nullary applications of the boolean-constant function decl. Same for free constants (`mkIntVar("x")` is also `akApp`). The wrapper documents this in the `getAstKind` docstring on `akApp`. Test pins the observable behaviour. **No work deferred.**
+- **`Z3SortError` typed exception subclass not used yet.** Sort-mismatch errors raised by `asZ3X` lifters use the flat `Z3Error` with `Z3_INVALID_USAGE` code. The plan's V0.5_PLAN.md goal 3 (error type hierarchy) will introduce `Z3SortError` as a subclass; v0.4 step 2 uses the flat form because the hierarchy doesn't exist yet. Naming the eventual subclass and ensuring all sort-mismatch raise sites flow through one helper (`raiseSortMismatch` template) makes the v0.5 step-3 refactor mechanical. **No work deferred** — v0.5 step 3 handles the hierarchy.
 
 ### From step 1 (Z3AstVector foundation)
 

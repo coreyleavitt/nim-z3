@@ -72,6 +72,15 @@
 ## - `z3/params` — `Z3Params` typed parameter bag for tactics,
 ##   solvers, optimisers. `newParams` + overloaded `set(key, value)`
 ##   for `bool`, `uint`, `float`, and `string` values. **v0.2 step 8.**
+## - `z3/introspect` — structural introspection. `Z3AstKind` enum
+##   + `getAstKind[T: Z3Term]`, `getSort`, `getAppNumArgs`,
+##   `getAppArg`, `getAppDecl`, `unpackApp`, `getNumeralString`.
+##   `Z3SortKind` enum + `getSortKind`, `bitVecWidth`, `arrayKey` /
+##   `arrayRange`, `seqElement`, `regexBasis`, `fpEbits` / `fpSbits`,
+##   `datatypeName`. The erased `Z3AnyAst` family + `toAnyAst` up-cast
+##   + typed lifters `asZ3Int` / `asZ3Real` / `asZ3Bool` / `asZ3Char` /
+##   `asZ3BitVec[W]` / `asZ3Fp[E, S]` / `asZ3Seq[E]` / `asZ3Regex[B]`
+##   with runtime sort + parameter verification. **v0.4 step 2.**
 ## - `z3/astvector` — `Z3AstVector` typed ref-handle for Z3's
 ##   heterogeneous-sort AST-vector C type. Constructor `newAstVector`,
 ##   `len`, `[i]` (raw access), `[]=`/`add[T: Z3Term]`/`resize`
@@ -187,10 +196,10 @@ import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
        z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec, z3/pretty,
        z3/simplify, z3/array, z3/datatypes, z3/quantifier, z3/optimize,
        z3/params, z3/tactic, z3/semantics, z3/char, z3/seq, z3/string,
-       z3/regex, z3/fp, z3/funcdecl, z3/astvector
+       z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/introspect
 export ffi, context, sort, sortdispatch, ast, builder, boolean, arith, solver,
        model, bitvec, pretty, simplify, array, datatypes, quantifier, optimize,
        params, tactic, semantics, char, seq, string, regex, fp, funcdecl,
-       astvector
+       astvector, introspect
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

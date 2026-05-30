@@ -136,6 +136,37 @@ type
     Z3_DEC_REF_ERROR = 11
     Z3_EXCEPTION = 12
 
+  # --- AST kind + sort kind enums (v0.4 step 2) ----------------------------
+
+  Z3AstKindFFI* {.importc: "Z3_ast_kind", header: "z3.h",
+                  size: sizeof(cint).} = enum
+    Z3_NUMERAL_AST = 0
+    Z3_APP_AST = 1
+    Z3_VAR_AST = 2
+    Z3_QUANTIFIER_AST = 3
+    Z3_SORT_AST = 4
+    Z3_FUNC_DECL_AST = 5
+    Z3_UNKNOWN_AST = 1000
+
+  Z3SortKindFFI* {.importc: "Z3_sort_kind", header: "z3.h",
+                   size: sizeof(cint).} = enum
+    Z3_UNINTERPRETED_SORT = 0
+    Z3_BOOL_SORT = 1
+    Z3_INT_SORT = 2
+    Z3_REAL_SORT = 3
+    Z3_BV_SORT = 4
+    Z3_ARRAY_SORT = 5
+    Z3_DATATYPE_SORT = 6
+    Z3_RELATION_SORT = 7
+    Z3_FINITE_DOMAIN_SORT = 8
+    Z3_FLOATING_POINT_SORT = 9
+    Z3_ROUNDING_MODE_SORT = 10
+    Z3_SEQ_SORT = 11
+    Z3_RE_SORT = 12
+    Z3_CHAR_SORT = 13
+    Z3_TYPE_VAR = 14
+    Z3_UNKNOWN_SORT = 1000
+
 # ============================================================================
 # Z3 callback types
 # ============================================================================
@@ -658,6 +689,35 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_get_sort(c: RawZ3Context, a: RawZ3Ast): RawZ3Sort
     {.cdecl, header: "z3.h".}
     ## Sort of an AST.
+
+  # --- Structural introspection (v0.4 step 2) ------------------------------
+
+  proc Z3_get_ast_kind(c: RawZ3Context, a: RawZ3Ast): Z3AstKindFFI
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_sort_kind(c: RawZ3Context, s: RawZ3Sort): Z3SortKindFFI
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_app_decl(c: RawZ3Context, a: RawZ3App): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_app_num_args(c: RawZ3Context, a: RawZ3App): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_app_arg(c: RawZ3Context, a: RawZ3App, i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_array_sort_domain(c: RawZ3Context, s: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_array_sort_range(c: RawZ3Context, s: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_seq_sort_basis(c: RawZ3Context, s: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_re_sort_basis(c: RawZ3Context, s: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_ebits(c: RawZ3Context, s: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_sbits(c: RawZ3Context, s: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_sort_name(c: RawZ3Context, s: RawZ3Sort): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+  proc Z3_get_symbol_string(c: RawZ3Context, s: RawZ3Symbol): cstring
+    {.cdecl, header: "z3.h".}
 
   # --- BitVec ops: arithmetic (sign-independent + signed/unsigned variants) -
 

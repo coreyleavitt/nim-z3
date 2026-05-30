@@ -16,6 +16,12 @@ examples/*
 examples/*.so
 examples/*.dylib
 examples/*.dll
+
+# Standalone-module compile artifacts that land next to source.
+# I sometimes run `nim c src/z3/foo.nim` to type-check a module in
+# isolation; the resulting binary lands at `src/z3/foo` (no extension).
+src/z3/*
+!src/z3/*.nim
 nimcache/
 *.o
 *.exe

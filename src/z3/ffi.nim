@@ -425,6 +425,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## program) with our own no-op handler so the error code stays in
     ## the context for us to check after each call.
 
+  # --- Simplifier ----------------------------------------------------------
+
+  proc Z3_simplify(c: RawZ3Context, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Apply Z3's default simplifier to `a`. Folds constants, rewrites
+    ## known identities, normalises forms — but doesn't run the full
+    ## decision procedure. The returned AST is semantically equivalent
+    ## to the input (same value under every interpretation) and has
+    ## the same sort.
+
   # --- SMT2 parser ---------------------------------------------------------
 
   proc Z3_parse_smtlib2_string(c: RawZ3Context, src: cstring,

@@ -46,6 +46,15 @@ type
       ## and invasive rework of every existing generic over `Z3Ast[S]`.
       ## This tag exists so `Z3Sort[stBitVec]` is still expressible for
       ## sort-level introspection.
+    stArray
+      ## Array sort. Key/value types live on a separate
+      ## `Z3Array[Key, Val]` type (see `z3/array`) carrying typedesc
+      ## generic parameters — same precedent as `Z3BitVec[W]` carrying
+      ## its width. The flat `SortTag` enum can't express two
+      ## sub-parameters (key sort + value sort, where the value can
+      ## itself be a width-tracked BV), so the typed array surface
+      ## lives in its own type family. This tag exists for sort-level
+      ## introspection.
 
   Z3Sort*[S: static SortTag] = object
     ## Phantom-typed sort handle. Value type carrying the underlying

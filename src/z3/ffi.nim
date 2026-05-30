@@ -269,6 +269,26 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## All-pairs-distinct constraint; cheaper than the equivalent
     ## quadratic conjunction of `not (a == b)`.
 
+  # --- Array sort + ops ----------------------------------------------------
+
+  proc Z3_mk_array_sort(c: RawZ3Context, domain, range: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## `(Array domain range)` — total function from `domain` to `range`.
+
+  proc Z3_mk_const_array(c: RawZ3Context, domain: RawZ3Sort, v: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Array whose value is `v` at every index. `domain` is the index
+    ## sort; the range sort is inferred from `v`'s sort.
+
+  proc Z3_mk_store(c: RawZ3Context, a, i, v: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Functional update: returns an array `a'` with `a'[i] = v` and
+    ## `a'[j] = a[j]` for every `j` distinct from `i`.
+
+  proc Z3_mk_select(c: RawZ3Context, a, i: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Read `a[i]`. Result sort is the array's range sort.
+
   # --- BitVec sort + numerals ----------------------------------------------
 
   proc Z3_mk_bv_sort(c: RawZ3Context, sz: cuint): RawZ3Sort

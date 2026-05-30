@@ -58,6 +58,11 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
+## - `z3/array` — `Z3Array[Key, Val]` phantom-typed over typedescs
+##   of AST families (so `Z3Array[Z3BitVec[32], Z3BitVec[8]]` is a
+##   distinct type from `Z3Array[Z3BitVec[64], Z3BitVec[8]]`).
+##   Surface: `mkConstArray`, `mkArrayVar`, `store`, `select`, `[]`,
+##   `==`, `!=`. **v0.2 step 3.**
 ## - `z3/simplify` — `Z3_simplify` wrapped with phantom-type
 ##   preservation. `simplify[S](a: Z3Ast[S]): Z3Ast[S]` for Int/Real/
 ##   Bool and a parallel `simplify[W](a: Z3BitVec[W]): Z3BitVec[W]`
@@ -70,8 +75,8 @@
 ##   stack" pass over Z3's flat output. **Implemented.**
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
-       z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify
+       z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify
+       pretty, simplify, array
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -305,7 +305,14 @@ Bundling proptest as a runtime dep (even guarded by `when defined(...)`) means c
 
 Same discipline as the v0.1 §18 ledger — append-only. Format: **what**, **why**, **where it goes** (v0.3 / dropped). This is the v0.2-specific list; v0.1's deferrals that remain unaddressed live in [`V0.1_PLAN.md` §18](V0.1_PLAN.md#18-deferred-from-v01-running-list-updated-as-we-go).
 
-*(empty until the first deferral surfaces)*
+### From step 3 (arrays)
+
+- **Nested arrays** (`Z3Array[Z3Int, Z3Array[Z3Int, Z3Int]]`). **Why**: Nim 2.2's typedesc-generic-param reflection doesn't compose cleanly across nesting. We can extract `T.W` from a `T: Z3BitVec`, but reflectively getting `T.Key` and `T.Val` from a `T: Z3Array` to recursively build the sort needs macro-level machinery I don't want to write up front for an edge case. **Where**: v0.2 if a user needs it before datatypes land (step 4), otherwise v0.3.
+- **`mkArrayExt(a, b): Key`** (extensionality witness via `Z3_mk_array_ext`). **Why**: useful in proof-heavy code (witness the index where two arrays disagree), niche in everyday encoding. **Where**: v0.2 step 7 (tactics) or v0.3.
+
+### Cross-cutting v0.2 design call (logged here as the precedent)
+
+Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs of the actual AST families (`Z3Int`, `Z3BitVec[W]`, …), not `static SortTag` values. `sortOfType[T](ctx)` is the dispatch helper; `T.W` extracts BV widths via Nim's static-generic-param access. Datatypes (step 4) and quantifiers (step 5) will follow the same pattern wherever they need sort-level parameterisation. The v0.1 §4 sketch — `Z3Array[K, V: static SortTag]` — is superseded; that representation collapsed BV widths to a single tag and could not express memory models.
 
 ---
 

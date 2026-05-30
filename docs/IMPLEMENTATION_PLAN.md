@@ -280,7 +280,7 @@ examples/
 1. **Architectural unification.** `Z3Term` + `Z3Refcountable` concepts, unified lifecycle/wrap surface, behaviour-preserving migration of every existing typed family. ✅ shipped (commit `ea46a86`).
 2. **`z3/semantics` module + carryover gaps.** `smtValid` / `smtEquiv` relocated with the missing `Z3Array` / `Z3DatatypeValue` overloads. `Z3Model.eval` / `[]` for those types. `convertModel` (was `Z3_apply_result_convert_model` pre-spec-correction; see §8). `evalReal` / `toRealApprox`. ✅ shipped (commit `78852f4`).
 3. **Small cleanups.** Dead `SortTag` retirement + `mkBitVec` signature normalisation. ✅ shipped (commit `7b2d59f`).
-4. **Strings + regexes** (`z3/string`, `z3/regex`).
+4. **Strings + regexes** (`z3/char`, `z3/string`, `z3/regex`). ✅ shipped.
 5. **Sequences** (`z3/seq`).
 6. **FloatingPoint** (`z3/fp`).
 7. **Uninterpreted functions** (`Z3FuncDecl`).
@@ -309,7 +309,7 @@ Architectural work first (so subsequent steps inherit the unified surface and do
 
 3. **Small cleanups.** ✅ shipped (`7b2d59f`). Retired `stArray` / `stDatatype` from `SortTag`. Normalised `mkBitVec` to `mkBitVec[W: static int](v: SomeInteger): Z3BitVec[W]` (T moved into the value-param typeclass — Nim can't infer a second generic when the first is bracket-supplied; spec correction in §8).
 
-4. **Strings + regexes** (`z3/string`, `z3/regex`). Tests verify common idioms (`contains` / `replace` / regex matching) decide correctly. **First new typed family using the step-1 unified concept.**
+4. **Strings + regexes.** ✅ shipped. Three modules: `z3/char` (Z3Char Unicode-codepoint family — first use of the step-1 unified concept for a new family), `z3/string` (Z3String with full SMT-LIB seq op coverage + Nim-string-literal lifts), `z3/regex` (Z3Regex[Basis] phantom over the basis sequence sort — Z3String only in step 4; step 5's Z3Seq[E] generalises). Spec corrections in §8.
 
 5. **Sequences** (`z3/seq`). Generalisation of strings; same dispatch story.
 
@@ -385,6 +385,12 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+### From step 4 (strings + regexes)
+
+- **Spec correction**: my initial diagnosis that `Z3_mk_re_range` requires `Char`-sorted operands in 4.13.x was wrong. Z3's polymorphic sort checker explicitly rejects `Char` operands with `"Expected domain: (Seq k!0) (Seq k!0)"` — `re.range` is `(String String) RegEx String` per SMT-LIB-2.6, and Z3 enforces that. The original "UNEXPECTED CODE WAS REACHED" assertion at `ast.cpp:388` was triggered by building the operand strings via raw `Z3_mk_string` (null-terminated cstring path); switching to `Z3_mk_lstring` (length-prefixed — what our `mkString` uses) avoids the assertion. The wrapper's `range` lives on the `Z3String`-typed overload, with a `range(lo, hi: string)` Nim-string-lift ergonomic for the common ASCII case. **Resolved in source; no work deferred.**
+- **`Z3Char` BV interop deferred.** `Z3_mk_char_to_bv` / `Z3_mk_char_from_bv` are real Z3 entry points but their typed BV width depends on Z3's runtime `:char-width` parameter (default 18 bits). Surfacing them well needs deciding whether to lock to `Z3BitVec[18]` or thread a width param through, plus a small reorg so `z3/char` and `z3/bitvec` can see each other. **Where**: v0.4 or a focused mid-v0.3 follow-up.
+- **String replace-all.** `Z3_mk_seq_replace` is first-occurrence only. SMT-LIB / Z3 doesn't ship a direct `replace-all`; the idiom is regex-based composition. **Where**: doc note in `z3/string`; user-facing replace-all helper is a v0.4 ergonomic if a real user needs it.
 
 ### From step 3 (small cleanups)
 

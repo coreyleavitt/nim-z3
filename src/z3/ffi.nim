@@ -826,3 +826,105 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_solver_to_string(c: RawZ3Context, s: RawZ3Solver): cstring
     {.cdecl, header: "z3.h".}
+
+  # --- Characters (v0.3 step 4) --------------------------------------------
+  #
+  # Z3's Char sort is a Unicode codepoint type. The string/regex theory
+  # uses Char as the basis alphabet — re.range, in particular, requires
+  # Char-sorted operands (not single-character strings) since 4.8.10+.
+
+  proc Z3_mk_char_sort(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_char(c: RawZ3Context, ch: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_char_to_int(c: RawZ3Context, ch: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_char_le(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_char_is_digit(c: RawZ3Context, ch: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  # Z3_mk_char_to_bv / Z3_mk_char_from_bv deferred — see z3/char.
+
+  # --- Strings + sequences (v0.3 step 4) -----------------------------------
+  #
+  # SMT-LIB strings are `(Seq Char)` sequences of unicode chars. Z3
+  # exposes them via a first-class String sort plus the `seq_*` builders
+  # which work over the sequence the string is. Step 4 covers the
+  # String surface only; Z3Seq[E] generalisation lands in step 5.
+
+  proc Z3_mk_string_sort(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_string(c: RawZ3Context, s: cstring): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_lstring(c: RawZ3Context, length: cuint, s: cstring): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Length-prefixed string literal — preserves embedded nulls.
+  proc Z3_get_lstring(c: RawZ3Context, s: RawZ3Ast, length: ptr cuint): cstring
+    {.cdecl, header: "z3.h".}
+    ## Length-prefixed model extraction. `length` is filled in on
+    ## success. The returned `cstring` is owned by Z3 — copy before the
+    ## next Z3 call that may invalidate it.
+  proc Z3_is_string(c: RawZ3Context, s: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_seq_length(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_concat(c: RawZ3Context, n: cuint,
+                        args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_at(c: RawZ3Context, s, index: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_extract(c: RawZ3Context, s, offset, length: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_contains(c: RawZ3Context, s, sub: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_prefix(c: RawZ3Context, prefix, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_suffix(c: RawZ3Context, suffix, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_index(c: RawZ3Context, s, sub, offset: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_replace(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_str_to_int(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # --- Regular expressions (v0.3 step 4) -----------------------------------
+
+  proc Z3_mk_re_sort(c: RawZ3Context, basis: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_to_re(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_in_re(c: RawZ3Context, s, re: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_empty(c: RawZ3Context, re: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_full(c: RawZ3Context, re: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_allchar(c: RawZ3Context, re: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_plus(c: RawZ3Context, re: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_star(c: RawZ3Context, re: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_option(c: RawZ3Context, re: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_complement(c: RawZ3Context, re: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_concat(c: RawZ3Context, n: cuint,
+                       args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_union(c: RawZ3Context, n: cuint,
+                      args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_intersect(c: RawZ3Context, n: cuint,
+                          args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_range(c: RawZ3Context, lo, hi: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_loop(c: RawZ3Context, re: RawZ3Ast, lo, hi: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_re_power(c: RawZ3Context, re: RawZ3Ast, n: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}

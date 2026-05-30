@@ -74,6 +74,23 @@
 ##   validity / equivalence oracles; covers every typed family with
 ##   an `==` operator (Z3Ast[S], Z3BitVec[W], Z3Array[K, V],
 ##   Z3DatatypeValue[T], …). **v0.3 step 2.**
+## - `z3/char` — `Z3Char` Unicode-codepoint AST family. Construction
+##   from int codepoint or ASCII `char` literal; ordering (`<=` / `<`),
+##   `isDigit` predicate, `toInt` codepoint extractor. **v0.3 step 4.**
+## - `z3/string` — `Z3String` SMT-LIB string family (`Seq Char` under
+##   the hood). `mkString` / `mkStringVar`, `len`, varargs `concat` +
+##   `&` operator, `contains`, `substr`, `at`, `startsWith` /
+##   `endsWith`, `indexOf`, `replace`, `strToInt` / `intToStr`.
+##   Nim-`string`-literal lifts on `==` / `!=` / `&` / `contains` /
+##   `startsWith` / `endsWith`. **v0.3 step 4.**
+## - `z3/regex` — `Z3Regex[Basis]` phantom-typed over the basis
+##   sequence sort (v0.3 step 4: `Z3Regex[Z3String]` only; step 5
+##   widens to `Z3Regex[Z3Seq[E]]`). `mkRegex` / `mkRegexEmpty` /
+##   `mkRegexFull` / `mkRegexAll`, `matches` membership predicate,
+##   `star` / `plus` / `option` / `complement` unary, varargs
+##   `concat` / `union` / `intersect`, `range(lo, hi: string)`
+##   character ranges, `loop(r, lo, hi)` / `power(r, n)` counted
+##   repetition. **v0.3 step 4.**
 ## - `z3/optimize` — `Z3Optimize` with hard / soft constraints,
 ##   `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
 ##   `upper` / `lower` bound retrieval, `push` / `pop` scopes,
@@ -115,9 +132,9 @@
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
        z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
-       z3/semantics
+       z3/semantics, z3/char, z3/string, z3/regex
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
        pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
-       semantics
+       semantics, char, string, regex
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

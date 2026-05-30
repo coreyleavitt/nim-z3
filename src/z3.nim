@@ -196,10 +196,10 @@ import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
        z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec, z3/pretty,
        z3/simplify, z3/array, z3/datatypes, z3/quantifier, z3/optimize,
        z3/params, z3/tactic, z3/semantics, z3/char, z3/seq, z3/string,
-       z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/introspect
+       z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/introspect, z3/proof
 export ffi, context, sort, sortdispatch, ast, builder, boolean, arith, solver,
        model, bitvec, pretty, simplify, array, datatypes, quantifier, optimize,
        params, tactic, semantics, char, seq, string, regex, fp, funcdecl,
-       astvector, introspect
+       astvector, introspect, proof
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

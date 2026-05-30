@@ -148,6 +148,57 @@ type
     Z3_FUNC_DECL_AST = 5
     Z3_UNKNOWN_AST = 1000
 
+  Z3DeclKindFFI* {.importc: "Z3_decl_kind", header: "z3.h",
+                   size: sizeof(cint).} = enum
+    ## Z3_decl_kind has ~250 entries in z3_api.h; we only declare the
+    ## proof-rule subset because that's all the wrapper dispatches on
+    ## (in `z3/proof`). Imported enums tolerate out-of-range runtime
+    ## values; `z3/proof.toProofRule` uses an `else` branch to map
+    ## anything else to `prUnknown`. C++ backend's static_assert is
+    ## satisfied because Nim emits the type as `Z3_decl_kind`.
+    Z3_OP_PR_UNDEF_E            = 0x500
+    Z3_OP_PR_TRUE_E             = 0x501
+    Z3_OP_PR_ASSERTED_E         = 0x502
+    Z3_OP_PR_GOAL_E             = 0x503
+    Z3_OP_PR_MODUS_PONENS_E     = 0x504
+    Z3_OP_PR_REFLEXIVITY_E      = 0x505
+    Z3_OP_PR_SYMMETRY_E         = 0x506
+    Z3_OP_PR_TRANSITIVITY_E     = 0x507
+    Z3_OP_PR_TRANSITIVITY_STAR_E = 0x508
+    Z3_OP_PR_MONOTONICITY_E     = 0x509
+    Z3_OP_PR_QUANT_INTRO_E      = 0x50A
+    Z3_OP_PR_BIND_E             = 0x50B
+    Z3_OP_PR_DISTRIBUTIVITY_E   = 0x50C
+    Z3_OP_PR_AND_ELIM_E         = 0x50D
+    Z3_OP_PR_NOT_OR_ELIM_E      = 0x50E
+    Z3_OP_PR_REWRITE_E          = 0x50F
+    Z3_OP_PR_REWRITE_STAR_E     = 0x510
+    Z3_OP_PR_PULL_QUANT_E       = 0x511
+    Z3_OP_PR_PUSH_QUANT_E       = 0x512
+    Z3_OP_PR_ELIM_UNUSED_VARS_E = 0x513
+    Z3_OP_PR_DER_E              = 0x514
+    Z3_OP_PR_QUANT_INST_E       = 0x515
+    Z3_OP_PR_HYPOTHESIS_E       = 0x516
+    Z3_OP_PR_LEMMA_E            = 0x517
+    Z3_OP_PR_UNIT_RESOLUTION_E  = 0x518
+    Z3_OP_PR_IFF_TRUE_E         = 0x519
+    Z3_OP_PR_IFF_FALSE_E        = 0x51A
+    Z3_OP_PR_COMMUTATIVITY_E    = 0x51B
+    Z3_OP_PR_DEF_AXIOM_E        = 0x51C
+    Z3_OP_PR_ASSUMPTION_ADD_E   = 0x51D
+    Z3_OP_PR_LEMMA_ADD_E        = 0x51E
+    Z3_OP_PR_REDUNDANT_DEL_E    = 0x51F
+    Z3_OP_PR_CLAUSE_TRAIL_E     = 0x520
+    Z3_OP_PR_DEF_INTRO_E        = 0x521
+    Z3_OP_PR_APPLY_DEF_E        = 0x522
+    Z3_OP_PR_IFF_OEQ_E          = 0x523
+    Z3_OP_PR_NNF_POS_E          = 0x524
+    Z3_OP_PR_NNF_NEG_E          = 0x525
+    Z3_OP_PR_SKOLEMIZE_E        = 0x526
+    Z3_OP_PR_MODUS_PONENS_OEQ_E = 0x527
+    Z3_OP_PR_TH_LEMMA_E         = 0x528
+    Z3_OP_PR_HYPER_RESOLVE_E    = 0x529
+
   Z3SortKindFFI* {.importc: "Z3_sort_kind", header: "z3.h",
                    size: sizeof(cint).} = enum
     Z3_UNINTERPRETED_SORT = 0
@@ -716,6 +767,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_get_sort_name(c: RawZ3Context, s: RawZ3Sort): RawZ3Symbol
     {.cdecl, header: "z3.h".}
+  proc Z3_get_decl_kind(c: RawZ3Context, d: RawZ3FuncDecl): Z3DeclKindFFI
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 4.** Returns the Z3-internal `Z3_decl_kind` enum
+    ## value. The proof-rule subset is enumerated in `Z3DeclKindFFI`;
+    ## other values pass through (`z3/proof.toProofRule`'s `else` maps
+    ## them to `prUnknown`).
+  proc Z3_solver_get_proof(c: RawZ3Context, s: RawZ3Solver): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 4.** Extract the proof witness after an unsat
+    ## `check()` with `proof=true` enabled on the context. Returns
+    ## nil if proof generation wasn't enabled or `check()` didn't
+    ## conclude unsat.
   proc Z3_get_symbol_string(c: RawZ3Context, s: RawZ3Symbol): cstring
     {.cdecl, header: "z3.h".}
 

@@ -215,13 +215,13 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 3. **`Z3DatatypeValue` as `sortOf` element type.** ✅ shipped. Closes the v0.3 §8 carryover. Added the per-context `datatypeRegistry`, updated all `declareDatatype` / `declareDatatypes` variants to register, added the `sortOf` overload that does runtime lookup with helpful error on miss.
 
-4. **`Z3Proof` family + `ProofRule` enum + `unpackProof`.** Lives in `z3/proof`. Self-contained but needed before goal 4's `getProof`.
+4. **`Z3Proof` family + `ProofRule` enum + `unpackProof` + `Z3Solver.getProof`.** ✅ shipped (with step 7 merged in — see §8). Lives in `z3/proof`.
 
 5. **`Z3Fixedpoint`** (`z3/fixedpoint`). Independent of other goals. Largest single module added in v0.4 — comparable to `z3/optimize`.
 
 6. **Solver extensions — `assertConstraintAndTrack` + `getUnsatCore`.** First half of goal 4. Uses `Z3AstVector` from step 1.
 
-7. **Solver extensions — `getProof`.** Second half of goal 4. Returns the `Z3Proof` from step 4.
+7. **Solver extensions — `getProof`.** ✅ shipped together with step 4 (merged — see §8). Returns the `Z3Proof` from step 4.
 
 8. **Solver extensions — `getStatistics` + `getConsequences`.** Adds `Z3Stats` typed handle. Closes goal 4.
 
@@ -328,6 +328,13 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 4 (Z3Proof family + getProof — steps 4 and 7 merged)
+
+- **Plan restructure: steps 4 and 7 ship together as one merged step.** The original plan put `getProof` in step 7 and the `Z3Proof` family + `ProofRule` enum + `unpackProof` in step 4, with the rationale that the family should land before its only consumer. In practice the family is **untestable** without a way to extract a proof from a solver — Z3 has no public "make a proof literal" entry point. Steps 4 and 7 are therefore tightly coupled in the test discipline. Merged into one step labelled "step 4 (with step 7)"; subsequent step numbers don't shift (step 5 = Fixedpoint stays at 5; step 6 = unsat-core / assert_and_track stays at 6; **what was step 7 is now empty in the sequence**).
+- **Spec correction: Nim FFI under the C++ backend.** The plan's initial draft declared `Z3_get_decl_kind` as returning `cuint`. softlink's `_Static_assert` under `nim cpp` checks the Nim-declared return type against the actual C signature with strict type equality — Z3's `Z3_get_decl_kind` returns the `Z3_decl_kind` enum, NOT `unsigned int`. The C backend accepts the implicit enum→int conversion; C++ rejects it. Resolution: declared `Z3DeclKindFFI` as a typed Nim enum with `{.importc: "Z3_decl_kind", header: "z3.h", size: sizeof(cint).}` carrying just the proof-rule subset (42 entries from 0x500). The Nim type emits as `Z3_decl_kind`; softlink's static_assert sees `is_same<Z3_decl_kind, Z3_decl_kind>` which is true; C++ build passes. Imported enums tolerate out-of-range runtime values (non-proof decl kinds Z3 may return); `toProofRule`'s `else` branch maps them to `prUnknown`. **No work deferred** — the fix is the right shape.
+- **`sortOf[Z3Proof]` overload not shipped.** Z3 doesn't expose a public way to construct a "proof sort" handle, and users won't realistically want `Z3Seq[Z3Proof]` / `Z3Array[K, Z3Proof]` at the modeling level. The plan's "sortOf for sortdispatch parity" item is deferred indefinitely — if a real user needs Z3Proof as a sortdispatch element, we figure out Z3's internal proof-sort representation then. Logged here so future-me doesn't try to ship it speculatively.
+- **Test discipline confirmed**: proofs assert *structural* properties (a proof exists; rule is recognised; unpack yields a Z3Bool conclusion; sub-proofs are themselves akApp ASTs) rather than specific proof-tree shapes — Z3-version-fragile per §6 risks.
 
 ### From step 3 (Z3DatatypeValue as sortOf element type)
 

@@ -72,6 +72,13 @@
 ## - `z3/params` — `Z3Params` typed parameter bag for tactics,
 ##   solvers, optimisers. `newParams` + overloaded `set(key, value)`
 ##   for `bool`, `uint`, `float`, and `string` values. **v0.2 step 8.**
+## - `z3/astvector` — `Z3AstVector` typed ref-handle for Z3's
+##   heterogeneous-sort AST-vector C type. Constructor `newAstVector`,
+##   `len`, `[i]` (raw access), `[]=`/`add[T: Z3Term]`/`resize`
+##   mutators, `items` / `pairs` iterators, `toSeq[T]` typed
+##   conversion, `$` SMT-LIB rendering. Foundational for v0.4
+##   `Z3Solver.getUnsatCore` / `getConsequences` / `Z3ParserContext`.
+##   **v0.4 step 1.**
 ## - `z3/tactic` — `Z3Goal` (formula conjunction), `Z3Tactic`
 ##   (`mkTactic("simplify")`, `andThen`, `orElse`, `repeat`, `tryFor`,
 ##   `withParams`, `tacticSkip` / `tacticFail`), `Z3ApplyResult` for
@@ -180,9 +187,10 @@ import z3/ffi, z3/context, z3/sort, z3/sortdispatch, z3/ast, z3/builder,
        z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec, z3/pretty,
        z3/simplify, z3/array, z3/datatypes, z3/quantifier, z3/optimize,
        z3/params, z3/tactic, z3/semantics, z3/char, z3/seq, z3/string,
-       z3/regex, z3/fp, z3/funcdecl
+       z3/regex, z3/fp, z3/funcdecl, z3/astvector
 export ffi, context, sort, sortdispatch, ast, builder, boolean, arith, solver,
        model, bitvec, pretty, simplify, array, datatypes, quantifier, optimize,
-       params, tactic, semantics, char, seq, string, regex, fp, funcdecl
+       params, tactic, semantics, char, seq, string, regex, fp, funcdecl,
+       astvector
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -209,7 +209,7 @@ New supporting types (not their own modules, declared in the modules above):
 
 Architectural foundations first, then visible-payoff items, then cross-cutting, then small surface.
 
-1. **`Z3AstVector` typed handle** (`z3/astvector`). Needed by goals 4 (unsat-core, consequences), 7 (quantifier patterns), 11 (parser-context output). Foundational small module.
+1. **`Z3AstVector` typed handle** (`z3/astvector`). ✅ shipped. Needed by goals 4 (unsat-core, consequences), 7 (quantifier patterns), 11 (parser-context output). Also landed the `Z3Term` concept properly in `z3/lifecycle` — see §8 spec correction.
 
 2. **Structural introspection** (`z3/introspect`). Both AST-side (`Z3AstKind`, `getAppDecl`, `getAppArg`, `unpackApp`) and sort-side (`Z3SortKind`, `bitVecWidth`, `arrayKey`, `fpEbits`, …) capabilities, with the `Z3AnyAst` erased type and the per-family typed lifters. The largest single foundational step; everything downstream may want to walk terms or inspect sorts.
 
@@ -329,7 +329,18 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
 
-*(empty until the first deferral surfaces.)*
+### From step 1 (Z3AstVector foundation)
+
+- **Spec correction landed: the `Z3Term` concept was never an actual Nim concept until now.** v0.3 step 1's plan documented landing it; the unification *machinery* (`wrap[T]`, `emitTermLifecycle`, `emitRefcountLifecycle`) shipped but `Z3Term` as a constraint was left implicit — `wrap*[T]` was unconstrained. Every docstring referencing "the `Z3Term` concept" was aspirational rather than factual. v0.4 step 1 lands the real concept in `z3/lifecycle`:
+  ```nim
+  type Z3Term* = concept x
+    x.raw is RawZ3Ast
+    x.ctx is Z3Context
+  ```
+  Backward-compatible: every typed family already has the field shape, so no family migration needed. v0.4 step 1's `Z3AstVector.add[T: Z3Term]` and `toSeq[T: Z3Term]` are the first users. **v0.5 step 2's "make Z3Term load-bearing" work then retroactively constrains v0.3's unconstrained generics.**
+- **`Nim 2 system.==` ambiguity with FFI typed-`==`.** Tests trying to compare raw AST handles directly with `==` hit a Nim-2-vs-FFI ambiguity (system's auto-derived object `==` competes with ffi.nim's explicit raw-pointer `==`). Resolution: test through *typed observable behavior* (`smtValid(extracted == original)`) rather than raw-pointer identity. PhD-defensible: the user-facing surface IS the typed family; testing through it is the right discipline. **No work deferred** — this is a test-policy choice, not a wrapper bug.
+
+
 
 ---
 

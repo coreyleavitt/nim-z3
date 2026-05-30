@@ -50,6 +50,35 @@
 import ./ffi, ./context
 
 # ============================================================================
+# Z3Term — the structural concept binding every typed value family
+# ============================================================================
+#
+# v0.3 step 1's plan documented this concept; the unification *machinery*
+# (`wrap[T]`, `emitTermLifecycle`, `emitRefcountLifecycle`) shipped but
+# the concept itself was left implicit. v0.4 step 1 lands the concept as
+# real Nim code so downstream generics (`Z3AstVector.add[T: Z3Term]`,
+# `Z3AstVector.toSeq[T: Z3Term]`, the v0.4-step-2 introspection generics)
+# can constrain on it properly.
+#
+# Every typed family ships with `raw: RawZ3Ast` + `ctx: Z3Context` — that
+# IS the concept. Structural-typing means we don't need to update the
+# families; they satisfy `Z3Term` automatically.
+#
+# v0.5 step 2 retroactively constrains v0.3's unconstrained generics
+# (`wrap[T]`, `==`, `eval`, etc.) to `[T: Z3Term]` — that's the
+# "make Z3Term load-bearing" cycle. v0.4 step 1 just adds the machinery.
+
+type Z3Term* = concept x
+  ## Structural concept satisfied by every typed value family. Any type
+  ## with `raw: RawZ3Ast` and `ctx: Z3Context` fields qualifies — that
+  ## includes `Z3Ast[S]`, `Z3BitVec[W]`, `Z3Array[K, V]`, `Z3Seq[E]`,
+  ## `Z3Char`, `Z3String` (= `Z3Seq[Z3Char]`), `Z3Regex[Basis]`,
+  ## `Z3Fp[E, S]`, `Z3DatatypeValue[T]`, `Z3RoundingMode`, `Z3Pattern`,
+  ## and (v0.4 step 2) `Z3AnyAst` / `Z3Proof`.
+  x.raw is RawZ3Ast
+  x.ctx is Z3Context
+
+# ============================================================================
 # Body-extraction templates — for generic types that need explicit
 # per-family proc declarations (Z3Ast[S], Z3BitVec[W], Z3Array[K,V],
 # Z3DatatypeValue[T]).

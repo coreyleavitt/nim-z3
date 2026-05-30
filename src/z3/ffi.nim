@@ -837,6 +837,25 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_ast_vector_size(c: RawZ3Context, v: RawZ3AstVector): cuint
     {.cdecl, header: "z3.h".}
+  proc Z3_mk_ast_vector(c: RawZ3Context): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 1.** Constructor for a fresh empty AST vector.
+    ## Caller takes ownership of the initial ref.
+  proc Z3_ast_vector_set(c: RawZ3Context, v: RawZ3AstVector,
+                         i: cuint, a: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 1.** Replace the AST at index `i`.
+  proc Z3_ast_vector_resize(c: RawZ3Context, v: RawZ3AstVector, n: cuint)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 1.** Resize to `n` elements. New slots are nil-AST
+    ## until populated; shrinking releases trailing entries.
+  proc Z3_ast_vector_push(c: RawZ3Context, v: RawZ3AstVector, a: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 1.** Append `a`. Z3 internally inc_refs the pushed
+    ## AST; the wrapper does NOT inc_ref a second time.
+  proc Z3_ast_vector_to_string(c: RawZ3Context, v: RawZ3AstVector): cstring
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 1.** SMT-LIB rendering of the full vector.
   proc Z3_ast_vector_get(c: RawZ3Context, v: RawZ3AstVector, i: cuint): RawZ3Ast
     {.cdecl, header: "z3.h".}
 

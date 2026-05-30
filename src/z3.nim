@@ -92,6 +92,24 @@
 ##   `!=` / `&` / `contains` / `startsWith` / `endsWith`. All generic
 ##   sequence ops (len, concat, nth, at, substr, …) flow through the
 ##   alias from `z3/seq`. **v0.3 steps 4 + 5.**
+## - `z3/fp` — IEEE 754 / SMT-LIB FloatingPoint theory. `Z3Fp[Ebits,
+##   Sbits]` phantom-typed over the encoding widths, with `Z3Float16`
+##   / `Z3Float32` / `Z3Float64` / `Z3Float128` aliases. `mkFp` /
+##   `mkFloat32` / `mkFloat64` / `mkNaN` / `mkInf` / `mkZero` and
+##   matching `Var` forms. Operators `+` `-` `*` `/` with default
+##   `rmRNE` rounding; explicit forms `fpAdd` / `fpSub` / `fpMul` /
+##   `fpDiv` accept a `RoundingMode` Nim enum (`rmRNE` / `rmRNA` /
+##   `rmRTP` / `rmRTN` / `rmRTZ`) or a `Z3RoundingMode` AST for
+##   quantification over rounding. **`==` / `!=` use IEEE semantics
+##   (NaN ≠ NaN, +0 = -0) — deliberate divergence from every other
+##   typed family.** Predicates `isNaN` / `isInf` / `isZero` /
+##   `isNormal` / `isSubnormal` / `isPositive` / `isNegative`. Ops
+##   `abs` / unary `-` / `rem` / `min` / `max` / `sqrt` / `fma` /
+##   `roundToIntegral`. Conversions `toIeeeBv` / `toFp` (from BV,
+##   another FP, Real) / `toFpFromSigned` / `toFpFromUnsigned` /
+##   `toReal` / `toSbv` / `toUbv`. Model extraction
+##   `toFloat32` / `toFloat64` / `evalFloat32` / `evalFloat64`.
+##   **v0.3 step 6.**
 ## - `z3/regex` — `Z3Regex[Basis]` phantom-typed over the basis
 ##   sequence sort (v0.3 step 4: `Z3Regex[Z3String]` only; step 5
 ##   widens to `Z3Regex[Z3Seq[E]]`). `mkRegex` / `mkRegexEmpty` /
@@ -141,9 +159,9 @@
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
        z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
-       z3/semantics, z3/char, z3/seq, z3/string, z3/regex
+       z3/semantics, z3/char, z3/seq, z3/string, z3/regex, z3/fp
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
        pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
-       semantics, char, seq, string, regex
+       semantics, char, seq, string, regex, fp
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

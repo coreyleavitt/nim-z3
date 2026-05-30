@@ -899,6 +899,124 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
 
+  # --- FloatingPoint (v0.3 step 6) -----------------------------------------
+  #
+  # IEEE 754 / SMT-LIB FP theory. Sort builders, rounding modes,
+  # literals, arithmetic, comparisons, predicates, conversions.
+
+  proc Z3_mk_fpa_sort(c: RawZ3Context, ebits, sbits: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_rounding_mode_sort(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+
+  # Rounding-mode constants
+  proc Z3_mk_fpa_round_nearest_ties_to_even(c: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_round_nearest_ties_to_away(c: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_round_toward_positive(c: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_round_toward_negative(c: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_round_toward_zero(c: RawZ3Context): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Special literals
+  proc Z3_mk_fpa_nan(c: RawZ3Context, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_inf(c: RawZ3Context, s: RawZ3Sort, negative: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_zero(c: RawZ3Context, s: RawZ3Sort, negative: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Numeric literals
+  proc Z3_mk_fpa_numeral_float(c: RawZ3Context, v: cfloat, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_numeral_double(c: RawZ3Context, v: cdouble, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_numeral_int(c: RawZ3Context, v: cint, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Arithmetic — no rounding
+  proc Z3_mk_fpa_abs(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_neg(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_rem(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_min(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_max(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Arithmetic — rounding-aware
+  proc Z3_mk_fpa_add(c: RawZ3Context, rm, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_sub(c: RawZ3Context, rm, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_mul(c: RawZ3Context, rm, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_div(c: RawZ3Context, rm, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_fma(c: RawZ3Context, rm, a, b, ce: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_sqrt(c: RawZ3Context, rm, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_round_to_integral(c: RawZ3Context, rm, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Comparisons — Z3Bool-yielding
+  proc Z3_mk_fpa_eq(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_leq(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_lt(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_geq(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_gt(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Predicates
+  proc Z3_mk_fpa_is_normal(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_subnormal(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_zero(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_infinite(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_nan(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_negative(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_is_positive(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Conversions
+  proc Z3_mk_fpa_to_fp_bv(c: RawZ3Context, bv: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_fp_float(c: RawZ3Context, rm, t: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_fp_real(c: RawZ3Context, rm, t: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_fp_signed(c: RawZ3Context, rm, t: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_fp_unsigned(c: RawZ3Context, rm, t: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_ubv(c: RawZ3Context, rm, t: RawZ3Ast, sz: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_sbv(c: RawZ3Context, rm, t: RawZ3Ast, sz: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_real(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_to_ieee_bv(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # Model extraction — Z3 doesn't ship a direct float-extractor for
+  # FP literals. The path is via `Z3_mk_fpa_to_ieee_bv` → simplify →
+  # `Z3_get_numeral_uint64`, then reinterpret-cast in Nim.
+
   # --- Regular expressions (v0.3 step 4) -----------------------------------
 
   proc Z3_mk_re_sort(c: RawZ3Context, basis: RawZ3Sort): RawZ3Sort

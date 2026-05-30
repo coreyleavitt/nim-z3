@@ -282,7 +282,7 @@ examples/
 3. **Small cleanups.** Dead `SortTag` retirement + `mkBitVec` signature normalisation. ✅ shipped (commit `7b2d59f`).
 4. **Strings + regexes** (`z3/char`, `z3/string`, `z3/regex`). ✅ shipped.
 5. **Sequences** (`z3/seq`). ✅ shipped.
-6. **FloatingPoint** (`z3/fp`).
+6. **FloatingPoint** (`z3/fp`). ✅ shipped.
 7. **Uninterpreted functions** (`Z3FuncDecl`).
 8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
 9. Pre-tag audit.
@@ -313,7 +313,7 @@ Architectural work first (so subsequent steps inherit the unified surface and do
 
 5. **Sequences** (`z3/seq`). ✅ shipped. Generalisation of strings; same dispatch story.
 
-6. **FloatingPoint** (`z3/fp`). Rounding-mode parameterised arithmetic; type-level width safety per IEEE 754.
+6. **FloatingPoint** (`z3/fp`). ✅ shipped. Rounding-mode parameterised arithmetic; type-level width safety per IEEE 754.
 
 7. **Uninterpreted functions** (`z3/funcdecl`). Phantom-typed over `(ArgsTup, Ret)`; per-arity `apply` templates (under step 1, these may be unifiable with `varargs[Z3Term]`).
 
@@ -385,6 +385,12 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+### From step 6 (FloatingPoint)
+
+- **Spec correction**: `Z3_fpa_get_numeral_double` does **not** exist in z3.h (despite the obvious symmetry with `Z3_get_numeral_double` for Reals). Z3 ships only piece-wise FP-numeral introspection (sign / significand / exponent as separate calls). Resolution: extract via `Z3_mk_fpa_to_ieee_bv` → `Z3_simplify` → `Z3_get_numeral_uint64`, then reinterpret-cast in Nim. Lossless across all IEEE-754 binary32 / binary64 bit patterns (NaN payloads preserved). **No work deferred** — the model extractor (`toFloat32` / `toFloat64` / `evalFloat32` / `evalFloat64`) shipped through the IEEE-BV route.
+- **Spec correction**: `==` / `!=` on `Z3Fp[E, S]` use **IEEE equality (`Z3_mk_fpa_eq`)**, not structural equality (`Z3_mk_eq`). Deliberate divergence from every other typed family. The case for divergence: in IEEE land, `nan == nan` is false and `+0 == -0` is true, which is what users writing FP code overwhelmingly expect. The case against: it breaks the assumption that `Z3Term`'s `==` is uniformly structural. Document loudly (module head + `==` docstring); if anyone needs structural eq they can drop to `astEqual` (pointer identity) or call `Z3_mk_eq` directly via the FFI. **No work deferred.**
+- **Quadruple-precision (Z3Float128) NaN-payload extraction.** `toFloat32` / `toFloat64` round-trip every IEEE binary32 / binary64 pattern. `Z3Float128` and `Z3Float16` have no Nim-native floating-point type to extract into; users wanting the bit pattern call `toIeeeBv` and inspect the BV directly. **Where**: tooling concern; if someone needs structured 128-bit extraction we surface `fpa_get_numeral_*` piecewise extractors. Not blocking.
 
 ### From step 5 (sequences)
 

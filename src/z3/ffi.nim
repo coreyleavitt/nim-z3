@@ -844,6 +844,24 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_get_sort_name(c: RawZ3Context, s: RawZ3Sort): RawZ3Symbol
     {.cdecl, header: "z3.h".}
+  proc Z3_substitute(c: RawZ3Context, a: RawZ3Ast, num_exprs: cuint,
+                     from_arr: ptr UncheckedArray[RawZ3Ast],
+                     to_arr: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 9.** Substitute subterms by-term. `from_arr[i]`
+    ## occurrences in `a` are replaced by `to_arr[i]`.
+  proc Z3_substitute_vars(c: RawZ3Context, a: RawZ3Ast,
+                          num_exprs: cuint,
+                          to_arr: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 9.** Substitute bound variables by de-Bruijn index.
+    ## `to_arr[i]` replaces the `i`-th bound variable counted from
+    ## innermost.
+  proc Z3_mk_bound(c: RawZ3Context, index: cuint, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **v0.4 step 9.** Construct a bound-variable AST at the given
+    ## de-Bruijn index. Useful for manually building quantifier
+    ## bodies; required for testing `Z3_substitute_vars`.
   proc Z3_get_decl_kind(c: RawZ3Context, d: RawZ3FuncDecl): Z3DeclKindFFI
     {.cdecl, header: "z3.h".}
     ## **v0.4 step 4.** Returns the Z3-internal `Z3_decl_kind` enum

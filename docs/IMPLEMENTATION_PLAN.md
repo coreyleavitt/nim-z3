@@ -225,7 +225,7 @@ Architectural foundations first, then visible-payoff items, then cross-cutting, 
 
 8. **Solver extensions — `getStatistics` + `getConsequences`.** ✅ shipped. Adds `Z3Stats` typed handle (own module `z3/stats`). Closes goal 4 and the step-5 §8 fixedpoint-stats deferral.
 
-9. **Term rewriting** (`z3/rewrite`). `substitute` + `substituteVars`. Generic over `Z3Term`.
+9. **Term rewriting** (`z3/rewrite`). ✅ shipped. `substitute` + `substituteVars` generic over `Z3Term`. Also added `mkBound` for manual de-Bruijn bound-var construction.
 
 10. **Cross-context transfer + compatibility** (`z3/translate`). `translate[T: Z3Term]` + `compatibleWith(ctxA, ctxB): bool`.
 
@@ -328,6 +328,13 @@ Goal 8's `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` does a runtime lookup. I
 ## 8. Deferred from v0.4 (running list, populated as work happens)
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.5 / dropped / sibling-package).
+
+### From step 9 (term rewriting)
+
+- **Clean landing.** No spec corrections this step. The two `Z3_substitute*` C functions wrap cleanly via the `Z3Term` constraint with `Z3AnyAst`-typed replacements.
+- **Two surfaces ship side-by-side**: the general `substitute(a, openArray[(Z3AnyAst, Z3AnyAst)])` form and a single-pair convenience `substitute(a, fromTerm, toTerm)` that auto-lifts typed values to `Z3AnyAst`. PhD ergonomic balance: typed callers write `substitute(x + y, x, mkInt(3))`; multi-sort callers write `substitute(a, [(toAnyAst(x), toAnyAst(mkInt(3))), (toAnyAst(p), toAnyAst(mkBool(true)))])`.
+- **`mkBound` added for de-Bruijn bound-var construction.** Z3 represents quantifier bodies internally with bound vars at de-Bruijn indices; `mkBound(ctx, index, sort): Z3AnyAst` lets users manually construct these for `substituteVars` instantiation (or for any user doing low-level quantifier-body programming). Required to TDD `substituteVars` without depending on step 11's quantifier introspection.
+- **Typed return preservation works through the `Z3Term` concept**. `substitute(b: Z3Bool, ...): Z3Bool` round-trips the type — proven via the "substitute on a Z3Bool returns Z3Bool" test using the explicit return-type annotation.
 
 ### From step 8 (getStatistics + getConsequences)
 

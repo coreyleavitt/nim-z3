@@ -131,6 +131,37 @@ suite "Z3Model — composer helpers":
     let m = s.model()
     check m.evalBool(p) == true
 
+suite "Z3Model — Real extraction (toRealApprox / evalReal)":
+  test "toRealApprox extracts 1/2 as 0.5":
+    let ctx = newContext()
+    let half = mkReal(1, 2)
+    check half.toRealApprox == 0.5
+
+  test "toRealApprox extracts 3/4 as 0.75":
+    let ctx = newContext()
+    check mkReal(3, 4).toRealApprox == 0.75
+
+  test "toRealApprox simplifies a Real expression before extraction":
+    let ctx = newContext()
+    # (1/2 + 1/4) folds to 3/4 → 0.75. Tests that simplify runs.
+    let e = mkReal(1, 2) + mkReal(1, 4)
+    check e.toRealApprox == 0.75
+
+  test "evalReal composer extracts a Real var's solved value":
+    let ctx = newContext()
+    let x = mkRealVar("x")
+    let s = newSolver()
+    s.add x == mkReal(7, 5)
+    discard s.check()
+    let m = s.model()
+    check m.evalReal(x) == 1.4
+
+  test "toRealApprox raises Z3Error on a free Real variable":
+    let ctx = newContext()
+    let x = mkRealVar("x")
+    expect Z3Error:
+      discard x.toRealApprox
+
 suite "Z3Model — pretty-print":
   test "$ contains the variable assignments":
     let ctx = newContext()

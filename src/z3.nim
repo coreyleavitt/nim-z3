@@ -69,6 +69,11 @@
 ##   (`mkTactic("simplify")`, `andThen`, `orElse`, `repeat`, `tryFor`,
 ##   `withParams`, `tacticSkip` / `tacticFail`), `Z3ApplyResult` for
 ##   subgoal iteration. **v0.2 step 8.**
+## - `z3/semantics` — `smtValid(p: Z3Bool): bool` and the generic
+##   `smtEquiv[T](a, b: T): bool`. Single discovery location for
+##   validity / equivalence oracles; covers every typed family with
+##   an `==` operator (Z3Ast[S], Z3BitVec[W], Z3Array[K, V],
+##   Z3DatatypeValue[T], …). **v0.3 step 2.**
 ## - `z3/optimize` — `Z3Optimize` with hard / soft constraints,
 ##   `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
 ##   `upper` / `lower` bound retrieval, `push` / `pop` scopes,
@@ -109,8 +114,10 @@
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
-       z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic
+       z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
+       z3/semantics
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array, datatypes, quantifier, optimize, params, tactic
+       pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
+       semantics
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

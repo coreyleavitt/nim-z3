@@ -453,6 +453,19 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_apply_result_to_string(c: RawZ3Context, r: RawZ3ApplyResult): cstring
     {.cdecl, header: "z3.h".}
 
+  proc Z3_goal_convert_model(c: RawZ3Context, g: RawZ3Goal,
+                             m: RawZ3Model): RawZ3Model
+    {.cdecl, header: "z3.h".}
+    ## Convert a model `m` satisfying sub-goal `g` into a model that
+    ## satisfies the original goal `g` was derived from. The sub-goal
+    ## carries the model-converter metadata Z3 produced when the
+    ## tactic was applied.
+    ##
+    ## Replaces the v0.2-era `Z3_apply_result_convert_model` which
+    ## was retired in Z3 4.8.0 (2018). The wrapper exposes a
+    ## `convertModel(applyResult, idx, subModel)` ergonomic API that
+    ## internally routes through this proc on the indexed sub-goal.
+
   # --- Optimize ------------------------------------------------------------
 
   proc Z3_mk_optimize(c: RawZ3Context): RawZ3Optimize
@@ -735,6 +748,13 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Lossless string form of an integer/rational. The buffer is
     ## context-owned and invalidated by the next call.
+
+  proc Z3_get_numeral_double(c: RawZ3Context, v: RawZ3Ast): cdouble
+    {.cdecl, header: "z3.h".}
+    ## Lossy float64 approximation of a Real / Int numeral. Z3 picks
+    ## the closest representable double. Returns 0.0 for non-numeral
+    ## AST (no out-param indicator — defensive callers should simplify
+    ## first and inspect the AST kind).
 
   proc Z3_get_bool_value(c: RawZ3Context, a: RawZ3Ast): Z3LBool
     {.cdecl, header: "z3.h".}

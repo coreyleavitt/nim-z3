@@ -145,3 +145,31 @@ suite "tactic — parameterised":
     let r2 = mkTactic("simplify").withParams(p).apply(g2)
     check r1.subgoal(0).isDecidedSat
     check r2.subgoal(0).isDecidedSat
+
+suite "tactic — apply-result model conversion":
+  test "convertModel routes a sub-goal model back to the original goal":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let g = newGoal()
+    g.add (x > mkInt(0))
+    g.add (x < mkInt(10))
+    g.add (x * x == mkInt(9))
+
+    # Run a pipeline that may simplify / rename internally.
+    let r = mkTactic("simplify").andThen(mkTactic("smt")).apply(g)
+    check r.numSubgoals >= 1
+
+    # Solve each sub-goal directly to get a model in the sub-goal's
+    # namespace; convertModel routes it back to the original goal's
+    # variables.
+    let sub = r.subgoal(0)
+    let s = newSolver()
+    for i in 0 ..< sub.size:
+      s.add sub.formula(i)
+    check s.check() == zsSat
+    let subModel = s.model()
+
+    let parentModel = r.convertModel(0, subModel)
+    # The parent model must satisfy the original `x` constraint.
+    let xv = parentModel.evalInt(x)
+    check xv > 0 and xv < 10 and xv * xv == 9    # i.e. xv == 3

@@ -34,7 +34,11 @@
 ## identical under either sign interpretation.
 
 import std/[options]
-import ./ffi, ./context, ./sort, ./ast, ./solver, ./model
+import ./ffi, ./context, ./sort, ./ast
+# `solver` and `model` were imported in v0.2 for the BV-specific
+# `smtEquiv` and `eval` / `[]` overloads; v0.3 step 2 absorbed both
+# into generic versions in `z3/semantics` and `z3/model`, so the
+# imports are gone.
 export sort   # users get SortTag (incl. stBitVec) via this import
 
 type
@@ -471,30 +475,10 @@ proc toInt*[W: static int](a: Z3BitVec[W]): int64 =
     else:
       int64(v)
 
-# ============================================================================
-# Model eval — Z3Model[bv]
-# ============================================================================
-
-proc eval*[W: static int](m: Z3Model, a: Z3BitVec[W],
-                          modelCompletion = true): Z3BitVec[W] =
-  ## Evaluate a BV AST under the model. Mirrors `Z3Model.eval` for
-  ## `Z3Ast[S]`; separate overload because `Z3BitVec[W]` is a distinct
-  ## type family.
-  var outRaw: RawZ3Ast
-  let ok = Z3_model_eval(m.ctx.raw, m.raw, a.raw, modelCompletion, addr outRaw)
-  let errCode = Z3_get_error_code(m.ctx.raw)
-  if errCode != Z3_OK:
-    raiseZ3Error(m.ctx, errCode)
-  if not ok:
-    var e = newException(Z3Error,
-      "Z3_model_eval returned false for a BV AST.")
-    e.code = Z3_INVALID_USAGE
-    raise e
-  wrap[Z3BitVec[W]](m.ctx, outRaw)
-
-proc `[]`*[W: static int](m: Z3Model, a: Z3BitVec[W]): Z3BitVec[W] =
-  ## Sugar for `m.eval(a)`.
-  m.eval(a)
+# The BV-specific `eval[W]` / `[][W]` overloads lived here in v0.2;
+# v0.3 step 2 absorbed them into the single generic `eval[T]` / `[][T]`
+# in `z3/model` — works for every typed family automatically now that
+# `wrap[T]` is unified.
 
 # ============================================================================
 # Pretty-print
@@ -504,11 +488,5 @@ proc `$`*[W: static int](a: Z3BitVec[W]): string =
   ## SMT-LIB rendering of the BV AST. Mirrors `$` on `Z3Ast[S]`.
   $Z3_ast_to_string(a.ctx.raw, a.raw)
 
-# ============================================================================
-# Equivalence oracle for BVs — parallels `smtEquiv` on `Z3Ast[S]`.
-# ============================================================================
-
-proc smtEquiv*[W: static int](a, b: Z3BitVec[W]): bool {.inline.} =
-  ## True iff `a` and `b` are SMT-level equal under every interpretation.
-  ## Same width discipline as `==`. Sugar over `smtValid(a == b)`.
-  smtValid(a == b)
+# The BV-specific `smtEquiv` overload lived here in v0.2; v0.3 step 2
+# absorbed it into the generic `smtEquiv[T]` in `z3/semantics`.

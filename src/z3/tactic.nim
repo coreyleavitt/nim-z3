@@ -44,7 +44,9 @@
 ##
 ## Run `(get-tactics)` in a Z3 CLI session for the full list.
 
-import ./ffi, ./context, ./ast, ./params
+import ./ffi, ./context, ./ast, ./params, ./solver, ./model
+# `solver` for Z3Status / wrap discipline; `model` for `wrapModel`
+# (needed by `convertModel` which round-trips models across sub-goals).
 
 # ============================================================================
 # Z3Goal
@@ -222,3 +224,37 @@ proc subgoal*(r: Z3ApplyResult, idx: int): Z3Goal =
 
 proc `$`*(r: Z3ApplyResult): string =
   $Z3_apply_result_to_string(r.ctx.raw, r.raw)
+
+# ============================================================================
+# Model conversion across tactic-rewritten sub-goals
+# ============================================================================
+
+proc convertModel*(g: Z3Goal, m: Z3Model): Z3Model =
+  ## Convert a model `m` satisfying this (sub-)goal into a model for
+  ## the original goal the tactic was applied to. The sub-goal carries
+  ## the model converter Z3 attached when the tactic ran.
+  ##
+  ## Use the apply-result-indexed sugar `result.convertModel(idx, m)`
+  ## below at the typical call site.
+  wrapModel(g.ctx,
+    g.ctx.checkErr Z3_goal_convert_model(g.ctx.raw, g.raw, m.raw))
+
+proc convertModel*(r: Z3ApplyResult, idx: int, m: Z3Model): Z3Model =
+  ## Sugar: take a model satisfying sub-goal `idx` and convert it back
+  ## into a model for the original goal `r` was produced from.
+  ##
+  ## ```nim
+  ## let r = mkTactic("simplify").andThen(mkTactic("smt")).apply(g)
+  ## let sub = r.subgoal(0)
+  ## let s = newSolver()
+  ## for i in 0 ..< sub.size: s.add sub.formula(i)
+  ## if s.check() == zsSat:
+  ##   let parentModel = r.convertModel(0, s.model())
+  ##   echo parentModel.evalInt(x)   # evaluates against the ORIGINAL x
+  ## ```
+  ##
+  ## Implementation note: Z3 retired `Z3_apply_result_convert_model`
+  ## in 4.8.0 (2018); the same capability lives on the sub-goal as
+  ## `Z3_goal_convert_model`. This wrapper preserves the more
+  ## ergonomic apply-result indexing.
+  r.subgoal(idx).convertModel(m)

@@ -71,17 +71,22 @@ proc model*(s: Z3Solver): Z3Model =
 # Evaluation
 # ============================================================================
 
-proc eval*[S: static SortTag](m: Z3Model, a: Z3Ast[S],
-                              modelCompletion = true): Z3Ast[S] =
-  ## Evaluate `a` under this model. The returned AST is `a` with the
+proc eval*[T](m: Z3Model, a: T, modelCompletion = true): T =
+  ## Evaluate `a` under this model. Returned AST is `a` with the
   ## model's variable assignments substituted in and Z3's simplifier
-  ## applied. For a numeral input, you get the numeral back unchanged;
-  ## for a variable, you get its assigned value as a literal.
+  ## applied. For a numeral input, you get the numeral back
+  ## unchanged; for a variable, you get its assigned value as a
+  ## literal.
   ##
   ## With `modelCompletion = true` (the default), variables not
   ## constrained by the assertions get assigned a model-completion
-  ## value. With `false`, unconstrained inputs evaluate to themselves
-  ## (the same `Z3Ast` you passed in).
+  ## value. With `false`, unconstrained inputs evaluate to themselves.
+  ##
+  ## v0.3 step 1 collapsed the per-family overloads (Z3Ast[S],
+  ## Z3BitVec[W]) into this single generic via the unified `wrap[T]`.
+  ## v0.3 step 2 extended it to `Z3Array[K, V]` and
+  ## `Z3DatatypeValue[T]` — works for any typed family without
+  ## adding a new overload here.
   var outRaw: RawZ3Ast
   let ok = Z3_model_eval(m.ctx.raw, m.raw, a.raw, modelCompletion, addr outRaw)
   let errCode = Z3_get_error_code(m.ctx.raw)
@@ -94,9 +99,9 @@ proc eval*[S: static SortTag](m: Z3Model, a: Z3Ast[S],
       "constrain.")
     e.code = Z3_INVALID_USAGE
     raise e
-  wrap[Z3Ast[S]](m.ctx, outRaw)
+  wrap[T](m.ctx, outRaw)
 
-proc `[]`*[S: static SortTag](m: Z3Model, a: Z3Ast[S]): Z3Ast[S] =
+proc `[]`*[T](m: Z3Model, a: T): T =
   ## Sugar for `m.eval(a)`.
   m.eval(a)
 
@@ -194,6 +199,44 @@ proc evalBigIntStr*(m: Z3Model, a: Z3Int, modelCompletion = true): string {.inli
 proc evalBigRealStr*(m: Z3Model, a: Z3Real, modelCompletion = true): string {.inline.} =
   ## `m.eval(a).toBigRealStr` in one call.
   m.eval(a, modelCompletion).toBigRealStr
+
+# ============================================================================
+# Real extraction — float64 approximation
+# ============================================================================
+#
+# Z3 stores reals exactly as rationals (`Z3_get_numeral_string` returns
+# the exact form, e.g. "1/3" or "3.14"). The float64 approximation is
+# lossy by definition; the v0.3 plan §7 Q3 settled the precision
+# question as "Z3 picks the closest representable double, no precision
+# knob on our side."
+#
+# Z3's `Z3_get_numeral_double` requires a literal numeral AST. We
+# `simplify` the input first — consistent with `toUint` / `toInt` —
+# so concrete expression trees fold to a numeral before extraction.
+# Epsilon-bound expressions from optimisation reals (`1/2 + ε`) don't
+# fold to a numeral and raise `Z3Error`.
+
+proc toRealApprox*(a: Z3Real): float =
+  ## Lossy float64 approximation of a `Z3Real` literal. Internally
+  ## `Z3_simplify`s first so concrete expression trees fold before
+  ## extraction, mirroring `toUint` / `toInt` on `Z3BitVec`.
+  ##
+  ## Raises `Z3Error` if the AST doesn't reduce to a literal numeral
+  ## (most commonly: an epsilon-bound expression from optimisation
+  ## reals, or a free Real variable).
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  # No out-param indicator on Z3_get_numeral_double; check the error
+  # code instead. A non-numeral AST sets `Z3_INVALID_ARG` (or similar)
+  # which `checkErrVoid` would normally raise — we replicate that here.
+  let v = Z3_get_numeral_double(a.ctx.raw, folded)
+  let errCode = Z3_get_error_code(a.ctx.raw)
+  if errCode != Z3_OK:
+    raiseZ3Error(a.ctx, errCode)
+  float(v)
+
+proc evalReal*(m: Z3Model, a: Z3Real, modelCompletion = true): float {.inline.} =
+  ## `m.eval(a, modelCompletion).toRealApprox` in one call.
+  m.eval(a, modelCompletion).toRealApprox
 
 # ============================================================================
 # Pretty-print

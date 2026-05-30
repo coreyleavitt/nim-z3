@@ -370,6 +370,14 @@ A non-trivial number of v0.2-promised items rolled to v0.3 (per V0.2_PLAN.md "Pr
 
 ## 8. Deferred from v0.3 (running list, updated as we go)
 
+### From step 2 (semantics module + carryover gaps)
+
+- **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
+- **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
+- **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+
+
 Same discipline as v0.1 §18 and v0.2 §8 — append-only. Format: **what**, **why**, **where it goes** (v0.4 / dropped). v0.1 and v0.2 deferrals that remain unaddressed continue to live in their respective archived plans.
 
 *(empty until the first deferral surfaces)*

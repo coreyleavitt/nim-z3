@@ -349,6 +349,24 @@ Step 3 settled the **phantom design** for sorts with sub-parameters: typedescs o
 - **Optimize-side push/pop arity ≥ 2.** Z3's optimize.pop only takes a count of 1 (unlike the solver's `pop(n)` form). We currently expose `pop(o)` only — matches Z3. If multi-level pop ever lands in Z3 we'll expose it; not a deferral so much as a non-feature.
 - **Surprise documented**: Z3's `optimize_get_upper`/`lower` returns the bound for a BV objective as an *Int* AST (the unsigned-magnitude bound). The wrapper hides this by re-converting via `Z3_mk_int2bv` so `upper(h: Z3OptHandle[Z3BitVec[8]])` returns `Z3BitVec[8]` per the typed promise. Tested round-trip. The cost is one extra FFI symbol (`Z3_mk_int2bv`) and one Z3 AST construction per call — negligible.
 
+### From step 8 (tactics + goals + params)
+
+- **`Z3Params` getters**. The wrapper only exposes typed `set` and `$`. Z3's C API doesn't actually expose getter functions for params — `Z3_params_to_string` is the only readback path. Not a deferral so much as a non-feature; documenting here so a future reader doesn't try to add them.
+- **`Z3_mk_solver_from_tactic`**. Wraps a tactic into a `Z3Solver`-shaped object — useful for composing tactic pipelines with the existing solver-add/check workflow. Small addition; deferred because no user has surfaced the need.
+- **`Z3_apply_result_convert_model`** (and proof conversion). The metadata on an apply-result lets you take a model satisfying a subgoal and convert it back to one satisfying the original goal. Needed for any real use of `apply` beyond inspection. **Where**: v0.2 follow-up if a property-test or example demands it.
+- **`Z3_solver_set_params` for the existing `Z3Solver`** — now that `Z3Params` exists, the solver can take params too. Logged here for symmetry; the solver currently uses Z3's defaults.
+- **Reabsorbed carryovers from earlier steps that this step *enables*:**
+  - **`Z3_simplify_ex` + a `simplify(ast, params)` overload** (step 1 deferral) is now unblocked; not yet implemented.
+  - **`Z3_optimize_set_params` for box/Pareto multi-objective** (step 7 deferral) is now unblocked; not yet implemented.
+  Both are mechanical follow-ups any time a user needs them.
+
+### Spec divergence (step 8, captured for the precedent)
+
+v0.2 plan §2 sketched the combinators as ``proc `then`*(t1, t2)`` and ``proc `or`*(t1, t2)``. We diverged to **`andThen` / `orElse`** for two reasons:
+
+1. `or` on `Z3Tactic` would shadow the boolean `or` (`Z3Bool` × `Z3Bool` → `Z3Bool`) we use everywhere else. Type discrimination makes it work at compile time but reading mixed-tactic-and-bool code becomes ambiguous.
+2. `andThen` / `orElse` are the canonical names in Z3's SMT-LIB tactic vocabulary (`and-then`, `or-else`), so the Nim names line up with Z3's `(get-tactics)` output.
+
 ### Spec divergence (step 6, captured for the precedent)
 
 v0.2 plan §7 Q2 leaned toward a `Z3BoundVar` typeclass with `mkBoundVar[S]()` explicit boxing. We diverged to **per-arity templates over any typed AST family** — `forall(x, p, body)` where `x: Z3Int` and `p: Z3Bool` works directly because each generic position binds independently. Same precedent as step 4's constructor `apply` template family. The Q2 alternative would have forced the user to wrap every variable: `forall([mkBoundVar(x), mkBoundVar(p)], body)`. Strictly worse ergonomics for the same expressive power.

@@ -67,11 +67,22 @@ type
     ## hard + weighted-soft constraints, maximise / minimise
     ## objectives with upper / lower bounds. Refcounted via
     ## `Z3_optimize_inc_ref` / `Z3_optimize_dec_ref`.
+  RawZ3Goal* {.importc: "Z3_goal", header: "z3.h", bycopy.} = object
+    ## Conjunction of formulas a tactic operates on. Refcounted.
+  RawZ3Tactic* {.importc: "Z3_tactic", header: "z3.h", bycopy.} = object
+    ## Strategy combinator that rewrites goals.
+  RawZ3ApplyResult* {.importc: "Z3_apply_result", header: "z3.h", bycopy.} = object
+    ## Output of a tactic — N sub-goals plus model/proof conversion
+    ## metadata.
+  RawZ3Params* {.importc: "Z3_params", header: "z3.h", bycopy.} = object
+    ## Typed parameter bag for tactics / solvers / optimisers.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern | RawZ3Optimize): bool {.inline.} =
+            RawZ3Pattern | RawZ3Optimize |
+            RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
+            RawZ3Params): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -86,14 +97,16 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
 proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize](
+          RawZ3Pattern | RawZ3Optimize |
+          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
 proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
           RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize](
+          RawZ3Pattern | RawZ3Optimize |
+          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -363,6 +376,82 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## takes bound variables as `Z3_app[]`, not `Z3_ast[]` — every
     ## bound var must be a constant constructed via `Z3_mk_const`
     ## (or equivalently `mkIntVar` / `mkBitVecVar` / `mkDatatypeVar`).
+
+  # --- Params --------------------------------------------------------------
+
+  proc Z3_mk_params(c: RawZ3Context): RawZ3Params {.cdecl, header: "z3.h".}
+  proc Z3_params_inc_ref(c: RawZ3Context, p: RawZ3Params) {.cdecl, header: "z3.h".}
+  proc Z3_params_dec_ref(c: RawZ3Context, p: RawZ3Params) {.cdecl, header: "z3.h".}
+  proc Z3_params_set_bool(c: RawZ3Context, p: RawZ3Params, k: RawZ3Symbol,
+                          v: bool) {.cdecl, header: "z3.h".}
+  proc Z3_params_set_uint(c: RawZ3Context, p: RawZ3Params, k: RawZ3Symbol,
+                          v: cuint) {.cdecl, header: "z3.h".}
+  proc Z3_params_set_double(c: RawZ3Context, p: RawZ3Params, k: RawZ3Symbol,
+                            v: cdouble) {.cdecl, header: "z3.h".}
+  proc Z3_params_set_symbol(c: RawZ3Context, p: RawZ3Params, k: RawZ3Symbol,
+                            v: RawZ3Symbol) {.cdecl, header: "z3.h".}
+  proc Z3_params_to_string(c: RawZ3Context, p: RawZ3Params): cstring
+    {.cdecl, header: "z3.h".}
+
+  # --- Goals ---------------------------------------------------------------
+
+  proc Z3_mk_goal(c: RawZ3Context, models: bool, unsat_cores: bool,
+                  proofs: bool): RawZ3Goal {.cdecl, header: "z3.h".}
+  proc Z3_goal_inc_ref(c: RawZ3Context, g: RawZ3Goal) {.cdecl, header: "z3.h".}
+  proc Z3_goal_dec_ref(c: RawZ3Context, g: RawZ3Goal) {.cdecl, header: "z3.h".}
+  proc Z3_goal_assert(c: RawZ3Context, g: RawZ3Goal, a: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_size(c: RawZ3Context, g: RawZ3Goal): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_formula(c: RawZ3Context, g: RawZ3Goal, idx: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_inconsistent(c: RawZ3Context, g: RawZ3Goal): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_is_decided_sat(c: RawZ3Context, g: RawZ3Goal): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_is_decided_unsat(c: RawZ3Context, g: RawZ3Goal): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_to_string(c: RawZ3Context, g: RawZ3Goal): cstring
+    {.cdecl, header: "z3.h".}
+
+  # --- Tactics -------------------------------------------------------------
+
+  proc Z3_mk_tactic(c: RawZ3Context, name: cstring): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_inc_ref(c: RawZ3Context, t: RawZ3Tactic) {.cdecl, header: "z3.h".}
+  proc Z3_tactic_dec_ref(c: RawZ3Context, t: RawZ3Tactic) {.cdecl, header: "z3.h".}
+  proc Z3_tactic_and_then(c: RawZ3Context, t1, t2: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_or_else(c: RawZ3Context, t1, t2: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_repeat(c: RawZ3Context, t: RawZ3Tactic, max: cuint): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_try_for(c: RawZ3Context, t: RawZ3Tactic, ms: cuint): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_using_params(c: RawZ3Context, t: RawZ3Tactic,
+                              p: RawZ3Params): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_skip(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
+  proc Z3_tactic_fail(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
+
+  proc Z3_tactic_apply(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal): RawZ3ApplyResult
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_apply_ex(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal,
+                          p: RawZ3Params): RawZ3ApplyResult
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_apply_result_inc_ref(c: RawZ3Context, r: RawZ3ApplyResult)
+    {.cdecl, header: "z3.h".}
+  proc Z3_apply_result_dec_ref(c: RawZ3Context, r: RawZ3ApplyResult)
+    {.cdecl, header: "z3.h".}
+  proc Z3_apply_result_get_num_subgoals(c: RawZ3Context,
+                                        r: RawZ3ApplyResult): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_apply_result_get_subgoal(c: RawZ3Context, r: RawZ3ApplyResult,
+                                   idx: cuint): RawZ3Goal
+    {.cdecl, header: "z3.h".}
+  proc Z3_apply_result_to_string(c: RawZ3Context, r: RawZ3ApplyResult): cstring
+    {.cdecl, header: "z3.h".}
 
   # --- Optimize ------------------------------------------------------------
 

@@ -58,6 +58,13 @@
 ##   in `z3/bitvec`) — validity / equivalence oracles built on a
 ##   throwaway solver. Useful in property tests; also a clean primitive
 ##   for downstream verification tooling.
+## - `z3/params` — `Z3Params` typed parameter bag for tactics,
+##   solvers, optimisers. `newParams` + overloaded `set(key, value)`
+##   for `bool`, `uint`, `float`, and `string` values. **v0.2 step 8.**
+## - `z3/tactic` — `Z3Goal` (formula conjunction), `Z3Tactic`
+##   (`mkTactic("simplify")`, `andThen`, `orElse`, `repeat`, `tryFor`,
+##   `withParams`, `tacticSkip` / `tacticFail`), `Z3ApplyResult` for
+##   subgoal iteration. **v0.2 step 8.**
 ## - `z3/optimize` — `Z3Optimize` with hard / soft constraints,
 ##   `maximize` / `minimize`, phantom-typed `Z3OptHandle[T]` for
 ##   `upper` / `lower` bound retrieval, `push` / `pop` scopes. Default
@@ -97,8 +104,8 @@
 
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
-       z3/datatypes, z3/quantifier, z3/optimize
+       z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
-       pretty, simplify, array, datatypes, quantifier, optimize
+       pretty, simplify, array, datatypes, quantifier, optimize, params, tactic
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -77,12 +77,21 @@
 ## - `z3/char` — `Z3Char` Unicode-codepoint AST family. Construction
 ##   from int codepoint or ASCII `char` literal; ordering (`<=` / `<`),
 ##   `isDigit` predicate, `toInt` codepoint extractor. **v0.3 step 4.**
-## - `z3/string` — `Z3String` SMT-LIB string family (`Seq Char` under
-##   the hood). `mkString` / `mkStringVar`, `len`, varargs `concat` +
-##   `&` operator, `contains`, `substr`, `at`, `startsWith` /
-##   `endsWith`, `indexOf`, `replace`, `strToInt` / `intToStr`.
-##   Nim-`string`-literal lifts on `==` / `!=` / `&` / `contains` /
-##   `startsWith` / `endsWith`. **v0.3 step 4.**
+## - `z3/seq` — `Z3Seq[E]` SMT-LIB sequence theory, phantom-typed
+##   over the element AST family. `mkSeqEmpty[E]` / `mkSeqUnit(e)` /
+##   `mkSeqVar[E](name)`, `len`, varargs `concat` + `&`, `nth(s, i)` +
+##   `[i]` operator, `at(s, i)` (1-element sub-sequence), `substr`,
+##   `contains`, `startsWith` / `endsWith`, `indexOf`, `replace`.
+##   Supports any element type with a `sortOfTypeSeq` case (`Z3Int`,
+##   `Z3Real`, `Z3Bool`, `Z3BitVec[W]`, `Z3Char`, nested
+##   `Z3Seq[E']`). **v0.3 step 5.**
+## - `z3/string` — **alias `Z3String = Z3Seq[Z3Char]`** plus the
+##   string-specific surface only: `mkString` (via `Z3_mk_lstring`),
+##   `mkStringVar`, `toStr` / `evalStr` model extraction, `strToInt`
+##   / `intToStr` int interop, Nim-`string`-literal lifts on `==` /
+##   `!=` / `&` / `contains` / `startsWith` / `endsWith`. All generic
+##   sequence ops (len, concat, nth, at, substr, …) flow through the
+##   alias from `z3/seq`. **v0.3 steps 4 + 5.**
 ## - `z3/regex` — `Z3Regex[Basis]` phantom-typed over the basis
 ##   sequence sort (v0.3 step 4: `Z3Regex[Z3String]` only; step 5
 ##   widens to `Z3Regex[Z3Seq[E]]`). `mkRegex` / `mkRegexEmpty` /
@@ -132,9 +141,9 @@
 import z3/ffi, z3/context, z3/sort, z3/ast, z3/builder, z3/boolean, z3/arith,
        z3/solver, z3/model, z3/bitvec, z3/pretty, z3/simplify, z3/array,
        z3/datatypes, z3/quantifier, z3/optimize, z3/params, z3/tactic,
-       z3/semantics, z3/char, z3/string, z3/regex
+       z3/semantics, z3/char, z3/seq, z3/string, z3/regex
 export ffi, context, sort, ast, builder, boolean, arith, solver, model, bitvec,
        pretty, simplify, array, datatypes, quantifier, optimize, params, tactic,
-       semantics, char, string, regex
+       semantics, char, seq, string, regex
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

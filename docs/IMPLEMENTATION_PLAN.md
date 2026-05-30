@@ -281,7 +281,7 @@ examples/
 2. **`z3/semantics` module + carryover gaps.** `smtValid` / `smtEquiv` relocated with the missing `Z3Array` / `Z3DatatypeValue` overloads. `Z3Model.eval` / `[]` for those types. `convertModel` (was `Z3_apply_result_convert_model` pre-spec-correction; see §8). `evalReal` / `toRealApprox`. ✅ shipped (commit `78852f4`).
 3. **Small cleanups.** Dead `SortTag` retirement + `mkBitVec` signature normalisation. ✅ shipped (commit `7b2d59f`).
 4. **Strings + regexes** (`z3/char`, `z3/string`, `z3/regex`). ✅ shipped.
-5. **Sequences** (`z3/seq`).
+5. **Sequences** (`z3/seq`). ✅ shipped.
 6. **FloatingPoint** (`z3/fp`).
 7. **Uninterpreted functions** (`Z3FuncDecl`).
 8. **Solver–tactic bridges**: `Z3_mk_solver_from_tactic` + `Z3_solver_set_params` for `Z3Solver`.
@@ -311,7 +311,7 @@ Architectural work first (so subsequent steps inherit the unified surface and do
 
 4. **Strings + regexes.** ✅ shipped. Three modules: `z3/char` (Z3Char Unicode-codepoint family — first use of the step-1 unified concept for a new family), `z3/string` (Z3String with full SMT-LIB seq op coverage + Nim-string-literal lifts), `z3/regex` (Z3Regex[Basis] phantom over the basis sequence sort — Z3String only in step 4; step 5's Z3Seq[E] generalises). Spec corrections in §8.
 
-5. **Sequences** (`z3/seq`). Generalisation of strings; same dispatch story.
+5. **Sequences** (`z3/seq`). ✅ shipped. Generalisation of strings; same dispatch story.
 
 6. **FloatingPoint** (`z3/fp`). Rounding-mode parameterised arithmetic; type-level width safety per IEEE 754.
 
@@ -385,6 +385,12 @@ The same lens applies to anything we add later: before promoting it to a v0.3+ s
 - **Spec correction**: the v0.2 audit's "`Z3_apply_result_convert_model`" promise was based on a function that was retired in Z3 4.8.0 (2018). The same capability exists today as `Z3_goal_convert_model` — lives on the sub-`Z3Goal` rather than on the `Z3ApplyResult`, but provides the identical functionality. v0.3 step 2 routed the user-facing `convertModel(applyResult, idx, subModel)` ergonomic through `Z3_goal_convert_model` on the indexed sub-goal. **No work deferred** — the capability landed, just under the modern Z3 name.
 - **Spec correction**: the v0.1 §18 / v0.3 plan §7 Q3 "precision = 15 decimal digits" lean for `toRealApprox` was a misread. `Z3_get_numeral_double` doesn't take a precision parameter — Z3 picks the closest representable double and we report it. The Nim API is `toRealApprox*(a: Z3Real): float`; no `precision` arg. Same precision policy as the FFI: whatever float64 IEEE 754 lets you encode.
 - **Epsilon-bound Real extraction** (e.g. optimisation bounds like `1/2 + ε`). The current `toRealApprox` raises `Z3Error` for these because `Z3_get_numeral_double` only handles numerals; the epsilon term blocks. **Where**: v0.4 if a real user wants to extract a specific finite value from an epsilon-bounded objective. Workaround: simplify + inspect the AST kind manually before extracting.
+
+### From step 5 (sequences)
+
+- **Refactor: `Z3String = Z3Seq[Z3Char]` alias.** Z3 itself defines `String = (Seq Char)`. Step 4 shipped `Z3String` as its own value family with a duplicated `seq.*` surface; step 5 collapses it to a Nim type alias over `Z3Seq[Z3Char]`. Every generic seq op (`len`, `concat`, `&`, `nth`, `at`, `substr`, `contains`, `startsWith`/`endsWith`, `indexOf`, `replace`, `==`, `!=`) now lives once on `Z3Seq[E]` and applies to `Z3String` automatically. `z3/string` now ships only the string-specific surface (`mkString` via `lstring`, `mkStringVar`, `toStr`/`evalStr`, `strToInt`/`intToStr`, the Nim-`string`-literal lifts). All 14 step-4 string tests still pass; no behavior change. **No work deferred** — pure structural cleanup.
+- **`Z3Regex[Basis]` widened from `Basis is Z3String` to `Basis is Z3Seq[E]`.** `Z3String` flows through via the alias; `Z3Regex[Z3Seq[Z3Int]]` etc. are now constructible. New regression test in `tregex.nim` proves the generalisation. **No work deferred.**
+- **`sortOfTypeSeq[E]` cascade lives in `z3/seq`.** Step 4's `z3/array` had a `sortOfType[T]` that supported only `Z3Int / Z3Real / Z3Bool / Z3BitVec[W]`. Step 5 adds the parallel `sortOfTypeSeq` covering `Z3Char` and recursive `Z3Seq[E']` for nested sequences. Centralising both into a single `z3/sortdispatch` module is the right consolidation but isn't blocking — logged for a future cleanup commit, not deferred to v0.4.
 
 ### From step 4 (strings + regexes)
 

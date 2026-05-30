@@ -867,6 +867,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_is_string(c: RawZ3Context, s: RawZ3Ast): bool
     {.cdecl, header: "z3.h".}
 
+  proc Z3_mk_seq_sort(c: RawZ3Context, elem: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_empty(c: RawZ3Context, seq: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_unit(c: RawZ3Context, e: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_nth(c: RawZ3Context, s, index: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
   proc Z3_mk_seq_length(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_seq_concat(c: RawZ3Context, n: cuint,

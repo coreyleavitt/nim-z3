@@ -110,3 +110,13 @@ suite "Z3Regex — universals":
     check smtValid(not matches(mkString(""), r))
     check smtValid(matches(mkString("a"), r))
     check smtValid(not matches(mkString("ab"), r))
+
+suite "Z3Regex — non-string basis (proves Z3Seq[E] generalisation)":
+  test "Z3Regex[Z3Seq[Z3Int]] — regex over int sequences":
+    let ctx = newContext()
+    # The int-seq [1,2,3] matches a regex that's its own singleton.
+    let target = concat(mkSeqUnit(mkInt(1)), mkSeqUnit(mkInt(2)), mkSeqUnit(mkInt(3)))
+    let r = mkRegex(target)
+    check smtValid(matches(target, r))
+    let other = concat(mkSeqUnit(mkInt(1)), mkSeqUnit(mkInt(99)))
+    check smtValid(not matches(other, r))

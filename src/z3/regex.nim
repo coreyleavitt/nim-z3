@@ -14,7 +14,7 @@
 ## cases (large counted repetitions, intersections that produce
 ## exponential DFAs). Treat `zsUnknown` as a possible solver outcome.
 
-import ./ffi, ./context, ./ast, ./char, ./string
+import ./ffi, ./context, ./ast, ./char, ./seq, ./string
 export char
 
 # ============================================================================
@@ -44,22 +44,27 @@ proc `=dup`[Basis](src: Z3Regex[Basis]): Z3Regex[Basis] {.raises: [].} =
 # matching SMT sort. v0.3 step 4 supports Z3String only.
 
 proc basisSort[Basis](ctx: Z3Context): RawZ3Sort =
-  when Basis is Z3String:
-    ctx.checkErr Z3_mk_string_sort(ctx.raw)
+  when Basis is Z3Seq:
+    # Z3String = Z3Seq[Z3Char] flows through this branch too. The
+    # element sort comes from `z3/seq`'s recursive dispatcher.
+    let elem = sortOfTypeSeq[Basis.E](ctx)
+    ctx.checkErr Z3_mk_seq_sort(ctx.raw, elem)
   else:
-    {.error: "Z3Regex basis: only Z3String supported in v0.3 step 4. " &
-             "Z3Seq[E] lands in step 5.".}
+    {.error: "Z3Regex basis: must be a Z3Seq[E] (= Z3String for E = Z3Char). " &
+             "Got an unsupported basis type.".}
 
 # ============================================================================
 # Constructors
 # ============================================================================
 
-proc mkRegex*(ctx: Z3Context, s: Z3String): Z3Regex[Z3String] =
-  ## Singleton regex matching exactly the string `s`. SMT
-  ## `(seq.to.re s)`.
-  wrap[Z3Regex[Z3String]](ctx,
+proc mkRegex*[E](ctx: Z3Context, s: Z3Seq[E]): Z3Regex[Z3Seq[E]] =
+  ## Singleton regex matching exactly the sequence `s`. SMT
+  ## `(seq.to.re s)`. For `Z3String` (= `Z3Seq[Z3Char]`) this matches
+  ## the singleton string language; for any `Z3Seq[E]` it matches the
+  ## singleton sequence language over the element sort.
+  wrap[Z3Regex[Z3Seq[E]]](ctx,
     ctx.checkErr Z3_mk_seq_to_re(ctx.raw, s.raw))
-proc mkRegex*(s: Z3String): Z3Regex[Z3String] =
+proc mkRegex*[E](s: Z3Seq[E]): Z3Regex[Z3Seq[E]] =
   mkRegex(s.ctx, s)
 
 proc mkRegexEmpty*[Basis](ctx: Z3Context): Z3Regex[Basis] =

@@ -138,20 +138,29 @@ proc query*(fp: Z3Fixedpoint, q: Z3Bool): Z3Status =
   ## Run the CHC decision procedure on the query formula. Returns
   ## `zsSat` if the query is reachable / derivable, `zsUnsat` if
   ## provably unreachable, `zsUnknown` otherwise.
-  cast[Z3Status](Z3_fixedpoint_query(fp.ctx.raw, fp.raw, q.raw))
+  ##
+  ## Raises `Z3Error` (typed subclass via `checkErr`) if Z3 sets an
+  ## error code during the query — e.g. ill-typed formula, sort
+  ## mismatch with a registered relation, or use after
+  ## context-destruction. Pre-v0.5.0 this raw-cast the FFI return
+  ## with no error check, silently turning Z3 errors into garbage
+  ## `Z3Status` values; v0.5.0 audit closed that gap.
+  let res = fp.ctx.checkErr Z3_fixedpoint_query(fp.ctx.raw, fp.raw, q.raw)
+  cast[Z3Status](res)
 
 proc queryRelations*[ArgsTup: tuple, Ret](
     fp: Z3Fixedpoint,
     relations: openArray[Z3FuncDecl[ArgsTup, Ret]]): Z3Status =
   ## Multi-relation query — checks reachability of any of the listed
-  ## predicates.
+  ## predicates. Raises `Z3Error` on Z3-side failure; see `query`.
   doAssert relations.len > 0
   var raws = newSeq[RawZ3FuncDecl](relations.len)
   for i, r in relations:
     raws[i] = r.raw
-  cast[Z3Status](Z3_fixedpoint_query_relations(
+  let res = fp.ctx.checkErr Z3_fixedpoint_query_relations(
     fp.ctx.raw, fp.raw, cuint(raws.len),
-    cast[ptr UncheckedArray[RawZ3FuncDecl]](addr raws[0])))
+    cast[ptr UncheckedArray[RawZ3FuncDecl]](addr raws[0]))
+  cast[Z3Status](res)
 
 proc getAnswer*(fp: Z3Fixedpoint): Z3Bool =
   ## Retrieve the answer formula after a `query` call. For sat

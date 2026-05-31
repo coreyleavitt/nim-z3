@@ -159,7 +159,7 @@ proc getAnswer*(fp: Z3Fixedpoint): Z3Bool =
   ## (with `proof=true` set on the context, a proof object).
   let raw = fp.ctx.checkErr Z3_fixedpoint_get_answer(fp.ctx.raw, fp.raw)
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Fixedpoint.getAnswer: nil answer returned. Most likely cause: " &
       "query() hasn't been called, or returned zsUnknown.")
     e.code = Z3_INVALID_USAGE

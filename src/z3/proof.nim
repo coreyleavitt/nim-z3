@@ -174,7 +174,7 @@ proc unpackProof*(p: Z3Proof): tuple[rule: ProofRule,
   ## application is its conclusion (a `Z3Bool`); all preceding args
   ## are sub-proofs. Raises `Z3Error` if `p` isn't an application AST.
   if getAstKind(p) != akApp:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "unpackProof: AST is not a proof application (kind = " &
       $getAstKind(p) & ")")
     e.code = Z3_INVALID_USAGE
@@ -219,7 +219,7 @@ proc getProof*(s: Z3Solver): Z3Proof =
   ## ```
   let raw = s.ctx.checkErr Z3_solver_get_proof(s.ctx.raw, s.raw)
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Solver.getProof: nil proof returned. Most likely cause: " &
       "proof generation wasn't enabled on the context, or the last " &
       "check() did not return zsUnsat.")

@@ -38,25 +38,158 @@ export Z3ErrorCode  # enum values are re-exported transitively with the type
 
 type
   Z3Error* = object of CatchableError
-    ## Raised when a Z3 FFI call sets an error code other than `Z3_OK`.
-    ## `code` carries the typed `Z3ErrorCode`; `msg` is the
-    ## human-readable diagnostic Z3 provides for that code.
+    ## Abstract base for every Z3-originated error. Raised by
+    ## `checkErr` when an FFI call sets an error code other than
+    ## `Z3_OK`. `code` carries the typed `Z3ErrorCode`; `msg` is the
+    ## human-readable diagnostic Z3 provides for that code. The
+    ## concrete type is one of the subclasses below.
     code*: Z3ErrorCode
-      ## The Z3-supplied error code; useful for `case`-dispatch in
-      ## exception handlers. In v0.5 step 4 this becomes redundant
-      ## with the subclass type, but the field stays for callers
-      ## that want the raw enum.
+      ## The Z3-supplied error code. Redundant with the subclass
+      ## type post-step-4 but the field stays for callers that want
+      ## the raw enum (for `case`-dispatch in exception handlers).
+
+  # --- subclass tree (v0.5 step 4) ---------------------------------------
+  # Each subclass corresponds to one `Z3ErrorCode` (or, for parser, a
+  # pair). Catch the specific subclass when your code can recover
+  # from that kind; catch the base `Z3Error` when you want any Z3
+  # error.
+
+  Z3SortMismatchError* = object of Z3Error
+    ## `Z3_SORT_ERROR` — sort mismatch in an FFI call (e.g. asking
+    ## for the bit-vector width of an `Int` sort, mixing sorts in
+    ## an operator that requires same-sort args). The wrapper's
+    ## phantom-typed API catches most of these at Nim compile time;
+    ## this raises when a runtime-erased path (`Z3AnyAst` lift,
+    ## `Z3_get_sort_kind` mismatch, parser sort-check failure)
+    ## reaches the FFI.
+    ##
+    ## **Naming note:** the FFI enum value is `Z3_SORT_ERROR`; per
+    ## Nim's style-insensitive identifier rules `Z3SortError` and
+    ## `Z3_SORT_ERROR` are the same identifier. The subclass name
+    ## adds "Mismatch" to disambiguate; the semantics match the
+    ## C-side name exactly.
+
+  Z3IndexOutOfBoundsError* = object of Z3Error
+    ## `Z3_IOB` — index out of bounds. Distinct from generic
+    ## `Z3InvalidArgError` because index-shaped argument errors are
+    ## frequent enough to deserve their own handler (`expect
+    ## Z3IndexOutOfBoundsError` reads naturally on per-index ops).
+
+  Z3InvalidArgError* = object of Z3Error
+    ## `Z3_INVALID_ARG` — a specific argument failed Z3's validation
+    ## (wrong shape, out-of-range value, null where non-null
+    ## expected). Catch for "this input is bad" recovery.
+
+  Z3ParseError* = object of Z3Error
+    ## `Z3_PARSER_ERROR` (input rejected) or `Z3_NO_PARSER` (no
+    ## parser output available — caller queried for parsed assertions
+    ## without parsing first). Both are SMT-LIB-input-shaped failures,
+    ## bundled together because callers handling one almost always
+    ## want to handle the other identically.
+    ##
+    ## **Naming note:** the FFI enum value is `Z3_PARSER_ERROR`; per
+    ## Nim's style-insensitive identifier rules `Z3ParserError` and
+    ## `Z3_PARSER_ERROR` are the same identifier. The subclass drops
+    ## the "r" to disambiguate (`Z3ParseError`); the semantics match
+    ## the C-side name exactly.
+
+  Z3InvalidPatternError* = object of Z3Error
+    ## `Z3_INVALID_PATTERN` — quantifier trigger pattern doesn't
+    ## match the body's free-variable shape. Catchable: pattern
+    ## construction is something users sometimes get wrong.
+
+  Z3MemoryError* = object of Z3Error
+    ## `Z3_MEMOUT_FAIL` — Z3 ran out of memory mid-decision. Catch
+    ## for retry-with-smaller-goal or timeout-graceful-degrade.
+
+  Z3FileError* = object of Z3Error
+    ## `Z3_FILE_ACCESS_ERROR` — file I/O failed (e.g. `parseSmt2File`
+    ## couldn't open the path). Catchable like any `IOError`-shaped
+    ## condition.
+
+  Z3InternalError* = object of Z3Error
+    ## `Z3_INTERNAL_FATAL` — Z3 itself hit an internal invariant
+    ## violation. Almost certainly NOT user-caused; the right
+    ## response is "log and re-raise" unless you're explicitly
+    ## isolating Z3 in a subprocess.
+
+  Z3InvalidUsageError* = object of Z3Error
+    ## `Z3_INVALID_USAGE` — operation called in an invalid state
+    ## (e.g. `getModel` before a `sat` `check()`, FFI op on a
+    ## destroyed handle). Most user-caused errors land here; catch
+    ## when the workflow's state is unclear.
+
+  Z3RefcountError* = object of Z3Error
+    ## `Z3_DEC_REF_ERROR` — refcount discipline violated (a handle
+    ## was decremented past zero). Should never happen if the
+    ## wrapper's lifecycle templates are correct; if it fires, file
+    ## a bug. Subclass exists so the diagnostic is self-explanatory.
+
+  Z3OperationError* = object of Z3Error
+    ## `Z3_EXCEPTION` — generic Z3 exception (the C-side catch-all
+    ## for "something went wrong but not in the more specific
+    ## categories"). The diagnostic message is your only signal.
+
+  Z3UnknownError* = object of Z3Error
+    ## Z3 emitted an error code our `Z3ErrorCode` enum doesn't
+    ## recognise. Imported-enum out-of-range fallback. Forward-
+    ## compatible: a new Z3 version adding a code lands here until
+    ## the wrapper is updated.
+
+template raiseSubclass(SubT: untyped, fullMsg: string,
+                       errCode: Z3ErrorCode) =
+  ## Helper: raise a fully-initialised exception of subclass `SubT`
+  ## with the `code` field set. Used inside `raiseZ3Error`'s
+  ## case-dispatch so each arm is one expression.
+  var e = newException(SubT, fullMsg)
+  e.code = errCode
+  raise e
 
 proc raiseZ3Error*(rawCtx: RawZ3Context, code: Z3ErrorCode) {.noreturn.} =
-  ## Raise `Z3Error` with the Z3-supplied diagnostic for `code` against
-  ## the raw context `rawCtx`. Called by `checkErr` when an FFI call
-  ## sets a non-OK error. Takes the raw handle rather than the typed
-  ## `Z3Context` so this module stays at a lower layer than
-  ## `z3/context`; callers with a typed handle pass `ctx.raw`.
+  ## Raise the typed `Z3Error` subclass corresponding to `code`,
+  ## with the Z3-supplied diagnostic message from `rawCtx`. Called
+  ## by `checkErr` when an FFI call sets a non-OK error. Takes the
+  ## raw handle rather than the typed `Z3Context` so this module
+  ## stays at a lower layer than `z3/context`; callers with a typed
+  ## handle pass `ctx.raw`.
+  ##
+  ## Dispatch table:
+  ##
+  ## | `code`                  | subclass                  |
+  ## |-------------------------|---------------------------|
+  ## | `Z3_SORT_ERROR`         | `Z3SortMismatchError`     |
+  ## | `Z3_IOB`                | `Z3IndexOutOfBoundsError` |
+  ## | `Z3_INVALID_ARG`        | `Z3InvalidArgError`       |
+  ## | `Z3_PARSER_ERROR`       | `Z3ParseError`            |
+  ## | `Z3_NO_PARSER`          | `Z3ParseError`            |
+  ## | `Z3_INVALID_PATTERN`    | `Z3InvalidPatternError`   |
+  ## | `Z3_MEMOUT_FAIL`        | `Z3MemoryError`           |
+  ## | `Z3_FILE_ACCESS_ERROR`  | `Z3FileError`             |
+  ## | `Z3_INTERNAL_FATAL`     | `Z3InternalError`         |
+  ## | `Z3_INVALID_USAGE`      | `Z3InvalidUsageError`     |
+  ## | `Z3_DEC_REF_ERROR`      | `Z3RefcountError`         |
+  ## | `Z3_EXCEPTION`          | `Z3OperationError`        |
+  ## | unrecognised            | `Z3UnknownError`          |
+  ##
+  ## `Z3_OK` is not a real error code; if `raiseZ3Error` is called
+  ## with `Z3_OK` (a wrapper bug) it falls through to
+  ## `Z3UnknownError`.
   let msg = $Z3_get_error_msg(rawCtx, code)
-  var e = newException(Z3Error, "Z3 " & $code & ": " & msg)
-  e.code = code
-  raise e
+  let fullMsg = "Z3 " & $code & ": " & msg
+  case code
+  of Z3_SORT_ERROR:        raiseSubclass(Z3SortMismatchError,     fullMsg, code)
+  of Z3_IOB:               raiseSubclass(Z3IndexOutOfBoundsError, fullMsg, code)
+  of Z3_INVALID_ARG:       raiseSubclass(Z3InvalidArgError,       fullMsg, code)
+  of Z3_PARSER_ERROR:      raiseSubclass(Z3ParseError,            fullMsg, code)
+  of Z3_NO_PARSER:         raiseSubclass(Z3ParseError,            fullMsg, code)
+  of Z3_INVALID_PATTERN:   raiseSubclass(Z3InvalidPatternError,   fullMsg, code)
+  of Z3_MEMOUT_FAIL:       raiseSubclass(Z3MemoryError,           fullMsg, code)
+  of Z3_FILE_ACCESS_ERROR: raiseSubclass(Z3FileError,             fullMsg, code)
+  of Z3_INTERNAL_FATAL:    raiseSubclass(Z3InternalError,         fullMsg, code)
+  of Z3_INVALID_USAGE:     raiseSubclass(Z3InvalidUsageError,     fullMsg, code)
+  of Z3_DEC_REF_ERROR:     raiseSubclass(Z3RefcountError,         fullMsg, code)
+  of Z3_EXCEPTION:         raiseSubclass(Z3OperationError,        fullMsg, code)
+  else:                    raiseSubclass(Z3UnknownError,          fullMsg, code)
 
 template checkErr*(ctx: untyped, callExpr: untyped): untyped =
   ## Wrap an FFI call: evaluate `callExpr`, query the context's error

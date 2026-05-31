@@ -221,7 +221,7 @@ proc sortOf*[T](_: typedesc[Z3DatatypeValue[T]],
   ## `Z3FuncDecl[..., Z3DatatypeValue[T]]`, …).
   let name = $T
   if not ctx.datatypeRegistry.hasKey(name):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3DatatypeValue[" & name & "] is not registered in this context " &
       "— call `declareDatatype[" & name & "](...)` first (or " &
       "`declareDatatypes(...)` if mutually-recursive). " &
@@ -282,7 +282,7 @@ proc buildRawConstructors(
         result.fieldRefs[ci][fi] = cuint(selfIdx)
       of fkCross:
         if not nameToIdx.hasKey(f.crossTypeName):
-          raise newException(Z3Error,
+          raise newException(Z3InvalidUsageError,
             &"datatype build: crossField references '{f.crossTypeName}' " &
             "which is not among the sibling datatypes in this batch. " &
             "Use `selfField` for self-references; use `declareDatatypes` " &
@@ -516,7 +516,7 @@ proc findCon[T](
   for c in dt.cons:
     if c.cname == cname:
       return c
-  raise newException(Z3Error,
+  raise newException(Z3InvalidUsageError,
     &"datatype {$T}: no constructor named '{cname}'")
 
 proc con*[T](
@@ -548,7 +548,7 @@ proc accessor*[T, Ret](
       found = true
       break
   if not found:
-    raise newException(Z3Error,
+    raise newException(Z3InvalidUsageError,
       &"datatype {$T}: constructor '{cname}' has no field '{fname}'")
   Z3AccessorDecl[T, Ret](inner: inner, fname: fname)
 

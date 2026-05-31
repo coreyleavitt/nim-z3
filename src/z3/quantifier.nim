@@ -239,7 +239,7 @@ template assertIsQuantifier(q: Z3Bool, fnName: static string) =
   if not (Z3_is_quantifier_forall(q.ctx.raw, q.raw) or
           Z3_is_quantifier_exists(q.ctx.raw, q.raw) or
           Z3_is_lambda(q.ctx.raw, q.raw)):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       fnName & ": AST is not a quantifier (forall / exists / lambda).")
     e.code = Z3_INVALID_USAGE
     raise e

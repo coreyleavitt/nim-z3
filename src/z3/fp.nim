@@ -211,7 +211,7 @@ proc fpBitsToUint64(a: Z3Fp): uint64 =
   let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, ieee)
   var bits: uint64
   if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr bits):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Fp.toFloat*: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` does not reduce to a literal FP value (most commonly: a free " &
       "FP variable that hasn't been evaluated through the model).")

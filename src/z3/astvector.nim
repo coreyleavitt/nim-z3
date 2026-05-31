@@ -61,7 +61,7 @@ proc wrapAstVector*(ctx: Z3Context, raw: RawZ3AstVector): Z3AstVector =
   ## obtained from their own FFI paths. Parallel to `wrapModel` /
   ## `wrapSolver` from prior steps. Raises `Z3Error` if `raw` is nil.
   if raw.isNil:
-    var e = newException(Z3Error, "Z3 returned a nil ast-vector handle.")
+    var e = newException(Z3InvalidUsageError, "Z3 returned a nil ast-vector handle.")
     e.code = Z3_INVALID_USAGE
     raise e
   Z3_ast_vector_inc_ref(ctx.raw, raw)

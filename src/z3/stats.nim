@@ -38,7 +38,7 @@ proc wrapStats*(ctx: Z3Context, raw: RawZ3Stats): Z3Stats =
   ## obtain from their own FFI paths. Raises `Z3Error` if `raw` is
   ## nil.
   if raw.isNil:
-    var e = newException(Z3Error, "Z3 returned a nil stats handle.")
+    var e = newException(Z3InvalidUsageError, "Z3 returned a nil stats handle.")
     e.code = Z3_INVALID_USAGE
     raise e
   Z3_stats_inc_ref(ctx.raw, raw)
@@ -116,7 +116,7 @@ proc getInt*(s: Z3Stats, key: string): int =
     raise newException(KeyError,
       "Z3Stats.getInt: key '" & key & "' not present.")
   if not Z3_stats_is_uint(s.ctx.raw, s.raw, cuint(i)):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Stats.getInt: key '" & key & "' is double-typed; use getFloat.")
     e.code = Z3_INVALID_USAGE
     raise e

@@ -259,7 +259,7 @@ proc datatypeName*(ctx: Z3Context, s: RawZ3Sort): string =
 
 template raiseSortMismatch(expected: string, gotKind: Z3SortKind,
                            ctx: Z3Context) =
-  var e = newException(Z3Error,
+  var e = newException(Z3SortMismatchError,
     "Sort lift mismatch: expected " & expected &
     ", got AST of sort kind " & $gotKind & ".")
   e.code = Z3_INVALID_USAGE
@@ -296,7 +296,7 @@ proc asZ3BitVec*[W: static int](a: Z3AnyAst): Z3BitVec[W] =
     raiseSortMismatch("Z3BitVec[" & $W & "] (skBitVec)", k, a.ctx)
   let actualW = bitVecWidth(a.ctx, s)
   if actualW != W:
-    var e = newException(Z3Error,
+    var e = newException(Z3SortMismatchError,
       "BitVec width mismatch: expected Z3BitVec[" & $W &
       "], got Z3BitVec[" & $actualW & "].")
     e.code = Z3_INVALID_USAGE
@@ -311,7 +311,7 @@ proc asZ3Fp*[E, S: static int](a: Z3AnyAst): Z3Fp[E, S] =
   let actualE = fpEbits(a.ctx, sort)
   let actualS = fpSbits(a.ctx, sort)
   if actualE != E or actualS != S:
-    var e = newException(Z3Error,
+    var e = newException(Z3SortMismatchError,
       "Fp width mismatch: expected Z3Fp[" & $E & ", " & $S &
       "], got Z3Fp[" & $actualE & ", " & $actualS & "].")
     e.code = Z3_INVALID_USAGE
@@ -328,7 +328,7 @@ proc asZ3Seq*[E](a: Z3AnyAst): Z3Seq[E] =
   let expectedElemSort = sortOfType[E](a.ctx)
   # Z3 sorts are interned — same family + parameters → same handle.
   if cast[pointer](elemSort) != cast[pointer](expectedElemSort):
-    var e = newException(Z3Error,
+    var e = newException(Z3SortMismatchError,
       "Seq element sort mismatch.")
     e.code = Z3_INVALID_USAGE
     raise e

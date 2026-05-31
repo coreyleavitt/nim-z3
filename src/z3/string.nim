@@ -80,7 +80,7 @@ proc toStr*(a: Z3String): string =
   if errCode != Z3_OK:
     raiseZ3Error(a.ctx.raw, errCode)
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3String.toStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` is not a literal string.")
     e.code = Z3_INVALID_USAGE

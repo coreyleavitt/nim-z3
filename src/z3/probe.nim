@@ -49,7 +49,7 @@ emitRefcountLifecycle(Z3ProbeOwn, Z3_probe_dec_ref)
 proc wrapProbe*(ctx: Z3Context, raw: RawZ3Probe): Z3Probe =
   ## Adopt a freshly-returned raw probe handle.
   if raw.isNil:
-    var e = newException(Z3Error, "Z3 returned a nil probe handle.")
+    var e = newException(Z3InvalidUsageError, "Z3 returned a nil probe handle.")
     e.code = Z3_INVALID_USAGE
     raise e
   Z3_probe_inc_ref(ctx.raw, raw)

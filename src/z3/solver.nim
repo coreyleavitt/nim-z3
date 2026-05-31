@@ -68,7 +68,7 @@ proc wrapSolver*(ctx: Z3Context, raw: RawZ3Solver): Z3Solver =
   ## extensions) can wrap solvers obtained from their own FFI paths.
   ## Raises `Z3Error` if `raw` is nil.
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3 returned a nil solver handle.")
     e.code = Z3_INVALID_USAGE
     raise e

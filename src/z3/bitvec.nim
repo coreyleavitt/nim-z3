@@ -389,7 +389,7 @@ proc toUint*[W: static int](a: Z3BitVec[W]): uint64 =
   let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
   var v: uint64
   if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3BitVec.toUint: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` does not reduce to a literal BV numeral.")
     e.code = Z3_INVALID_USAGE
@@ -418,7 +418,7 @@ proc toBigIntStr*[W: static int](a: Z3BitVec[W]): string =
   let simplified = a.ctx.checkErr Z3_simplify(a.ctx.raw, asInt)
   let s = Z3_get_numeral_string(a.ctx.raw, simplified)
   if s.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3BitVec.toBigIntStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` is not a literal BV numeral.")
     e.code = Z3_INVALID_USAGE
@@ -441,7 +441,7 @@ proc toBigUintStr*[W: static int](a: Z3BitVec[W]): string =
   let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
   let s = Z3_get_numeral_string(a.ctx.raw, folded)
   if s.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3BitVec.toBigUintStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` does not reduce to a literal BV numeral.")
     e.code = Z3_INVALID_USAGE
@@ -464,7 +464,7 @@ proc toInt*[W: static int](a: Z3BitVec[W]): int64 =
   let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
   var v: uint64
   if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3BitVec.toInt: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &
       "` does not reduce to a literal BV numeral.")
     e.code = Z3_INVALID_USAGE

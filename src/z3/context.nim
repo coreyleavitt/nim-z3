@@ -120,7 +120,7 @@ proc requireCurrentContext*(): Z3Context =
   ## explaining how to fix it.
   let c = currentZ3Ctx
   if c == nil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "no current Z3 context; call `newContext()` once before using " &
       "context-less builders, or pass an explicit context as the first " &
       "argument (e.g. `ctx.mkIntVar(\"x\")` instead of `mkIntVar(\"x\")`)")

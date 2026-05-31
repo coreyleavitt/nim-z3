@@ -105,7 +105,7 @@ proc `$`*(g: Z3Goal): string =
 # Internal: wrap a freshly-returned Z3_goal handle from FFI.
 proc wrapGoal(ctx: Z3Context, raw: RawZ3Goal): Z3Goal =
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3 returned a nil goal handle.")
     e.code = Z3_INVALID_USAGE
     raise e
@@ -133,7 +133,7 @@ proc ctx*(g: Z3Goal): Z3Context {.inline.} = g.ctx
 
 proc wrapTactic*(ctx: Z3Context, raw: RawZ3Tactic): Z3Tactic =
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3 returned a nil tactic handle.")
     e.code = Z3_INVALID_USAGE
     raise e
@@ -203,7 +203,7 @@ emitRefcountLifecycle(Z3ApplyResultOwn, Z3_apply_result_dec_ref)
 
 proc wrapApplyResult(ctx: Z3Context, raw: RawZ3ApplyResult): Z3ApplyResult =
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3 returned a nil apply-result handle.")
     e.code = Z3_INVALID_USAGE
     raise e

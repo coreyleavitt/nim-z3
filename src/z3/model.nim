@@ -45,7 +45,7 @@ proc wrapModel*(ctx: Z3Context, raw: RawZ3Model): Z3Model =
   ## models they obtain from their own FFI paths. Raises `Z3Error`
   ## if `raw` is nil.
   if raw.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3 returned a nil model. Most likely cause: `model()` was " &
       "called on a solver/optimiser whose last `check()` did not " &
       "return `zsSat`.")
@@ -93,7 +93,7 @@ proc eval*[T](m: Z3Model, a: T, modelCompletion = true): T =
   if errCode != Z3_OK:
     raiseZ3Error(m.ctx.raw, errCode)
   if not ok:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3_model_eval returned false; the model couldn't evaluate the AST. " &
       "Most likely cause: the AST references a function the model doesn't " &
       "constrain.")
@@ -119,7 +119,7 @@ proc toInt*(a: Z3Int): int =
   ## `cint`. For arbitrary-precision integers, use `toBigIntStr`.
   var v: cint
   if not Z3_get_numeral_int(a.ctx.raw, a.raw, addr v):
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Int.toInt: AST `" & $a & "` is not a literal int (or doesn't " &
       "fit in cint). Use `toBigIntStr` for arbitrary-precision integers.")
     e.code = Z3_INVALID_USAGE
@@ -141,7 +141,7 @@ proc toBigIntStr*(a: Z3Int): string =
   ## `cint`. Raises `Z3Error` if the AST isn't a numeral.
   let s = Z3_get_numeral_string(a.ctx.raw, a.raw)
   if s.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Int.toBigIntStr: AST `" & $a & "` is not a numeral.")
     e.code = Z3_INVALID_USAGE
     raise e
@@ -151,7 +151,7 @@ proc toBigRealStr*(a: Z3Real): string =
   ## Lossless string form of a real literal (`"3/2"`, `"42"`, etc.).
   let s = Z3_get_numeral_string(a.ctx.raw, a.raw)
   if s.isNil:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Real.toBigRealStr: AST `" & $a & "` is not a numeral.")
     e.code = Z3_INVALID_USAGE
     raise e
@@ -167,7 +167,7 @@ proc toBool*(a: Z3Bool): bool =
   of Z3_L_TRUE: true
   of Z3_L_FALSE: false
   of Z3_L_UNDEF:
-    var e = newException(Z3Error,
+    var e = newException(Z3InvalidUsageError,
       "Z3Bool.toBool: AST `" & $a & "` is not a literal true/false. " &
       "Did you forget to evaluate it through `model[ast]` first?")
     e.code = Z3_INVALID_USAGE

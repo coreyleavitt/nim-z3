@@ -71,7 +71,7 @@ proc model*(s: Z3Solver): Z3Model =
 # Evaluation
 # ============================================================================
 
-proc eval*[T](m: Z3Model, a: T, modelCompletion = true): T =
+proc eval*[T: Z3Term](m: Z3Model, a: T, modelCompletion = true): T =
   ## Evaluate `a` under this model. Returned AST is `a` with the
   ## model's variable assignments substituted in and Z3's simplifier
   ## applied. For a numeral input, you get the numeral back
@@ -101,7 +101,7 @@ proc eval*[T](m: Z3Model, a: T, modelCompletion = true): T =
     raise e
   wrap[T](m.ctx, outRaw)
 
-proc `[]`*[T](m: Z3Model, a: T): T =
+proc `[]`*[T: Z3Term](m: Z3Model, a: T): T =
   ## Sugar for `m.eval(a)`.
   m.eval(a)
 

@@ -106,3 +106,26 @@ suite "\\$ — generic over Z3Term":
     let ctx = newContext()
     let f = mkFuncDecl[(Z3Int,), Z3Int]("f")
     check ($f).len > 0
+
+suite "model.eval / m[] are constrained to Z3Term":
+  test "m.eval(intAst) compiles (Z3Int is Z3Term)":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let s = newSolver()
+    s.add x == mkInt(42)
+    check s.check() == zsSat
+    let m = s.model()
+    check compiles(m.eval(x))
+    check compiles(m[x])
+
+  test "m.eval(int) does NOT compile (Nim int is not Z3Term)":
+    # Constraint guard from v0.5.0 audit. A plain Nim `int` has no
+    # `.raw is RawZ3Ast` field; the typed-eval generic correctly
+    # rejects it at compile time rather than blowing up inside the
+    # body with an obscure dot-access error.
+    let ctx = newContext()
+    let s = newSolver()
+    discard s.check()
+    let m = s.model()
+    check not compiles(m.eval(42))
+    check not compiles(m[42])

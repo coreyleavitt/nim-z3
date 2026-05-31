@@ -139,12 +139,20 @@ suite "B1/B4/B5 — generic simplify / ite / mkDistinct across families":
   test "ite[T: Z3Term] works for Z3Fp, Z3Seq, Z3Char (medium B4)":
     let ctx = newContext()
     let p = mkBoolVar("p")
+    # When p is true, ite picks the first branch; when false, the
+    # second. Force p in each direction and assert the resulting
+    # SMT-level equality.
     let f = ite(p, mkFloat32(1.0'f32), mkFloat32(2.0'f32))
     let s = ite(p, mkSeqUnit(mkInt(1)), mkSeqUnit(mkInt(2)))
     let c = ite(p, mkChar('a'), mkChar('b'))
-    check compiles(f)
-    check compiles(s)
-    check compiles(c)
+    # p=true → first branch.
+    check smtValid((p == mkBool(true)).implies(f == mkFloat32(1.0'f32)))
+    check smtValid((p == mkBool(true)).implies(s == mkSeqUnit(mkInt(1))))
+    check smtValid((p == mkBool(true)).implies(c == mkChar('a')))
+    # p=false → second branch.
+    check smtValid((p == mkBool(false)).implies(f == mkFloat32(2.0'f32)))
+    check smtValid((p == mkBool(false)).implies(s == mkSeqUnit(mkInt(2))))
+    check smtValid((p == mkBool(false)).implies(c == mkChar('b')))
 
   test "mkDistinct[T: Z3Term] enforces same-sort at compile time (medium B5)":
     let ctx = newContext()

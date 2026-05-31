@@ -70,12 +70,19 @@ suite "Z3FuncInterp — entries + else":
     check s.check() == zsSat
     let fi = getFuncInterp(s.model(), f)
     check fi.arity == 1
-    check fi.len >= 0  # may be 0 or 1; both legitimate
-
-    # Whatever shape the interpretation has, evaluating f(42) via
-    # the model should give 99.
+    # Shape contract: Z3 may report 0 entries (all signal in elseValue)
+    # or 1 entry (the pinned point). Anything else would be a wrapper
+    # bug.
+    check fi.len in {0, 1}
     let m = s.model()
+    # Regardless of which shape Z3 chose, the value at the pinned
+    # point must be 99. AND: if Z3 chose the zero-entry shape, the
+    # else-value MUST be 99 (it's the only thing carrying the
+    # constraint). If Z3 chose the one-entry shape, the elseValue is
+    # unconstrained — we don't pin it.
     check evalAt(m, f, (mkInt(42),)).toInt == 99
+    if fi.len == 0:
+      check fi.elseValue.toInt == 99
 
   test "two-arg function: f(Int, Int) -> Bool":
     let ctx = newContext()

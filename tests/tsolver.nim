@@ -44,13 +44,6 @@ suite "Z3Solver — assertions":
     check str.contains("(> x 0)")
     check str.contains("(> y 0)")
 
-  test "assertConstraint alias works":
-    let ctx = newContext()
-    let s = newSolver()
-    let p = mkBoolVar("p")
-    s.assertConstraint(p)
-    check s.check() == zsSat
-
 suite "Z3Solver — check":
   test "trivially-true constraint is sat":
     let ctx = newContext()

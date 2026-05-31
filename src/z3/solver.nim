@@ -25,11 +25,13 @@
 ##
 ## ## Naming
 ##
-## We expose `add` (Python z3 / Rust z3 convention) as the primary
-## name, with `assertConstraint` as an explicit alias for readers
-## who prefer Z3's SMT-LIB-aligned terminology. We *don't* call it
-## `assert` because Nim has a built-in `assert` template; overloading
-## would create distracting ambiguity in user code.
+## `add` is the canonical operation (Python z3 / Rust z3 convention),
+## matching `Z3Goal.add` and `Z3Optimize.add` for cross-handle
+## consistency. We *don't* call it `assert` because Nim has a
+## built-in `assert` template; overloading would create distracting
+## ambiguity in user code. The tracker-tagged variant
+## (`assertConstraintAndTrack`) keeps its longer name because the
+## semantics differ — that's not an `add`.
 
 import ./ffi, ./context, ./error, ./ast, ./builder, ./boolean, ./lifecycle, ./params,
        ./astvector, ./stats
@@ -136,10 +138,10 @@ proc add*(s: Z3Solver, constraint: Z3Bool) =
   ## use `withContext` for scoping if you must.
   s.ctx.checkErrVoid Z3_solver_assert(s.ctx.raw, s.raw, constraint.raw)
 
-proc assertConstraint*(s: Z3Solver, constraint: Z3Bool) {.inline.} =
-  ## Alias for `add` — closer to Z3's SMT-LIB terminology. Use whichever
-  ## reads better at the call site.
-  s.add(constraint)
+# `assertConstraint` alias deleted in v0.5 step 2B (goal 11) —
+# `add` is the canonical name. The longer-named
+# `assertConstraintAndTrack` below stays because its semantics
+# differ (it adds a *tracked* assertion).
 
 # ============================================================================
 # Tracked assertions + unsat core (v0.4 step 6)
@@ -271,7 +273,7 @@ proc reasonUnknown*(s: Z3Solver): string =
 # ============================================================================
 
 proc push*(s: Z3Solver) =
-  ## Open a new scope frame. Subsequent `add()` / `assertConstraint()`
+  ## Open a new scope frame. Subsequent `add()`
   ## calls register against this frame; `pop()` discards them.
   s.ctx.checkErrVoid Z3_solver_push(s.ctx.raw, s.raw)
 

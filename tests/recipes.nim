@@ -277,6 +277,63 @@ proc seqRecipes*(maxDepth = 3): Strategy[SeqRecipe] =
   recursive(seqRecipeBase(), seqRecipeExtend, maxDepth)
 
 # ============================================================================
+# RegexRecipe — Z3Regex[Z3String] expression trees
+# ============================================================================
+#
+# Regex recipes are over the String basis (`Z3Regex[Z3String]`). Leaf
+# = singleton-string regex `mkRegex(mkString(s))`; branches are unary
+# (star/plus/option) and binary (union/concat) combinators. We skip
+# `complement` and `intersect` to keep the property tests'
+# decidability bounded — Z3's regex theory is decidable but
+# intersection/complement can blow up DFA sizes adversarially.
+
+type
+  RegexRecipeKind* = enum
+    rrxLitSingleton  ## `mkRegex(mkString(s))`
+    rrxStar
+    rrxPlus
+    rrxOption
+    rrxConcat
+    rrxUnion
+  RegexRecipe* = ref object
+    case kind*: RegexRecipeKind
+    of rrxLitSingleton:           lit*: string
+    of rrxStar, rrxPlus, rrxOption: e*: RegexRecipe
+    of rrxConcat, rrxUnion:         l*, r*: RegexRecipe
+
+const regexLitChoices* = @["a", "b", "ab", "ba"]
+
+proc regexRecipeBase*(): Strategy[RegexRecipe] =
+  sampledFrom(regexLitChoices).map(
+    proc(s: string): RegexRecipe =
+      RegexRecipe(kind: rrxLitSingleton, lit: s))
+
+proc regexRecipeExtend*(child: Strategy[RegexRecipe]):
+    Strategy[RegexRecipe] =
+  oneOf(@[
+    regexRecipeBase(),
+    child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxStar, e: e)),
+    child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxPlus, e: e)),
+    child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxOption, e: e)),
+    tuples2(child, child).map(
+      proc(p: (RegexRecipe, RegexRecipe)): RegexRecipe =
+        RegexRecipe(kind: rrxConcat, l: p[0], r: p[1])),
+    tuples2(child, child).map(
+      proc(p: (RegexRecipe, RegexRecipe)): RegexRecipe =
+        RegexRecipe(kind: rrxUnion, l: p[0], r: p[1])),
+  ])
+
+proc regexRecipes*(maxDepth = 2): Strategy[RegexRecipe] =
+  ## Default depth = 2 (one level shallower than other families).
+  ## Z3's regex membership is decidable but solver time can blow up
+  ## adversarially on deep nesting; cap at 2 to keep the property
+  ## test budget reasonable.
+  recursive(regexRecipeBase(), regexRecipeExtend, maxDepth)
+
+# ============================================================================
 # Interpreters — recipe → AST under a given context
 # ============================================================================
 
@@ -305,6 +362,16 @@ proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   of bvrkAnd: interpret(r.l, ctx) and interpret(r.r, ctx)
   of bvrkOr:  interpret(r.l, ctx) or  interpret(r.r, ctx)
   of bvrkXor: interpret(r.l, ctx) xor interpret(r.r, ctx)
+
+proc interpret*(r: RegexRecipe, ctx: Z3Context): Z3Regex[Z3String] =
+  ## Build the Z3Regex[Z3String] AST for `r` under `ctx`.
+  case r.kind
+  of rrxLitSingleton: mkRegex(mkString(ctx, r.lit))
+  of rrxStar:   star(interpret(r.e, ctx))
+  of rrxPlus:   plus(interpret(r.e, ctx))
+  of rrxOption: option(interpret(r.e, ctx))
+  of rrxConcat: concat(interpret(r.l, ctx), interpret(r.r, ctx))
+  of rrxUnion:  union(interpret(r.l, ctx), interpret(r.r, ctx))
 
 proc interpret*(r: SeqRecipe, ctx: Z3Context): Z3Seq[Z3Int] =
   ## Build the Z3Seq[Z3Int] AST for `r` under `ctx`.

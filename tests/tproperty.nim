@@ -471,3 +471,54 @@ suite "property: shape — sequence algebraic laws":
         ensure smtValid(mkSeqUnit(x).len == mkInt(1))
     let report = forAll(intRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
+
+# ============================================================================
+# property: shape — laws over random Z3Regex[Z3String] trees
+# ============================================================================
+
+suite "property: shape — regex laws":
+  test "singleton-string regex matches its source string":
+    # forall s in regexLitChoices: s matches mkRegex(mkString(s))
+    let ctx = newContext()
+    let prop =
+      proc(s: string) =
+        let str = mkString(ctx, s)
+        let r = mkRegex(str)
+        ensure smtValid(str.matches(r))
+    let report = forAll(sampledFrom(regexLitChoices), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "star contains the empty string for any regex":
+    # forall r: "" matches r* (Kleene closure includes the empty word).
+    let ctx = newContext()
+    let empty = mkString(ctx, "")
+    let prop =
+      proc(rr: RegexRecipe) =
+        let r = interpret(rr, ctx)
+        ensure smtValid(empty.matches(star(r)))
+    let report = forAll(regexRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "option contains the empty string for any regex":
+    # forall r: "" matches r? (zero-or-one includes zero).
+    let ctx = newContext()
+    let empty = mkString(ctx, "")
+    let prop =
+      proc(rr: RegexRecipe) =
+        let r = interpret(rr, ctx)
+        ensure smtValid(empty.matches(option(r)))
+    let report = forAll(regexRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "union is commutative on membership: s matches (a | b) iff s matches (b | a)":
+    let ctx = newContext()
+    let s = mkStringVar("s")
+    let prop =
+      proc(p: (RegexRecipe, RegexRecipe)) =
+        let a = interpret(p[0], ctx)
+        let b = interpret(p[1], ctx)
+        ensure smtValid(s.matches(union(a, b)) == s.matches(union(b, a)))
+    let report = forAll(
+      tuples2(regexRecipes(maxDepth = 2), regexRecipes(maxDepth = 2)),
+      prop, fewExamples())
+    check report.outcome == otPassed

@@ -25,7 +25,7 @@
 ## `mkBool(p.ctx, true)` to construct the Z3Bool literal and recurses
 ## into the all-Z3Bool overload.
 
-import ./ffi, ./context, ./error, ./sort, ./ast, ./builder
+import ./ffi, ./context, ./error, ./ast, ./builder
 export builder
 
 # ----------------------------------------------------------------------------

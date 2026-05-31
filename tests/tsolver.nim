@@ -164,3 +164,22 @@ suite "Z3Solver — pretty-print":
     check str.contains("declare-fun x")
     check str.contains("declare-fun y")
     check str.contains("(= (+ x y) 10)")
+
+suite "solver.pop(n) guard (medium C5)":
+  test "pop(0) and pop(-1) are no-ops; assertion stack unchanged":
+    let ctx = newContext()
+    let s = newSolver()
+    let x = mkIntVar("x")
+    s.push()
+    s.add x == mkInt(5)
+    # n <= 0 is silently ignored per the docstring contract.
+    s.pop(0)
+    s.pop(-1)
+    # The frame is still open — x == 5 is still asserted.
+    check s.check() == zsSat
+    let m = s.model()
+    check m.evalInt(x) == 5
+    # A real pop(1) discards it.
+    s.pop(1)
+    s.add x == mkInt(7)
+    check s.check() == zsSat

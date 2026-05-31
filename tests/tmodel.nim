@@ -229,3 +229,23 @@ suite "the headline end-to-end example":
     check vals[0] != vals[1] and vals[0] != vals[2] and vals[0] != vals[3]
     check vals[1] != vals[2] and vals[1] != vals[3]
     check vals[2] != vals[3]
+
+suite "model.eval with modelCompletion=false (medium C3)":
+  test "unconstrained variable evaluates back to itself, not a literal":
+    # Pre-audit C3: only modelCompletion=true had coverage. With
+    # false, an unconstrained variable should round-trip back as
+    # itself (Z3 does not invent a value); with true, Z3 picks an
+    # arbitrary completion.
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")          # unconstrained
+    let s = newSolver()
+    s.add x == mkInt(42)
+    check s.check() == zsSat
+    let m = s.model()
+    let yNoComplete = m.eval(y, modelCompletion = false)
+    # With completion off, y evaluates to itself (no concrete value).
+    check smtEquiv(yNoComplete, y)
+    # With completion on, we get some literal int.
+    let yComplete = m.eval(y, modelCompletion = true)
+    check ($yComplete).len > 0

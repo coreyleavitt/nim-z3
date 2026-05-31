@@ -190,3 +190,18 @@ suite "z3/io — errors":
     let ctx = newContext()
     expect Z3Error:
       discard parseSmt2String(ctx, "(((not smt-lib at all")
+
+suite "toSmt2Benchmark with non-empty assumptions (medium C6)":
+  test "assumptions are included in the rendered benchmark":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let p = mkBoolVar("p")
+    let benchmark = toSmt2Benchmark(
+      x > mkInt(0),
+      name = "demo",
+      logic = "QF_LIA",
+      assumptions = @[p])
+    # The rendered SMT2 declares p (because it appears in an
+    # assumption) and conjoins it under the (assert ...).
+    check benchmark.contains("declare-fun p")
+    check benchmark.contains("(assert")

@@ -120,3 +120,31 @@ suite "Z3Solver.getConsequences — tracer":
     check status == zsSat
     # At least one consequence over q must come back.
     check conseq.len >= 1
+
+suite "Z3Stats — getFloat + getInt error path (medium C1/C2)":
+  test "getFloat returns the float value for any entry":
+    withSolvedStats:
+      let ks = stats.keys()
+      check ks.len > 0
+      # Pick the first non-int entry if one exists; else the first.
+      var chosen = ks[0]
+      for k in ks:
+        if not stats.isInt(k):
+          chosen = k
+          break
+      let viaIndex = stats[chosen]
+      let viaFloat = stats.getFloat(chosen)
+      check viaIndex == viaFloat
+
+  test "getInt on a double-typed entry raises Z3InvalidUsageError":
+    withSolvedStats:
+      var doubleKey = ""
+      for k, _ in stats.pairs:
+        if not stats.isInt(k):
+          doubleKey = k
+          break
+      # Z3 stats for a non-trivial solve include both int + double
+      # entries; if Z3 ever changes that we want to know.
+      check doubleKey.len > 0
+      expect Z3InvalidUsageError:
+        discard stats.getInt(doubleKey)

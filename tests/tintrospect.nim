@@ -152,3 +152,38 @@ suite "Typed lifters — error cases":
     let any = toAnyAst(f32)
     expect Z3Error:
       discard asZ3Fp[11, 53](any)
+
+suite "introspect — asZ3Char / asZ3Seq / asZ3Regex (medium C10)":
+  test "asZ3Char round-trips a Z3Char":
+    let ctx = newContext()
+    let c = mkChar('Z')
+    let any = toAnyAst(c)
+    let back = asZ3Char(any)
+    check astEqual(back, c)
+
+  test "asZ3Char on a non-Char raises Z3Error":
+    let ctx = newContext()
+    let any = toAnyAst(mkInt(0))
+    expect Z3Error:
+      discard asZ3Char(any)
+
+  test "asZ3Seq[Z3Int] round-trips a Z3Seq[Z3Int]":
+    let ctx = newContext()
+    let s = mkSeqUnit(mkInt(7))
+    let any = toAnyAst(s)
+    let back = asZ3Seq[Z3Int](any)
+    check astEqual(back, s)
+
+  test "asZ3Seq[Z3Int] on a Z3Seq[Z3Bool] raises Z3Error (element-sort mismatch)":
+    let ctx = newContext()
+    let sb = mkSeqUnit(mkBool(true))
+    let any = toAnyAst(sb)
+    expect Z3Error:
+      discard asZ3Seq[Z3Int](any)
+
+  test "asZ3Regex[Z3String] round-trips a Z3Regex[Z3String]":
+    let ctx = newContext()
+    let r = mkRegex(mkString("abc"))
+    let any = toAnyAst(r)
+    let back = asZ3Regex[Z3String](any)
+    check astEqual(back, r)

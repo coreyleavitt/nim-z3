@@ -120,3 +120,45 @@ suite "Z3Fixedpoint — pretty":
     let s = $fp
     check s.len > 0
     check "myrel" in s
+
+suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations (medium C7-C9)":
+  # These tests confirm the wrapper's FFI path completes without
+  # raising and returns a well-formed Z3Status. Behavioral semantics
+  # of `updateRule` / `addConstraint` / `queryRelations` are
+  # engine-dependent (datalog vs. spacer treat rule-replacement and
+  # multi-relation queries differently); the wrapper contract is the
+  # marshalling, not the search outcome.
+  test "updateRule call routes through Z3 without error":
+    let ctx = newContext()
+    let fp = newFixedpoint()
+    let rel = mkFuncDecl[(Z3Int,), Z3Bool]("rel")
+    fp.registerRelation(rel)
+    fp.addRule(rel(mkInt(1)), name = "the_rule")
+    fp.updateRule(rel(mkInt(2)), name = "the_rule")
+    let res = fp.query(rel(mkInt(2)))
+    check res in {zsSat, zsUnsat, zsUnknown}
+
+  test "addConstraint at level 0 routes through Z3 without error":
+    let ctx = newContext()
+    let fp = newFixedpoint()
+    let p = newParams()
+    p.set("fp.engine", "spacer")
+    fp.setParams(p)
+    let rel = mkFuncDecl[(Z3Int,), Z3Bool]("rel")
+    fp.registerRelation(rel)
+    fp.addRule(rel(mkInt(7)))
+    fp.addConstraint(rel(mkInt(7)), level = 0)
+    let res = fp.query(rel(mkInt(7)))
+    check res in {zsSat, zsUnsat, zsUnknown}
+
+  test "queryRelations multi-relation form dispatches through Z3":
+    let ctx = newContext()
+    let fp = newFixedpoint()
+    let r1 = mkFuncDecl[(Z3Int,), Z3Bool]("r1")
+    let r2 = mkFuncDecl[(Z3Int,), Z3Bool]("r2")
+    fp.registerRelation(r1)
+    fp.registerRelation(r2)
+    fp.addRule(r1(mkInt(1)))
+    fp.addRule(r2(mkInt(2)))
+    let res = fp.queryRelations(@[r1, r2])
+    check res in {zsSat, zsUnsat, zsUnknown}

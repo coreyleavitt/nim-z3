@@ -111,3 +111,19 @@ suite "Z3AstVector — pretty-print":
     let s = $v
     check s.contains("alpha")
     check s.contains("beta")
+
+suite "Z3AstVector — indexed setter (medium C11)":
+  test "v[i] = q overwrites entry i":
+    let ctx = newContext()
+    let v = newAstVector()
+    let p = mkBoolVar("p")
+    let q = mkBoolVar("q")
+    v.add p
+    v.add p
+    let before = v.toSeq(Z3Bool)
+    check astEqual(before[0], p)
+    check astEqual(before[1], p)
+    v[0] = q
+    let after = v.toSeq(Z3Bool)
+    check astEqual(after[0], q)
+    check astEqual(after[1], p)

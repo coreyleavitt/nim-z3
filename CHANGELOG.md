@@ -6,8 +6,197 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-— Work toward v0.5 (1.0-readiness polish); see
-`docs/IMPLEMENTATION_PLAN.md`.
+— Work toward v0.6 = v1.0.0 (the stability commitment, with no new
+functionality); see `docs/IMPLEMENTATION_PLAN.md`.
+
+## [0.5.0] — 2026-05-31
+
+The **1.0-readiness polish** release. v0.4 closed the C-API
+contract ("every Z3 capability is reachable"); v0.5 polishes that
+surface for 1.0. Two new typed families (`Z3FuncInterp[Args, Ret]`,
+`Z3ParamDescrs`); one new module extracted from `z3/context`
+(`z3/error`); typed error hierarchy (13 subclasses); cross-family
+parity (generic `pretty[T: Z3Renderable]`, generic `astEqual[T:
+Z3Term]`, `evalXxx` shorthand audit, `$` parity via `termToSmt2`);
+naming + cohesion hygiene (`z3/seq` → `z3/sequence`, `RoundingMode`
+consolidation, `naryOp` macro family, `add`/`assertConstraint`
+canonical-name resolution); memory + thread safety
+(`tests/tconcurrency.nim`, `nimble valgrind`, `docs/THREADING.md`);
+Z3 C-API micro-gap closure (`Z3FuncInterp`, `Z3ParamDescrs`,
+`Z3Char ↔ Z3BitVec[18]`); property tests for v0.3 families (21 new
+shape-properties × 25 iterations × 2 backends = 1050 generative
+invocations); four v0.3-family examples; user-facing docs catalog
+(`GOTCHAS.md`, `INTERNAL_API.md`, `PARITY.md`, `MINIMAL_BUILD.md`);
+feature flags + minimal-build story (`z3WithoutX` compile-time
+flags + `nimble testMinimal`). Every §1 goal of the v0.5 plan
+landed; zero rollforward to v0.6. Tests: **1262 OKs** under default
+config + **18 OKs** for the minimal-build verification across
+`nim c` + `nim cpp` (up from v0.4's 1114).
+
+Full per-step plan + audit: archived in
+[`docs/V0.5_PLAN.md`](docs/V0.5_PLAN.md) (§8b "Pre-tag audit" block).
+
+### Added
+
+- **`z3/error` module** (`fc5d072`) — extracted from `z3/context`
+  (v0.5 step 1) so the wrapper's error-handling concern is a peer
+  module rather than tangled with the context handle, threadvar,
+  and library bootstrap. Hosts `Z3Error` + the v0.5 step 4
+  subclass tree + `checkErr` / `checkErrVoid` templates +
+  `raiseZ3Error` proc. Layering inversion (logged §8): takes raw
+  context (`RawZ3Context`), not `Z3Context`, so `z3/error` stays
+  at a lower layer than `z3/context`.
+- **Typed `Z3Error` subclass tree** (`db01dcc`) — 13 subclasses:
+  `Z3SortMismatchError`, `Z3IndexOutOfBoundsError`,
+  `Z3InvalidArgError`, `Z3ParseError`, `Z3InvalidPatternError`,
+  `Z3MemoryError`, `Z3FileError`, `Z3InternalError`,
+  `Z3InvalidUsageError`, `Z3RefcountError`, `Z3OperationError`,
+  `Z3UnknownError`, plus the abstract `Z3Error` base. `raiseZ3Error`
+  dispatches on `Z3ErrorCode` to the right subclass. 33 direct
+  raise sites across 13 modules migrated to the right subclass.
+  Naming: `Z3SortMismatchError` and `Z3ParseError` (not
+  `Z3SortError` / `Z3ParserError`) to avoid Nim's
+  style-insensitive identifier collision with the FFI enum values.
+- **Generic `pretty[T: Z3Renderable]`** (`eb9789b`) — single
+  overload covers every typed family + sort + ref handle.
+  `Z3Renderable` concept (defined in `z3/pretty`) requires `($x)
+  is string` and `x.ctx is Z3Context` — wider than `Z3Term`.
+- **Generic `astEqual[T: Z3Term]`** (`4b3b956`) — was
+  `[S: static SortTag]`-only on `Z3Ast[S]`; now applies to every
+  typed value family.
+- **`$` parity for missing families** (`fe5f07d`) — added per-family
+  overloads for `Z3Char`, `Z3Seq[E]`, `Z3String` (via alias),
+  `Z3Regex[Basis]`, `Z3Fp[E, S]`, `Z3RoundingMode`, `Z3FuncDecl`.
+  Bodies share the `termToSmt2*[T: Z3Term]` template; per-family
+  overloads stay because Nim 2's `system.$` outranks concept-
+  constrained generics.
+- **`evalXxx` shorthand audit** (`ad25d3f`) — added `evalUint[W]` /
+  `evalInt[W]` for `Z3BitVec[W]`; `evalChar` for `Z3Char` (with
+  `simplify` pass because Z3 doesn't auto-fold `(char.to_int ...)`);
+  `evalSeqLen` for `Z3Seq[E]`. Plus `mkCharVar` parity gap fixed.
+- **`Z3FuncInterp[Args, Ret]`** (`004e8d2`) — tabular UF model
+  extraction. Closes v0.4 §8b asterisk #1. Refcount-managed handle;
+  `getFuncInterp(m, f)`, `len`, `arity`, `[i]: (args: ArgsTup,
+  value: Ret)`, `elseValue`. Entries deserialise via existing
+  typed-family lifters.
+- **`Z3ParamDescrs`** (`3cc0f0a`) — solver / tactic param schema
+  introspection. Closes v0.4 §8b asterisk #2. `ParamKind` enum +
+  `getParamDescrs(s: Z3Solver)` / `getParamDescrs(t: Z3Tactic)`,
+  `len`, `keys`, `[name]: ParamKind`, `getDocumentation(name)`, `$`.
+- **`Z3Char` ↔ `Z3BitVec[18]` interop** (`65b86a2`) — closes v0.4
+  §8b asterisk #3. `UnicodeCharWidth* = 18` compile-time const;
+  `toBitVec(c: Z3Char): Z3BitVec[18]` and `mkChar(bv: Z3BitVec[18])
+  : Z3Char`. Wrapper commits to Z3's default `encoding = unicode`;
+  users changing `encoding` are in escape-hatch territory.
+- **5 polish docs** — [`docs/GOTCHAS.md`](docs/GOTCHAS.md) (14
+  user-facing pitfalls in symptom/cause/wrapper/what-to-do
+  template), [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) (cross-
+  module-internal seam catalog), [`docs/PARITY.md`](docs/PARITY.md)
+  (cross-family contract for new typed families),
+  [`docs/THREADING.md`](docs/THREADING.md) (per-thread isolation
+  contract), [`docs/MINIMAL_BUILD.md`](docs/MINIMAL_BUILD.md)
+  (`z3WithoutX` flags + cascades + honesty disclaimer).
+- **4 new examples** — `examples/tactic_pipeline.nim` (solver-tactic
+  bridge), `examples/uninterpreted_axioms.nim` (Z3FuncDecl +
+  forall), `examples/float_verification.nim` (Z3Fp NaN-safety
+  proof), `examples/string_constraints.nim` (Z3String + Z3Regex).
+- **`Z3RoundingMode` literal helpers** (`8a537a5`) — `rmRNE()` /
+  `rmRNA()` / `rmRTP()` / `rmRTN()` / `rmRTZ()` returning
+  `Z3RoundingMode` AST directly. Replaces the v0.3 dual
+  representation (Nim enum + AST family + `mkRoundingMode` lifter).
+- **`naryOp` macro family** (`463e6c2`) — `naryFFICall`,
+  `emitVarargsRequired1Basis`, `emitVarargsRequired1E`,
+  `emitVarargsMonoid`, `emitVarargsDistinctS`, `emitVarargsDistinctW`
+  in `z3/lifecycle`. Internal — unifies 7 copy-pasted varargs
+  builder bodies into one-line instantiations. Incidentally fixes
+  the pre-v0.5 `bitvec.mkDistinct` empty-input bug.
+- **Feature flags** (`aee9694`) — 8 user-facing `z3WithoutX`
+  compile-time flags + 3 implicit cascades (Seq → Strings + Regex;
+  Strings → Regex; Tactics → Probe). Effective-flag consts
+  re-exported from the umbrella (`z3WithoutFPEff*`, etc.) for
+  user introspection. `tests/tminimal.nim` covers the core surface
+  + scope-hiding invariants.
+- **`nimble testMinimal` task** (`61586bb`) — runs `tests/tminimal`
+  with the maximally-minimal flag config on both backends. 18 OKs.
+- **`nimble valgrind` task** (`4f33a09`) — runs a representative
+  10-test subset under `valgrind --leak-check=full`, gates on
+  `definitely lost: 0 bytes` (libz3 triggers thousands of non-leak
+  "Invalid read" warnings inside its hash-cons internals; only the
+  leak summary is actionable). All 10 subset tests confirmed
+  zero-leak.
+- **21 new property-test shape recipes** (`8a66190` …
+  `13abd17`) — `FuncDeclRecipe`, `StringRecipe`, `SeqRecipe`,
+  `RegexRecipe`, `FpRecipe` in `tests/recipes.nim`; 21 algebraic-
+  law properties using `smtValid` as the oracle. ~525 generative
+  invocations per backend.
+
+### Changed
+
+- **`z3/seq` renamed to `z3/sequence`** (`2de0447`) — stops
+  shadowing Nim's built-in `seq[T]`. The `Z3Seq[E]` type name
+  stays; only the module path changes. Pre-v1 break.
+- **`Z3Solver.assertConstraint` deleted** (`3bc3f41`) — canonical
+  name is `add`. `Z3Fixedpoint.assertConstraint` kept (canonical
+  axiom-assertion method; rules / facts / background axioms are
+  three distinct ops).
+- **`Z3FuncInterp` representation note** — Z3 may fold a constraint
+  into the else-value rather than emitting an explicit entry. Tests
+  pin semantic round-trip (`evalAt` returns the right value), not
+  table shape (`fi.len == N`). Documented in
+  [`docs/GOTCHAS.md §9`](docs/GOTCHAS.md#9-z3funcinterp-entries-can-fold-into-the-else-value).
+- **`(char.to_bv ...)` doesn't fold in Z3's evaluator** — tests
+  use `smtValid` against an explicit BV literal instead of
+  `evalUint`. Documented in
+  [`docs/GOTCHAS.md §12`](docs/GOTCHAS.md#12-charto_bv-_-char-n-doesnt-fold-to-a-bv-numeral).
+- **`README.md` rewritten** — 37-module "Modules at a glance"
+  three-table layout (Core / Typed value families / Decision
+  procedures / Manipulation + I/O); "Reading guide" routing by
+  audience; archive list extended with v0.4 and v0.5.
+
+### Spec corrections logged mid-cycle
+
+Per the v0.2 / v0.3 / v0.4 precedent, every step that surfaced a
+spec / Nim-language assumption needing change logged it in its §8
+entry. Cross-referenced in [`docs/V0.5_PLAN.md` §8b "Spec
+corrections logged during v0.5"](docs/V0.5_PLAN.md). Headlines:
+
+- **Step 1 layering inversion**: `z3/error` depends only on
+  `z3/ffi`; takes `RawZ3Context`, not `Z3Context`. Avoids cycle.
+- **Step 2 macro generics**: `proc name*generic(...)` is parsed as
+  binary expression. Resolved with per-shape templates.
+- **Step 3 `$[T: Z3Term]` loses to `system.$`**: kept per-family
+  overloads, factored body through `termToSmt2` template.
+- **Step 4 identifier collisions**: `Z3SortError` ≡ `Z3_SORT_ERROR`
+  and `Z3ParserError` ≡ `Z3_PARSER_ERROR` under Nim's style-
+  insensitive rules. Renamed to `Z3SortMismatchError` and
+  `Z3ParseError`.
+- **Step 5 valgrind gate**: parse output for `definitely lost: 0
+  bytes`; libz3 triggers ~3000 non-leak warnings, can't use
+  `--error-exitcode=1`.
+- **Step 6 `encoding`, not `unicode-char-width`**: Z3 doesn't
+  expose the param the plan named. Wrapper commits to default
+  Unicode (18 bits).
+- **Step 10 config.nims placement**: lives at
+  `docs/config.nims.example`, not at repo root, because Nim auto-
+  discovers `config.nims`.
+
+### Scope-pruned / deferred to post-1.0 v1.x
+
+Documented in [`docs/V0.5_PLAN.md §8b`](docs/V0.5_PLAN.md). v0.5
+deferred **nothing** to v0.6 (= v1.0.0). Post-1.0 v1.x candidates
+(not blocking 1.0):
+
+- Advanced `Z3Fixedpoint` surface (assertion-set introspection,
+  `_from_string` / `_from_file` ingestion)
+- `Z3AstMap` typed handle (dual of `Z3AstVector`)
+- `Z3Float16` / `Z3Float128` structured extraction (no Nim-native
+  type for these widths)
+- CI items (carry-forward of v0.2 #1 private-dep blocker)
+- `{.optional.}` softlink declarations for Z3 ≥ 4.13.x-only symbols
+
+### Dropped
+
+None this release. Every §1 goal of the v0.5 plan landed.
 
 ## [0.4.0] — 2026-05-30
 

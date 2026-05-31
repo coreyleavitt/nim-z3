@@ -1,31 +1,43 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## v0.4 — **contract-completion** release. Closes the gap between the
-## wrapper's "every Z3 C-API capability" scope claim and reality.
-## Nine new modules: `z3/astvector`, `z3/introspect`, `z3/proof`,
-## `z3/fixedpoint`, `z3/rewrite`, `z3/translate`, `z3/probe`,
-## `z3/globalparams`, `z3/io`. Five new solver extensions
-## (`assertConstraintAndTrack` / `getUnsatCore` / `getStatistics` /
-## `getConsequences` / `getProof`). Runtime-erased `Z3AnyAst` family
-## + typed lifters. Per-context `datatypeRegistry` so
-## `Z3DatatypeValue[T]` participates in `sortdispatch`. Uninterpreted
-## sorts (`mkUninterpretedSort` / `declareSort`). Every §1 goal of the
-## v0.4 plan landed; see `docs/V0.4_PLAN.md` §8b for the audit.
+## v0.5 — **1.0-readiness polish** release. v0.4 closed the C-API
+## contract ("every Z3 capability is reachable"); v0.5 polishes that
+## surface for 1.0. Two new typed families
+## (`Z3FuncInterp[Args, Ret]`, `Z3ParamDescrs`); one new module
+## extracted from `z3/context` (`z3/error`); 13-class typed error
+## hierarchy; cross-family parity (generic
+## `pretty[T: Z3Renderable]`, generic `astEqual[T: Z3Term]`,
+## `evalXxx` shorthand audit, `$` parity via `termToSmt2`); naming
+## hygiene (`z3/seq` → `z3/sequence`, `RoundingMode` consolidation,
+## `naryOp` macro family, `add`/`assertConstraint` resolution);
+## memory + thread safety audit; Z3 C-API micro-gap closure
+## (`Z3FuncInterp`, `Z3ParamDescrs`, `Z3Char ↔ Z3BitVec[18]`);
+## 21 new property-test shape recipes; four v0.3-family examples;
+## five polish docs (`GOTCHAS.md`, `INTERNAL_API.md`, `PARITY.md`,
+## `THREADING.md`, `MINIMAL_BUILD.md`); feature flags + minimal-
+## build story (`z3WithoutX` compile-time flags). Every §1 goal of
+## the v0.5 plan landed; see `docs/V0.5_PLAN.md` §8b for the audit.
 ##
-## v0.3 was the architectural-unification + theory-completion release
-## (`Z3Term` concept + unified `wrap[T]` + lifecycle generators;
-## Char / String + alias `Z3String = Z3Seq[Z3Char]` / Regex /
-## Sequences / FloatingPoint / uninterpreted functions; solver-tactic
-## bridges). v0.2 was the theory-expansion release (arrays, datatypes,
-## quantifiers, optimisation, tactics + goals + params); v0.1 was the
-## core SMT primitives.
+## v0.4 was the contract-completion release (nine new modules:
+## `z3/astvector`, `z3/introspect`, `z3/proof`, `z3/fixedpoint`,
+## `z3/rewrite`, `z3/translate`, `z3/probe`, `z3/globalparams`,
+## `z3/io`; runtime-erased `Z3AnyAst` family; per-context
+## `datatypeRegistry`; uninterpreted sorts). v0.3 was the
+## architectural-unification + theory-completion release (`Z3Term`
+## concept + unified `wrap[T]` + lifecycle generators; Char / String
+## + alias `Z3String = Z3Seq[Z3Char]` / Regex / Sequences /
+## FloatingPoint / uninterpreted functions; solver-tactic bridges).
+## v0.2 was the theory-expansion release (arrays, datatypes,
+## quantifiers, optimisation, tactics); v0.1 was the core SMT
+## primitives.
 ##
 ## Shipped architecture in [docs/V0.1_PLAN.md](../docs/V0.1_PLAN.md),
 ## [docs/V0.2_PLAN.md](../docs/V0.2_PLAN.md),
-## [docs/V0.3_PLAN.md](../docs/V0.3_PLAN.md), and
-## [docs/V0.4_PLAN.md](../docs/V0.4_PLAN.md); live work in
-## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md) (now
-## the v0.5 1.0-readiness plan); per-release diff in
+## [docs/V0.3_PLAN.md](../docs/V0.3_PLAN.md),
+## [docs/V0.4_PLAN.md](../docs/V0.4_PLAN.md), and
+## [docs/V0.5_PLAN.md](../docs/V0.5_PLAN.md); live work in
+## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md)
+## (now the v0.6 = v1.0.0 stability tag plan); per-release diff in
 ## [CHANGELOG.md](../CHANGELOG.md); runnable starter code in
 ## [examples/](../examples/). The headline use:
 ##

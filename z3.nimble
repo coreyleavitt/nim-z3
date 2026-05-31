@@ -1,5 +1,5 @@
 # Package
-version       = "0.4.0"
+version       = "0.5.0"
 author        = "Corey Leavitt"
 description   = "Type-safe, memory-safe Nim wrapper for the Z3 SMT solver"
 license       = "Apache-2.0"

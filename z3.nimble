@@ -59,7 +59,8 @@ task examples, "Compile + run every example on both backends":
              "examples/properties.nim", "examples/tactic_pipeline.nim",
              "examples/uninterpreted_axioms.nim",
              "examples/float_verification.nim",
-             "examples/string_constraints.nim"]:
+             "examples/string_constraints.nim",
+             "examples/optimize_scheduling.nim"]:
     exec "nim c -r --threads:on --hints:off " & ex
     exec "nim cpp -r --threads:on --hints:off " & ex
 

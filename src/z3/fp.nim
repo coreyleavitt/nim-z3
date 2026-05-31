@@ -299,6 +299,14 @@ predicate(isSubnormal, Z3_mk_fpa_is_subnormal)
 predicate(isNegative,  Z3_mk_fpa_is_negative)
 predicate(isPositive,  Z3_mk_fpa_is_positive)
 
+proc isFinite*[E, S: static int](a: Z3Fp[E, S]): Z3Bool =
+  ## True iff `a` is a finite number — i.e. neither NaN nor ±∞.
+  ## Composite of `not isNaN(a) and not isInf(a)`; IEEE 754 doesn't
+  ## ship a primitive "is_finite" predicate (and Z3's C API doesn't
+  ## either), so the wrapper synthesises it once here rather than
+  ## leaving every caller to re-derive the same composition.
+  (not isNaN(a)) and (not isInf(a))
+
 # ============================================================================
 # Comparisons — signaling (NaN ordered with nothing)
 # ============================================================================

@@ -43,19 +43,23 @@ proc intRecipeBase*(): Strategy[IntRecipe] =
   ])
 
 proc intRecipeExtend*(child: Strategy[IntRecipe]): Strategy[IntRecipe] =
-  oneOf(@[
-    intRecipeBase(),
-    child.map(proc(e: IntRecipe): IntRecipe =
-      IntRecipe(kind: irkNeg, e: e)),
-    map(child, child,
+  # `frequency` over uniform `oneOf`: weight 3 to the base case so
+  # generated trees skew toward leaves rather than exploding into
+  # the 4 binary-op branches. Smaller trees → faster property runs
+  # and cleaner shrunk counterexamples without lowering `maxDepth`.
+  frequency(@[
+    (3, intRecipeBase()),
+    (1, child.map(proc(e: IntRecipe): IntRecipe =
+      IntRecipe(kind: irkNeg, e: e))),
+    (1, map(child, child,
       proc(l, r: IntRecipe): IntRecipe =
-        IntRecipe(kind: irkAdd, l: l, r: r)),
-    map(child, child,
+        IntRecipe(kind: irkAdd, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: IntRecipe): IntRecipe =
-        IntRecipe(kind: irkSub, l: l, r: r)),
-    map(child, child,
+        IntRecipe(kind: irkSub, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: IntRecipe): IntRecipe =
-        IntRecipe(kind: irkMul, l: l, r: r)),
+        IntRecipe(kind: irkMul, l: l, r: r))),
   ])
 
 proc intRecipes*(maxDepth = 3): Strategy[IntRecipe] =
@@ -87,26 +91,29 @@ proc boolRecipeBase*(): Strategy[BoolRecipe] =
   ])
 
 proc boolRecipeExtend*(child: Strategy[BoolRecipe]): Strategy[BoolRecipe] =
-  oneOf(@[
-    boolRecipeBase(),
-    child.map(proc(e: BoolRecipe): BoolRecipe =
-      BoolRecipe(kind: brkNot, e: e)),
-    map(child, child,
+  frequency(@[
+    (3, boolRecipeBase()),
+    (1, child.map(proc(e: BoolRecipe): BoolRecipe =
+      BoolRecipe(kind: brkNot, e: e))),
+    (1, map(child, child,
       proc(l, r: BoolRecipe): BoolRecipe =
-        BoolRecipe(kind: brkAnd, l: l, r: r)),
-    map(child, child,
+        BoolRecipe(kind: brkAnd, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BoolRecipe): BoolRecipe =
-        BoolRecipe(kind: brkOr, l: l, r: r)),
-    map(child, child,
+        BoolRecipe(kind: brkOr, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BoolRecipe): BoolRecipe =
-        BoolRecipe(kind: brkXor, l: l, r: r)),
-    map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
+        BoolRecipe(kind: brkXor, l: l, r: r))),
+    (1, map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
       proc(il, ir: IntRecipe): BoolRecipe =
-        BoolRecipe(kind: brkEq, il: il, ir: ir)),
-    map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
+        BoolRecipe(kind: brkEq, il: il, ir: ir))),
+    (1, map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
       proc(il, ir: IntRecipe): BoolRecipe =
-        BoolRecipe(kind: brkLt, il: il, ir: ir)),
+        BoolRecipe(kind: brkLt, il: il, ir: ir))),
   ])
+  # `frequency` over uniform `oneOf`: weight 3 on the base case so
+  # the 7-branch recursive extension doesn't explode tree size on
+  # average. Equivalent runtime / shrink quality, smaller trees.
 
 proc boolRecipes*(maxDepth = 3): Strategy[BoolRecipe] =
   recursive(boolRecipeBase(), boolRecipeExtend, maxDepth)
@@ -142,28 +149,29 @@ proc bvRecipeBase*(): Strategy[BvRecipe] =
   ])
 
 proc bvRecipeExtend*(child: Strategy[BvRecipe]): Strategy[BvRecipe] =
-  oneOf(@[
-    bvRecipeBase(),
-    child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNeg, e: e)),
-    child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNot, e: e)),
-    map(child, child,
+  # Weight 3 on base; 8 recursive branches each at 1.
+  frequency(@[
+    (3, bvRecipeBase()),
+    (1, child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNeg, e: e))),
+    (1, child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNot, e: e))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkAdd, l: l, r: r)),
-    map(child, child,
+        BvRecipe(kind: bvrkAdd, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkSub, l: l, r: r)),
-    map(child, child,
+        BvRecipe(kind: bvrkSub, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkMul, l: l, r: r)),
-    map(child, child,
+        BvRecipe(kind: bvrkMul, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkAnd, l: l, r: r)),
-    map(child, child,
+        BvRecipe(kind: bvrkAnd, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkOr, l: l, r: r)),
-    map(child, child,
+        BvRecipe(kind: bvrkOr, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: BvRecipe): BvRecipe =
-        BvRecipe(kind: bvrkXor, l: l, r: r)),
+        BvRecipe(kind: bvrkXor, l: l, r: r))),
   ])
 
 proc bvRecipes*(maxDepth = 3): Strategy[BvRecipe] =
@@ -194,10 +202,12 @@ proc fdRecipeBase*(): Strategy[FuncDeclRecipe] =
 
 proc fdRecipeExtend*(child: Strategy[FuncDeclRecipe]):
     Strategy[FuncDeclRecipe] =
-  oneOf(@[
-    fdRecipeBase(),
-    child.map(proc(e: FuncDeclRecipe): FuncDeclRecipe =
-      FuncDeclRecipe(kind: fdrkApp, arg: e)),
+  # Only one recursive branch, so 2:1 base-to-extend keeps the same
+  # leaf-skewed distribution as the other families.
+  frequency(@[
+    (2, fdRecipeBase()),
+    (1, child.map(proc(e: FuncDeclRecipe): FuncDeclRecipe =
+      FuncDeclRecipe(kind: fdrkApp, arg: e))),
   ])
 
 proc fdRecipes*(maxDepth = 3): Strategy[FuncDeclRecipe] =
@@ -235,11 +245,11 @@ proc stringRecipeBase*(): Strategy[StringRecipe] =
 
 proc stringRecipeExtend*(child: Strategy[StringRecipe]):
     Strategy[StringRecipe] =
-  oneOf(@[
-    stringRecipeBase(),
-    map(child, child,
+  frequency(@[
+    (2, stringRecipeBase()),
+    (1, map(child, child,
       proc(l, r: StringRecipe): StringRecipe =
-        StringRecipe(kind: srkConcat, l: l, r: r)),
+        StringRecipe(kind: srkConcat, l: l, r: r))),
   ])
 
 proc stringRecipes*(maxDepth = 3): Strategy[StringRecipe] =
@@ -278,11 +288,11 @@ proc seqRecipeBase*(): Strategy[SeqRecipe] =
 
 proc seqRecipeExtend*(child: Strategy[SeqRecipe]):
     Strategy[SeqRecipe] =
-  oneOf(@[
-    seqRecipeBase(),
-    map(child, child,
+  frequency(@[
+    (2, seqRecipeBase()),
+    (1, map(child, child,
       proc(l, r: SeqRecipe): SeqRecipe =
-        SeqRecipe(kind: sqrkConcat, l: l, r: r)),
+        SeqRecipe(kind: sqrkConcat, l: l, r: r))),
   ])
 
 proc seqRecipes*(maxDepth = 3): Strategy[SeqRecipe] =
@@ -322,20 +332,20 @@ proc regexRecipeBase*(): Strategy[RegexRecipe] =
 
 proc regexRecipeExtend*(child: Strategy[RegexRecipe]):
     Strategy[RegexRecipe] =
-  oneOf(@[
-    regexRecipeBase(),
-    child.map(proc(e: RegexRecipe): RegexRecipe =
-      RegexRecipe(kind: rrxStar, e: e)),
-    child.map(proc(e: RegexRecipe): RegexRecipe =
-      RegexRecipe(kind: rrxPlus, e: e)),
-    child.map(proc(e: RegexRecipe): RegexRecipe =
-      RegexRecipe(kind: rrxOption, e: e)),
-    map(child, child,
+  frequency(@[
+    (3, regexRecipeBase()),
+    (1, child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxStar, e: e))),
+    (1, child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxPlus, e: e))),
+    (1, child.map(proc(e: RegexRecipe): RegexRecipe =
+      RegexRecipe(kind: rrxOption, e: e))),
+    (1, map(child, child,
       proc(l, r: RegexRecipe): RegexRecipe =
-        RegexRecipe(kind: rrxConcat, l: l, r: r)),
-    map(child, child,
+        RegexRecipe(kind: rrxConcat, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: RegexRecipe): RegexRecipe =
-        RegexRecipe(kind: rrxUnion, l: l, r: r)),
+        RegexRecipe(kind: rrxUnion, l: l, r: r))),
   ])
 
 proc regexRecipes*(maxDepth = 2): Strategy[RegexRecipe] =
@@ -380,19 +390,19 @@ proc fpRecipeBase*(): Strategy[FpRecipe] =
   ])
 
 proc fpRecipeExtend*(child: Strategy[FpRecipe]): Strategy[FpRecipe] =
-  oneOf(@[
-    fpRecipeBase(),
-    child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkNeg, e: e)),
-    child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkAbs, e: e)),
-    map(child, child,
+  frequency(@[
+    (3, fpRecipeBase()),
+    (1, child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkNeg, e: e))),
+    (1, child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkAbs, e: e))),
+    (1, map(child, child,
       proc(l, r: FpRecipe): FpRecipe =
-        FpRecipe(kind: fprkAdd, l: l, r: r)),
-    map(child, child,
+        FpRecipe(kind: fprkAdd, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: FpRecipe): FpRecipe =
-        FpRecipe(kind: fprkSub, l: l, r: r)),
-    map(child, child,
+        FpRecipe(kind: fprkSub, l: l, r: r))),
+    (1, map(child, child,
       proc(l, r: FpRecipe): FpRecipe =
-        FpRecipe(kind: fprkMul, l: l, r: r)),
+        FpRecipe(kind: fprkMul, l: l, r: r))),
   ])
 
 proc fpRecipes*(maxDepth = 3): Strategy[FpRecipe] =

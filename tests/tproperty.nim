@@ -541,7 +541,7 @@ suite "property: shape — FP laws (under isFinite precondition)":
     let prop =
       proc(r: FpRecipe) =
         let x = interpret(r, ctx)
-        let finite = (not isNaN(x)) and (not isInf(x))
+        let finite = isFinite(x)
         ensure smtValid(finite.implies(abs(abs(x)) == abs(x)))
     let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
@@ -552,7 +552,7 @@ suite "property: shape — FP laws (under isFinite precondition)":
     let prop =
       proc(r: FpRecipe) =
         let x = interpret(r, ctx)
-        let finite = (not isNaN(x)) and (not isInf(x))
+        let finite = isFinite(x)
         ensure smtValid(finite.implies(x + zero == x))
     let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
@@ -563,7 +563,7 @@ suite "property: shape — FP laws (under isFinite precondition)":
     let prop =
       proc(r: FpRecipe) =
         let x = interpret(r, ctx)
-        let finite = (not isNaN(x)) and (not isInf(x))
+        let finite = isFinite(x)
         ensure smtValid(finite.implies(x * one == x))
     let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
@@ -574,7 +574,7 @@ suite "property: shape — FP laws (under isFinite precondition)":
     let prop =
       proc(r: FpRecipe) =
         let x = interpret(r, ctx)
-        let finite = (not isNaN(x)) and (not isInf(x))
+        let finite = isFinite(x)
         ensure smtValid(finite.implies(abs(zero - x) == abs(x)))
     let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed

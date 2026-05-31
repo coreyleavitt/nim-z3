@@ -107,6 +107,21 @@ suite "\\$ — generic over Z3Term":
     let f = mkFuncDecl[(Z3Int,), Z3Int]("f")
     check ($f).len > 0
 
+suite "Z3RoundingMode — sortOf + equality (v0.5.0 audit #9, #22)":
+  test "sortOf overload makes Z3RoundingMode usable as element type":
+    # Without sortOf, mkSeq[Z3RoundingMode] / mkFuncDecl with
+    # Z3RoundingMode args wouldn't compile.
+    let ctx = newContext()
+    discard mkSeqEmpty[Z3RoundingMode]()
+    check compiles(mkSeqEmpty[Z3RoundingMode]())
+    check compiles(mkFuncDecl[(Z3RoundingMode,), Z3Bool]("predicate"))
+
+  test "Z3RoundingMode == itself is valid; == differs from a different mode":
+    let ctx = newContext()
+    check smtValid(rmRNE() == rmRNE())
+    # rmRNE != rmRTZ at the SMT level (distinct enum values).
+    check smtValid(rmRNE() != rmRTZ())
+
 suite "model.eval / m[] are constrained to Z3Term":
   test "m.eval(intAst) compiles (Z3Int is Z3Term)":
     let ctx = newContext()

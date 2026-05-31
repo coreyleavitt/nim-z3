@@ -99,6 +99,24 @@ type
 
 emitTermLifecycle(Z3RoundingMode, Z3_dec_ref, Z3_inc_ref)
 
+# Step 9 sortOf overload — participates in z3/sortdispatch's resolution
+# so `Z3RoundingMode` can be an element of `Z3Seq[Z3RoundingMode]`,
+# `Z3Array[K, Z3RoundingMode]`, or a `Z3FuncDecl` arg / return type.
+proc sortOf*(_: typedesc[Z3RoundingMode],
+             ctx: Z3Context): RawZ3Sort {.inline.} =
+  ctx.checkErr Z3_mk_fpa_rounding_mode_sort(ctx.raw)
+
+# Structural equality. Unlike `Z3Fp`'s IEEE `==`, rounding modes
+# have no NaN/Inf concept — there are exactly five distinct values
+# (rmRNE / rmRNA / rmRTP / rmRTN / rmRTZ), so SMT structural
+# equality is what users want.
+proc `==`*(a, b: Z3RoundingMode): Z3Bool =
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_eq(a.ctx.raw, a.raw, b.raw))
+
+proc `!=`*(a, b: Z3RoundingMode): Z3Bool =
+  let eq = a == b
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
+
 # ----------------------------------------------------------------------------
 # Literal helpers — one proc per IEEE-754 rounding mode. Each returns a
 # `Z3RoundingMode` AST built on `ctx` (or the current context). Generated via

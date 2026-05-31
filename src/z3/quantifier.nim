@@ -36,7 +36,7 @@
 ## `Z3BoundVar`-style explicit boxing helpers — see the §7 Q2
 ## divergence above.
 
-import ./ffi, ./context, ./error, ./ast
+import ./ffi, ./context, ./error, ./ast, ./array
 
 # ============================================================================
 # Z3Pattern — refcount-managed quantifier trigger
@@ -219,6 +219,49 @@ template exists*[B1, B2, B3, B4, B5](
     patterns: openArray[Z3Pattern] = []): Z3Bool =
   quantifierImpl(body.ctx, false,
     [b1.raw, b2.raw, b3.raw, b4.raw, b5.raw], body.raw, patterns)
+
+# ============================================================================
+# Lambda — `Z3_mk_lambda_const` (v1.0 audit round 2, item #2)
+# ============================================================================
+#
+# A lambda binder over a free constant of sort K with body of sort V
+# yields an `Array K V` term. Z3 admits lambdas as first-class array
+# values: `select(λx. body, e)` evaluates to `body[x := e]` and the
+# array sort is preserved by all the array-theory operators.
+#
+# We use single-bound-var form as the primary surface; multi-bound
+# lambdas are encodable via nested single-bound lambdas (Z3 supports
+# the multi-bound form too, but typing it requires a curried
+# `Z3Array[K1, Z3Array[K2, V]]` chain which is rarely the
+# user-friendliest shape).
+
+proc lambdaImpl[K, V](ctx: Z3Context, boundRaw: RawZ3Ast,
+                      body: V): Z3Array[K, V] =
+  var bounds = [Z3_to_app(ctx.raw, boundRaw)]
+  let raw = ctx.checkErr Z3_mk_lambda_const(
+    ctx.raw, cuint(1),
+    cast[ptr UncheckedArray[RawZ3App]](addr bounds[0]),
+    body.raw)
+  wrap[Z3Array[K, V]](ctx, raw)
+
+template lambda*[K, V](bound: K, body: V): Z3Array[K, V] =
+  ## Build `λbound. body` — a Z3 lambda over a free constant.
+  ##
+  ## `bound` must be a free constant of typed family `K` (built via
+  ## `mkIntVar`, `mkBitVecVar[W]`, `mkCharVar`, `mkSeqVar[E]`, …).
+  ## Z3 re-binds it inside `body`; the resulting `Z3Array[K, V]`
+  ## maps `bound`'s sort to `body`'s sort.
+  ##
+  ## Lambdas compose with the array theory: `select(λx. body, e)`
+  ## is equivalent to `body[x := e]`, and `store` / `mkConstArray`
+  ## interoperate as usual.
+  ##
+  ## ```nim
+  ## let x = mkIntVar("x")
+  ## let inc = lambda(x, x + mkInt(1))   # Z3Array[Z3Int, Z3Int]
+  ## doAssert smtValid(inc[mkInt(3)] == mkInt(4))
+  ## ```
+  lambdaImpl[K, V](body.ctx, bound.raw, body)
 
 # ============================================================================
 # Quantifier introspection (v0.4 step 11)

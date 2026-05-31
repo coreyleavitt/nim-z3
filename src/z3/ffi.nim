@@ -849,6 +849,15 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Existential variant of `Z3_mk_forall_const`.
 
+  proc Z3_mk_lambda_const(c: RawZ3Context, num_decls: cuint,
+                          bound: ptr UncheckedArray[RawZ3App],
+                          body: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Lambda binder over free constants. Returns an array sort
+    ## `(Array K V)` where K is the bound consts' sort tuple and V
+    ## the body's sort. See `z3/quantifier.lambda` for the typed
+    ## wrapper (v1.0 audit round 2, item #2).
+
   proc Z3_func_decl_to_ast(c: RawZ3Context, d: RawZ3FuncDecl): RawZ3Ast
     {.cdecl, header: "z3.h".}
     ## Cast a `func_decl` to its underlying `ast` for refcounting.

@@ -438,7 +438,121 @@ Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why /
 
 ---
 
+## 8b. Pre-tag audit — v0.4
+
+Structured walk before tagging, mirroring the v0.2 / v0.3 precedent. Each §1 goal + §5 step is classified **landed / rolled to v0.5 / dropped / sibling-package**, with the commit hash for landed items.
+
+### §1 Goals
+
+| # | Goal | Status | Commit / Notes |
+|---|---|---|---|
+| 1  | `Z3Fixedpoint` (Horn-clause / CHC solver) | ✅ landed | `2c29768` — v0.4 step 5 |
+| 2  | `Z3Proof` family + `ProofRule` enum + introspection | ✅ landed | `ae9b105` — v0.4 step 4 (merged with step 7 `getProof`) |
+| 3  | Structural introspection — AST + sort + `Z3AnyAst` + typed lifters | ✅ landed | `6acb50b` — v0.4 step 2 |
+| 4  | Solver extensions (`assertConstraintAndTrack`, `getUnsatCore`, `getProof`, `getStatistics`, `getConsequences`) | ✅ landed | `9fb1c96` (unsat-core, step 6), `ae9b105` (proof, step 4), `4e24e99` (stats + consequences, step 8) |
+| 5  | Term rewriting (`substitute` + `substituteVars`) | ✅ landed | `64df21b` — v0.4 step 9 |
+| 6  | Cross-context AST transfer + `compatibleWith` | ✅ landed | `99894b5` — v0.4 step 10 |
+| 7  | Quantifier introspection | ✅ landed | `f47fa36` — v0.4 step 11 |
+| 8  | `Z3DatatypeValue` as a `sortOf` element type | ✅ landed | `35ad348` — v0.4 step 3 (per-context `datatypeRegistry`) |
+| 9  | Probes + conditional tactics | ✅ landed | `fb09556` — v0.4 step 12 |
+| 10 | Global parameters | ✅ landed | `c8a31c2` — v0.4 step 13 |
+| 11 | Full I/O surface (`z3/io`) | ✅ landed | `1bfe4ff` — v0.4 step 14 |
+
+Every §1 goal landed. v0.4 ships the "contract-completion" claim it set out to ship.
+
+### §5 Steps
+
+| Step | Deliverable | Status | Commit |
+|---|---|---|---|
+| 1  | `Z3AstVector` foundation + `Z3Term` concept | ✅ landed | `d472bef` |
+| 2  | Structural introspection (`z3/introspect`) | ✅ landed | `6acb50b` |
+| 3  | `Z3DatatypeValue` `sortOf` element type | ✅ landed | `35ad348` |
+| 4  | `Z3Proof` family + `ProofRule` enum + `unpackProof` | ✅ landed | `ae9b105` |
+| 5  | `Z3Fixedpoint` (`z3/fixedpoint`) | ✅ landed | `2c29768` |
+| 6  | Solver `assertConstraintAndTrack` + `getUnsatCore` | ✅ landed | `9fb1c96` |
+| 7  | Solver `getProof` | ✅ landed | merged with step 4 (`ae9b105`); docs-only marker commit `fb36a59` |
+| 8  | Solver `getStatistics` + `getConsequences` | ✅ landed | `4e24e99` |
+| 9  | Term rewriting (`z3/rewrite`) | ✅ landed | `64df21b` |
+| 10 | Cross-context transfer + compatibility (`z3/translate`) | ✅ landed | `99894b5` |
+| 11 | Quantifier introspection | ✅ landed | `f47fa36` |
+| 12 | Probes + condTactic (`z3/probe`) | ✅ landed | `fb09556` |
+| 13 | Global parameters (`z3/globalparams`) | ✅ landed | `c8a31c2` |
+| 14 | I/O surface refactor (`z3/io`) | ✅ landed | `1bfe4ff` |
+| 15 | Pre-tag audit + §8b block | ✅ this commit | The audit you are reading. |
+| 16 | v0.4 tag | next commit | The actual `v0.4.0` git tag, CHANGELOG entry, and archive promotion. |
+
+### Spec corrections logged during v0.4 (cross-reference)
+
+Every step that hit a spec assumption needing change surfaced it back to the user before continuing; the corrections live in their per-step §8 entries above. Summary for the audit:
+
+- **Step 1**: Nim 2 `system.==` auto-derives object equality, ambiguating with ffi.nim's typed raw-pointer `==` when comparing raw AST handles directly in tests. Resolution: test through the typed observable surface (`smtValid(extracted == original)`). PhD-defensible — the user-facing surface *is* the typed family; testing through it is the correct discipline.
+- **Step 2**: `Z3_decl_kind` carries ~250 entries; only the proof-rule subset is dispatched on, so the FFI enum declares just those. Boolean literals reach `getAstKind` as `akApp` (not `akNumeral`) because Z3 represents `true` / `false` as nullary applications — minor model mismatch worth documenting. Imported enums tolerate out-of-range values; `toProofRule` uses an `else` branch to map unknown kinds to `prUnknown`.
+- **Step 3**: `Z3DatatypeValue[T]` runtime registration: `datatypeRegistry: Table[string, RawZ3Sort]` keyed by `$T` on `Z3ContextOwn`. `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` raises `Z3UsageError` with a helpful "call `declareDatatype[T]()` first" message if missing. The runtime lookup is the only practical mechanism — datatype sorts aren't compile-time-knowable; flagged in §7 of the original plan and resolved as expected.
+- **Step 4 (merged with step 7)**: `Z3Proof` is untestable without `Solver.getProof` — Z3 has no public proof-literal constructor. Steps 4 and 7 merged: both ship together in `ae9b105`. Slot 7 retained for plan-traceability with a docs-only marker commit (`fb36a59`).
+- **Step 5**: Three Z3 surface assumptions corrected. (1) `Z3_fixedpoint_push` / `_pop` are real but their stateful semantics differ from solver push/pop; not surfaced because the Horn-clause workflow doesn't benefit. (2) `Z3_fixedpoint_get_ground_sat_answer` does not exist as advertised in older docs — use `Z3_fixedpoint_get_answer`. (3) Datalog ingestion needs finite-domain sort decls, separate from regular CHC programs. All three caught before shipping.
+- **Step 6**: Clean landing. `Z3_solver_assert_and_track` returns void (not the tracker) — wrapper returns the input tracker for fluent use.
+- **Step 8**: Clean landing. `Z3Stats` slots in as a typed ref-handle following the step-1 `Z3AstVector` pattern; `getConsequences` exercises `Z3AstVector` for both `assumptions` (input) and `consequences` (output).
+- **Step 9**: Clean landing. `substituteVars`'s de-Bruijn discipline documented loudly — the array's `i`-th entry replaces the `i`-th bound variable counted from innermost, the same convention Z3 uses.
+- **Step 10**: Clean landing. `Z3_translate` propagates the typed-family phantom transparently; `compatibleWith` smoke-tests with a no-op translation under exception capture (Z3 doesn't expose a direct predicate).
+- **Step 11**: Clean landing. `assertIsQuantifier` template added as a private precondition guard surfacing a clear error rather than Z3's opaque `Z3_INVALID_USAGE`. Bound-var sort returns `RawZ3Sort`; users dispatch via step 2's `getSortKind` — resolves §7 open question Q2 as planned (no runtime sort→typedesc dispatcher).
+- **Step 12**: Comparison operators on `Z3Probe` return `Z3Probe` (not `bool`) — matches Z3's underlying API and reads naturally at the call site. Float-literal auto-lift on either side via a single `emitCmp` template. `Z3Tactic` / `Z3Goal` `.raw` / `.ctx` accessors + `wrapTactic` promoted to public so `z3/probe` can build a tactic from `Z3_tactic_cond` without a cyclic dep. `condTactic` dispatch is verified by pairing `mkTactic("smt")` with `mkTactic("fail")` so the probe value directly determines whether `check()` reports `zsSat`.
+- **Step 13**: `Z3_global_param_get` returns the **effective** value (override or built-in default) for known names and `false` only for unrecognised names — Z3 doesn't distinguish "user-set" from "at default". Wrapper documents `none` ⇔ unknown name; `some(v)` ⇔ effective value as a string. Numeric/typed params parse on set and normalise malformed input to default with a `WARNING:` line on Z3's stderr. `Z3_string_ptr` (`const char **`) maps via `pointer` + cast (Nim's `ptr cstring` decays to `char **`, which strict cpp rejects). `context.ensureLoaded` promoted to public so global-param calls work before any `Z3Context` exists.
+- **Step 14**: `toSmt2Benchmark` `status=""` produces malformed SMT2 because Z3 unconditionally emits `(set-info :status <s>)` even for empty values — fixed by defaulting `status` to `"unknown"` (a valid SMT-LIB status value). Uninterpreted sorts (`stUninterpreted` SortTag + `mkUninterpretedSort` / `declareSort`) added as scope-creep but a real gap surfaced by the `Z3ParserContext.addSort` testing. `Z3_benchmark_to_smtlib_string` buffer is overwrite-on-next-call; wrapper copies into a Nim `string` immediately, safe in single-threaded use.
+
+### Items rolled forward to v0.5
+
+These are logged per-step in §8 above. Consolidated here for the rollforward:
+
+- **`Z3Fixedpoint` advanced surface** — assertion-set introspection (`Z3_fixedpoint_get_assertions`), `Z3_fixedpoint_from_string` / `_from_file` (the SMT-LIB-shaped CHC ingestion path now that `z3/io` exists), and the help-text emitter `Z3_fixedpoint_get_help`. None blocking; the headline rule / fact / query / answer surface ships.
+- **`Z3DatatypeValue[T]` sort-of error UX polish** — the "register first" error already raises usefully; v0.5 could lift the registration into a macro that runs at `declareDatatype[T]` site for compile-time enforcement. Optional.
+- **`Z3AnyAst` typed-lifter expansion** — covers the v0.3 family set; `Z3Optimize`-shaped families and any future cross-cutting handle types accumulate lifters as they ship.
+- **Statistics-style key introspection on `Z3Params` / `Z3Stats`** — both currently expose key iteration; `getParamDescrs(s: Z3Solver): Z3ParamDescrs` (schema-driven param-descrs introspection) was deferred from v0.3 and stays deferred. Not blocking pre-1.0 — users can read Z3's CLI `(get-help solver)` for the param list.
+- **`Z3AstMap` typed ref-handle** — the dual of `Z3AstVector` for AST-keyed dictionaries; needed only when a v0.5 capability surfaces it.
+- **`Z3FuncInterp` tabular extraction** (carried from v0.3) — entries + else-value iteration for uninterpreted-function model interpretation. v0.5 polish.
+- **`Z3Char` BV interop** (carried from v0.3) — `Z3_mk_char_to_bv` / `_from_bv` need a runtime `:char-width` thread.
+- **`Z3Float128` / `Z3Float16` structured extraction** (carried from v0.3) — no Nim-native float type for those widths; `toIeeeBv` is the escape hatch.
+- **Carry-forward CI items (#1)** — same blocker as v0.2 / v0.3.
+- **`{.optional.}` softlink declarations** — triggers when the first 4.13+-only symbol lands in the wrapper. None during v0.4.
+- **Differential testing against Python z3** — still non-goal.
+
+### Scope-pruned items (redirected to sibling packages)
+
+Same as v0.3:
+
+- **DOT / GraphViz AST export** — sibling package (`nim-z3-tools`/`-viz`); not a wrapper concern.
+- **Visualisation / interactive REPL / SMT-COMP driver** — sibling packages.
+- **High-level macro DSL** (`solve: forall x in Int, x + 1 > x`) — non-goal; the wrapper IS the API.
+
+### Dropped (won't ship)
+
+(None this release. Every §1 goal landed; v0.4 is the contract-completion release it set out to be.)
+
+### Cumulative test count
+
+v0.3 closed at **890 OKs** across `nim c` + `nim cpp`. v0.4 closes at **1114 OKs**. Step-by-step delta:
+
+| After step | Total | Delta | New tests (× 2 backends) |
+|---|---|---|---|
+| 1  (`Z3AstVector` + `Z3Term` concept) | 908  | +18  | 9 × 2  |
+| 2  (structural introspection)         | 952  | +44  | 22 × 2 |
+| 3  (`Z3DatatypeValue` sortOf)         | 966  | +14  | 7 × 2  |
+| 4  (`Z3Proof` + `getProof`)           | 978  | +12  | 6 × 2  |
+| 5  (`Z3Fixedpoint`)                   | 996  | +18  | 9 × 2  |
+| 6  (unsat-core + assertAndTrack)      | 1008 | +12  | 6 × 2  |
+| 7  (close-out marker)                 | 1008 | 0    | (docs only) |
+| 8  (`Z3Stats` + `getConsequences`)    | 1028 | +20  | 10 × 2 |
+| 9  (term rewriting)                   | 1042 | +14  | 7 × 2  |
+| 10 (cross-context transfer)           | 1054 | +12  | 6 × 2  |
+| 11 (quantifier introspection)         | 1076 | +22  | 11 × 2 |
+| 12 (probes + condTactic)              | 1090 | +14  | 7 × 2  |
+| 13 (global parameters)                | 1100 | +10  | 5 × 2  |
+| 14 (I/O surface refactor)             | 1114 | +14  | 15 × 2 new in `tio.nim`, 8 × 2 removed from `tpretty.nim` (relocated coverage); net +14 |
+
+---
+
 ## 9. Closing note
+
+
 
 After v0.4 ships, the wrapper's scope statement is **literally true**: every capability the Z3 C API exposes is reachable through nim-z3, with type-safety and memory-safety invariants preserved. That's the contract 1.0 commits to. v0.5 then polishes the surface (load-bearing `Z3Term` concept, naming hygiene, error type hierarchy, examples, docs, feature flags) so the 1.0 commitment is on a stable foundation.
 

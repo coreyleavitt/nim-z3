@@ -244,8 +244,10 @@
 const
   z3WithoutFPEff*        = defined(z3WithoutFP)
   z3WithoutSeqEff*       = defined(z3WithoutSeq)
-  z3WithoutStringsEff*   = defined(z3WithoutStrings) or
-                           defined(z3WithoutString) or z3WithoutSeqEff
+  z3WithoutStringsEff*   = defined(z3WithoutStrings) or z3WithoutSeqEff
+    # Canonical flag is `z3WithoutStrings` (plural). The singular form
+    # `z3WithoutString` was an accidental alias pre-v0.5.0; dropped in
+    # the v0.5.0 audit to avoid locking an undocumented alias at v1.0.
   z3WithoutRegexEff*     = defined(z3WithoutRegex) or
                            z3WithoutStringsEff or z3WithoutSeqEff
   z3WithoutFuncDeclEff*  = defined(z3WithoutFuncDecl)

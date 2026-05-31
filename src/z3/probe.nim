@@ -46,8 +46,11 @@ type
 
 emitRefcountLifecycle(Z3ProbeOwn, Z3_probe_dec_ref)
 
-proc wrapProbe*(ctx: Z3Context, raw: RawZ3Probe): Z3Probe =
-  ## Adopt a freshly-returned raw probe handle.
+proc wrapProbe(ctx: Z3Context, raw: RawZ3Probe): Z3Probe =
+  ## Adopt a freshly-returned raw probe handle. Private — all
+  ## current consumers live in this module. Un-exported in the
+  ## v0.5.0 audit (previously `*`-exported "for symmetry"; locking
+  ## a no-consumer surface at v1.0 wasn't worth it).
   if raw.isNil:
     var e = newException(Z3InvalidUsageError, "Z3 returned a nil probe handle.")
     e.code = Z3_INVALID_USAGE

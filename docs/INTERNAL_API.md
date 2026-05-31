@@ -59,7 +59,7 @@ binding to `ctx`.
 | `wrapModel*(ctx, raw): Z3Model` | `z3/model` | `z3/solver` (`model()`), `z3/optimize`, future `Z3FuncInterp` walkers | Models are constructed in three places; one delegate. |
 | `wrapStats*(ctx, raw): Z3Stats` | `z3/stats` | `z3/solver` (`getStatistics`), `z3/optimize` | v0.4 step 8. |
 | `wrapAstVector*(ctx, raw): Z3AstVector` | `z3/astvector` | `z3/solver` (`getUnsatCore`, `getConsequences`), `z3/io` (`parseSmt2String` results), `z3/fixedpoint` | v0.4 step 1's foundational handle. |
-| `wrapProbe*(ctx, raw): Z3Probe` | `z3/probe` | (currently only internal-to-`z3/probe`; exported for symmetry with the others) | v0.4 step 12. Reserved for future tactic-probe-bridge code. |
+| `wrapProbe(ctx, raw): Z3Probe` | `z3/probe` | (private — same-module only) | v0.4 step 12. Was `*`-exported pre-v0.5.0 "for symmetry"; un-exported in the v0.5.0 audit because no cross-module consumer materialized and locking a no-consumer surface at v1.0 wasn't worth it. |
 | `wrapParamDescrs*(ctx, raw): Z3ParamDescrs` | `z3/params` | `z3/solver` (`getParamDescrs`), `z3/tactic` (`getParamDescrs`) | v0.5 step 6B. The handle lives in `z3/params` but the constructors live in `z3/solver` and `z3/tactic` to keep dependency layering one-directional. |
 
 ### Raw-handle accessors — `.raw` / `.ctx`
@@ -101,6 +101,40 @@ FFI calls, and `Z3Term`-generic operations.
 | `emitVarargsMonoid*` | `z3/lifecycle` | `z3/boolean` | Empty-input identity pattern (`mkAnd` / `mkOr`). |
 | `emitVarargsDistinctS*` | `z3/lifecycle` | `z3/boolean` | Distinct pattern over `Z3Ast[S]`. |
 | `emitVarargsDistinctW*` | `z3/lifecycle` | `z3/bitvec` | Distinct pattern over `Z3BitVec[W]`. |
+
+### Per-context state — exported `Z3ContextOwn` fields
+
+A handful of fields on `Z3ContextOwn` (the underlying object of
+`Z3Context`) are `*`-exported so sibling modules can read/write
+them; user code should never touch them directly.
+
+| Symbol | Module | Consumer | Why exported |
+|---|---|---|---|
+| `Z3ContextOwn.datatypeRegistry*: Table[string, RawZ3Sort]` | `z3/context` | `z3/datatypes` (`declareDatatype[T]` writes; `sortOf[Z3DatatypeValue[T]]` reads) | Datatype sorts are made at runtime by `declareDatatype` and have no compile-time identity — `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` needs a per-context lookup keyed by `$T`. The table lives on the context so it cleans up when the context dies. |
+
+### Width-arithmetic helpers — `*Impl` procs in `z3/bitvec`
+
+The width-typed BV operations (`extract[hi, lo]`, `concat[W1, W2]`,
+`zeroExtend[N]`, `signExtend[N]`, `repeat[N]`) are user-facing
+templates that compute the *result* width at the type level
+(`extract(7, 0)` returns `Z3BitVec[hi - lo + 1]`, etc.). The
+template needs to call a typed proc with the right static-int
+arithmetic resolved; that proc is the `*Impl` companion.
+
+| Symbol | Module | Consumer | Why exported |
+|---|---|---|---|
+| `extractImpl*[hi, lo, W: static int]` | `z3/bitvec` | the user-facing `extract` template (same module) | Template-to-typed-proc dispatch with static-int arithmetic resolved at the call site. |
+| `concatImpl*[W1, W2: static int]` | `z3/bitvec` | the user-facing `concat` template | Same. |
+| `zeroExtendImpl*[N, W: static int]` | `z3/bitvec` | the user-facing `zeroExtend` template | Same. |
+| `signExtendImpl*[N, W: static int]` | `z3/bitvec` | the user-facing `signExtend` template | Same. |
+| `repeatImpl*[N, W: static int]` | `z3/bitvec` | the user-facing `repeat` template | Same. |
+
+These exist because Nim 2's static-int arithmetic in generic
+return-type position needs a real proc declaration to substitute
+into; the user-facing templates are wrappers that surface the
+intended API name without the `Impl` suffix. **Users who find the
+`*Impl` names in autocomplete should call the bare-name template
+(`extract`, `concat`, etc.) instead.**
 
 ### Bootstrap + threading hooks
 

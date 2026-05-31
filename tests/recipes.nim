@@ -192,6 +192,48 @@ proc fdRecipes*(maxDepth = 3): Strategy[FuncDeclRecipe] =
   recursive(fdRecipeBase(), fdRecipeExtend, maxDepth)
 
 # ============================================================================
+# StringRecipe — string expression trees
+# ============================================================================
+#
+# Generates trees over `Z3String` operations. Literal strings are
+# constrained to short alphabetic content so concat / substr exercise
+# the wrapper's encoded-length paths without producing degenerate
+# huge ASTs at depth-3 recipes.
+
+type
+  StringRecipeKind* = enum srkLit, srkVar, srkConcat
+  StringRecipe* = ref object
+    case kind*: StringRecipeKind
+    of srkLit:    lit*: string
+    of srkVar:    name*: string
+    of srkConcat: l*, r*: StringRecipe
+
+const stringVarNames* = @["s", "t", "u"]
+const stringLitChoices* = @["", "a", "ab", "abc", "ba"]
+
+proc stringRecipeBase*(): Strategy[StringRecipe] =
+  oneOf(@[
+    sampledFrom(stringLitChoices).map(
+      proc(s: string): StringRecipe =
+        StringRecipe(kind: srkLit, lit: s)),
+    sampledFrom(stringVarNames).map(
+      proc(n: string): StringRecipe =
+        StringRecipe(kind: srkVar, name: n)),
+  ])
+
+proc stringRecipeExtend*(child: Strategy[StringRecipe]):
+    Strategy[StringRecipe] =
+  oneOf(@[
+    stringRecipeBase(),
+    tuples2(child, child).map(
+      proc(p: (StringRecipe, StringRecipe)): StringRecipe =
+        StringRecipe(kind: srkConcat, l: p[0], r: p[1])),
+  ])
+
+proc stringRecipes*(maxDepth = 3): Strategy[StringRecipe] =
+  recursive(stringRecipeBase(), stringRecipeExtend, maxDepth)
+
+# ============================================================================
 # Interpreters — recipe → AST under a given context
 # ============================================================================
 
@@ -220,6 +262,13 @@ proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   of bvrkAnd: interpret(r.l, ctx) and interpret(r.r, ctx)
   of bvrkOr:  interpret(r.l, ctx) or  interpret(r.r, ctx)
   of bvrkXor: interpret(r.l, ctx) xor interpret(r.r, ctx)
+
+proc interpret*(r: StringRecipe, ctx: Z3Context): Z3String =
+  ## Build the Z3String AST for `r` under `ctx`.
+  case r.kind
+  of srkLit:    mkString(ctx, r.lit)
+  of srkVar:    mkStringVar(ctx, r.name)
+  of srkConcat: concat(interpret(r.l, ctx), interpret(r.r, ctx))
 
 proc interpret*(r: FuncDeclRecipe, f: Z3FuncDecl[(Z3Int,), Z3Int],
                 ctx: Z3Context): Z3Int =

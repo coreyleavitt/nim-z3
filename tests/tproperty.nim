@@ -344,3 +344,64 @@ suite "property: shape — uninterpreted-function laws":
         ensure smtValid(f(e) == f(e))
     let report = forAll(fdRecipes(maxDepth = 3), prop, fewExamples())
     check report.outcome == otPassed
+
+# ============================================================================
+# property: shape — algebraic laws over random Z3String trees
+# ============================================================================
+
+suite "property: shape — string algebraic laws":
+  test "concat is associative: (a ++ b) ++ c ≡ a ++ (b ++ c)":
+    let ctx = newContext()
+    let prop =
+      proc(p: (StringRecipe, (StringRecipe, StringRecipe))) =
+        let a = interpret(p[0], ctx)
+        let b = interpret(p[1][0], ctx)
+        let c = interpret(p[1][1], ctx)
+        ensure smtValid(concat(concat(a, b), c) == concat(a, concat(b, c)))
+    let report = forAll(
+      tuples2(stringRecipes(maxDepth = 2),
+              tuples2(stringRecipes(maxDepth = 2),
+                      stringRecipes(maxDepth = 2))),
+      prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "empty is the left identity of concat: \"\" ++ s ≡ s":
+    let ctx = newContext()
+    let empty = mkString(ctx, "")
+    let prop =
+      proc(r: StringRecipe) =
+        let s = interpret(r, ctx)
+        ensure smtValid(concat(empty, s) == s)
+    let report = forAll(stringRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "empty is the right identity of concat: s ++ \"\" ≡ s":
+    let ctx = newContext()
+    let empty = mkString(ctx, "")
+    let prop =
+      proc(r: StringRecipe) =
+        let s = interpret(r, ctx)
+        ensure smtValid(concat(s, empty) == s)
+    let report = forAll(stringRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "length of concat: len(a ++ b) ≡ len(a) + len(b)":
+    let ctx = newContext()
+    let prop =
+      proc(p: (StringRecipe, StringRecipe)) =
+        let a = interpret(p[0], ctx)
+        let b = interpret(p[1], ctx)
+        ensure smtValid(concat(a, b).len == a.len + b.len)
+    let report = forAll(tuples2(stringRecipes(maxDepth = 2),
+                                stringRecipes(maxDepth = 2)),
+                        prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "every string contains itself":
+    let ctx = newContext()
+    let prop =
+      proc(r: StringRecipe) =
+        let s = interpret(r, ctx)
+        ensure smtValid(s.contains(s))
+    let report = forAll(stringRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed

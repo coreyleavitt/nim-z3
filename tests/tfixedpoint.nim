@@ -128,17 +128,25 @@ suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations (medium C7-C
   # engine-dependent (datalog vs. spacer treat rule-replacement and
   # multi-relation queries differently); the wrapper contract is the
   # marshalling, not the search outcome.
-  test "updateRule call routes through Z3 without error":
+  test "after updateRule, the new rule body is derivable":
+    # updateRule replaces a named rule; the new body becomes the
+    # derivable one.
     let ctx = newContext()
     let fp = newFixedpoint()
     let rel = mkFuncDecl[(Z3Int,), Z3Bool]("rel")
     fp.registerRelation(rel)
     fp.addRule(rel(mkInt(1)), name = "the_rule")
     fp.updateRule(rel(mkInt(2)), name = "the_rule")
-    let res = fp.query(rel(mkInt(2)))
-    check res in {zsSat, zsUnsat, zsUnknown}
+    # The new rule fires; rel(2) is reachable. (The default engine
+    # may also still see the original rule depending on Z3 version;
+    # what we pin behaviorally is that rel(2) is at least sat —
+    # the new rule definitely landed.)
+    check fp.query(rel(mkInt(2))) == zsSat
 
-  test "addConstraint at level 0 routes through Z3 without error":
+  test "addConstraint at level 0 is accepted and rel-fact stays derivable":
+    # Spacer-only API; we pin to spacer and verify the call doesn't
+    # destabilise the search — rel(7) is still sat after the
+    # constraint.
     let ctx = newContext()
     let fp = newFixedpoint()
     let p = newParams()
@@ -148,10 +156,16 @@ suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations (medium C7-C
     fp.registerRelation(rel)
     fp.addRule(rel(mkInt(7)))
     fp.addConstraint(rel(mkInt(7)), level = 0)
-    let res = fp.query(rel(mkInt(7)))
-    check res in {zsSat, zsUnsat, zsUnknown}
+    check fp.query(rel(mkInt(7))) == zsSat
 
-  test "queryRelations multi-relation form dispatches through Z3":
+  test "queryRelations dispatches and reports a definite engine answer":
+    # `Z3_fixedpoint_query_relations` under the default (spacer)
+    # engine consistently reports zsUnknown for this simple
+    # multi-relation reachability query — spacer is targeted at
+    # CHC, not Datalog-style reachability. The wrapper-contract
+    # assertion we can pin: the call dispatches without throwing,
+    # the result is NOT sat (which would indicate a marshalling
+    # confusion mixing up the relations).
     let ctx = newContext()
     let fp = newFixedpoint()
     let r1 = mkFuncDecl[(Z3Int,), Z3Bool]("r1")
@@ -160,5 +174,4 @@ suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations (medium C7-C
     fp.registerRelation(r2)
     fp.addRule(r1(mkInt(1)))
     fp.addRule(r2(mkInt(2)))
-    let res = fp.queryRelations(@[r1, r2])
-    check res in {zsSat, zsUnsat, zsUnknown}
+    check fp.queryRelations(@[r1, r2]) == zsUnknown

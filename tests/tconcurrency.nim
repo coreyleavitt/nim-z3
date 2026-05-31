@@ -109,8 +109,14 @@ suite "concurrency — withContext is per-thread":
           ctxBPtr = cast[pointer](myCtx)
           ctxBReady = true
         # Wait until both threads have published their original ctx.
+        # Bounded: if a thread panics before flagging, we want the
+        # test runner to fail rather than hang indefinitely.
+        var spinGuard = 0
         while not (ctxAReady and ctxBReady):
-          discard
+          inc spinGuard
+          if spinGuard > 10_000_000: break
+        doAssert ctxAReady and ctxBReady,
+          "tconcurrency spin-wait timed out — a peer thread may have panicked"
         withContext(scratch):
           let inside = cast[pointer](currentContext())
           if idx == 0:

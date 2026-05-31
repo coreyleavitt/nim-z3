@@ -219,3 +219,22 @@ suite "Z3Optimize — withFrame + getParamDescrs (medium B2/B3)":
     let o = newOptimize()
     let pd = o.getParamDescrs()
     check pd.len > 0
+
+suite "Z3Optimize — model() after unsat":
+  test "model() on an unsat optimiser returns a well-formed handle":
+    # Z3's optimize backend returns a (possibly trivial) model after
+    # unsat rather than raising — different from Z3Solver where the
+    # corresponding call raises Z3InvalidUsageError. The wrapper
+    # contract under test: the call dispatches without crashing and
+    # the returned Z3Model is renderable. Downstream evaluation
+    # against the model is semantically meaningless under unsat;
+    # the handle itself is well-formed.
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let o = newOptimize()
+    o.add x > mkInt(5)
+    o.add x < mkInt(3)
+    check o.check() == zsUnsat
+    let m = o.model()
+    # Render — a nil-handle case would crash here.
+    discard ($m)

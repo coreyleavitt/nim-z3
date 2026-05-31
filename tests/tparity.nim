@@ -110,11 +110,13 @@ suite "\\$ — generic over Z3Term":
 suite "Z3RoundingMode — sortOf + equality (v0.5.0 audit #9, #22)":
   test "sortOf overload makes Z3RoundingMode usable as element type":
     # Without sortOf, mkSeq[Z3RoundingMode] / mkFuncDecl with
-    # Z3RoundingMode args wouldn't compile.
+    # Z3RoundingMode args wouldn't compile — exercised by actually
+    # building each form and rendering it.
     let ctx = newContext()
-    discard mkSeqEmpty[Z3RoundingMode]()
-    check compiles(mkSeqEmpty[Z3RoundingMode]())
-    check compiles(mkFuncDecl[(Z3RoundingMode,), Z3Bool]("predicate"))
+    let empty = mkSeqEmpty[Z3RoundingMode]()
+    check ($empty).len > 0
+    let pred = mkFuncDecl[(Z3RoundingMode,), Z3Bool]("predicate")
+    check ($pred).len > 0
 
   test "Z3RoundingMode == itself is valid; == differs from a different mode":
     let ctx = newContext()

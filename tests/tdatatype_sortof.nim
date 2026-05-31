@@ -99,5 +99,6 @@ suite "Z3DatatypeValue — mutually recursive declarations register both sides":
     # And the composite-family use lights up — array indexed by Tree
     # holding Forest values, the canonical mutually-recursive shape.
     let arr = mkArrayVar[Z3DatatypeValue[Tree], Z3DatatypeValue[Forest]]("m")
-    discard arr
-    check true
+    # Structural assertion: the rendered SMT-LIB is non-empty —
+    # confirms the array AST is well-formed (not just a nil handle).
+    check ($arr).len > 0

@@ -51,17 +51,24 @@ suite "current context — threadvar discipline":
     check currentContext() == c1
 
   test "requireCurrentContext raises Z3Error when none is set":
+    let saved = currentContext()
     setCurrentContext(nil)
     expect Z3Error:
       discard requireCurrentContext()
+    # Restore — leaving nil here would break ordering-fragile tests
+    # downstream (the canonical isolation discipline is to keep the
+    # current-context slot pointing to *some* fresh context).
+    setCurrentContext(saved)
 
   test "requireCurrentContext error carries Z3_INVALID_USAGE":
+    let saved = currentContext()
     setCurrentContext(nil)
     try:
       discard requireCurrentContext()
       check false   # unreachable
     except Z3Error as e:
       check e.code == Z3_INVALID_USAGE
+    setCurrentContext(saved)
 
 suite "withContext — scoped current-context swap":
   test "withContext temporarily installs ctx":

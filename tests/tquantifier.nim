@@ -147,3 +147,26 @@ suite "quantifier — pattern threading":
     # select(a, ?) in the context.
     let p = mkPattern(sel)
     check smtValid(forall(i, sel == mkInt(0), patterns = [p]))
+
+suite "quantifier introspection — pattern survives source AST drop":
+  test "getQuantifierPattern result outlives the original quantifier scope":
+    # incRefPattern path (v0.5.0 audit A5 / round-2 L24): extracting
+    # a pattern from a quantifier must give the caller an independently-
+    # refcounted handle, so the pattern survives even if the original
+    # quantifier AST goes out of scope. This test would crash with a
+    # use-after-free if the inc_ref were missing.
+    let ctx = newContext()
+    proc buildAndExtract(): Z3Pattern =
+      let x = mkIntVar("x")
+      let body = (x > mkInt(0))
+      let trig = mkPattern(body)
+      let q = forall(x, body, patterns = [trig])
+      result = getQuantifierPattern(q, 0)
+      # q, x, body, trig go out of scope here when the proc returns.
+    let extracted = buildAndExtract()
+    # Force a GC pass to make sure anything that should be collected is.
+    GC_fullCollect()
+    # If the pattern's refcount was correctly bumped, this proc call
+    # is safe; rendering accesses the underlying raw handle.
+    let rendered = $extracted
+    check rendered.len > 0

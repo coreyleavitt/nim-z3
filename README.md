@@ -134,6 +134,7 @@ The wrapper ships **37 modules** organised around the typed-family + ref-handle 
 - **New here?** Start with the [example list](#examples) and the [headline example](#nim-z3) at the top of this file. Then skim [`docs/PARITY.md`](docs/PARITY.md) to see how typed families compose.
 - **Hit a pitfall?** Check [`docs/GOTCHAS.md`](docs/GOTCHAS.md) — user-facing surprises with symptom / cause / wrapper-behaviour / what-to-do for each.
 - **Writing multi-threaded code?** [`docs/THREADING.md`](docs/THREADING.md) is the canonical contract (per-thread contexts work; sharing handles is UB).
+- **Want to scope to a subset of Z3's theories?** [`docs/MINIMAL_BUILD.md`](docs/MINIMAL_BUILD.md) covers the `z3WithoutFP` / `z3WithoutSeq` / etc. compile-time flags and the cascade rules; [`docs/config.nims.example`](docs/config.nims.example) is the copy-paste template.
 - **Contributing a new typed family or module?** [`docs/PARITY.md`](docs/PARITY.md) is the checklist; [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) lists the cross-module-internal seams that exist only because Nim has no `internal` visibility.
 
 ### Archived plans (per-release rationale)

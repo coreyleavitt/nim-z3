@@ -21,7 +21,7 @@
 ## operands), so building char ranges does NOT go through `Z3Char` —
 ## it goes through one-codepoint `Z3String` values.
 
-import ./ffi, ./context, ./error, ./ast
+import ./ffi, ./context, ./error, ./ast, ./model, ./simplify
 
 # ============================================================================
 # Z3Char — phantom-typed value family
@@ -60,6 +60,16 @@ proc mkChar*(ctx: Z3Context, ch: char): Z3Char {.inline.} =
 proc mkChar*(ch: char): Z3Char {.inline.} =
   mkChar(requireCurrentContext(), ch)
 
+proc mkCharVar*(ctx: Z3Context, name: string): Z3Char =
+  ## Free Z3Char variable — usable as a bound var under `forall` /
+  ## `exists` for quantified character properties, or as an
+  ## unknown to be pinned by the solver. **v0.5 step 3.**
+  let sort = ctx.checkErr Z3_mk_char_sort(ctx.raw)
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  wrap[Z3Char](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, sort))
+proc mkCharVar*(name: string): Z3Char =
+  mkCharVar(requireCurrentContext(), name)
+
 # ============================================================================
 # Equality + comparison + predicates
 # ============================================================================
@@ -97,6 +107,15 @@ proc toInt*(a: Z3Char): Z3Int =
   ## `model.toInt` (extracts a Nim `int` from a numeral AST); this is
   ## the AST-level codepoint extractor.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_char_to_int(a.ctx.raw, a.raw))
+
+proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
+  ## Shorthand for "extract the Unicode codepoint of `a` under the
+  ## model as a Nim `int`." **v0.5 step 3.** Composes the AST-level
+  ## codepoint extractor (`toInt(a: Z3Char)`) with the model-level
+  ## numeral extractor (`toInt(a: Z3Int)`); `simplify` folds the
+  ## `(char.to_int (_ Char N))` wrapper to the literal `N`, which
+  ## Z3's evaluator doesn't do automatically.
+  simplify(m.eval(a, modelCompletion).toInt).toInt
 
 # ============================================================================
 # BV interop — deferred to a focused follow-up

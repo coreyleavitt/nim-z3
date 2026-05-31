@@ -34,7 +34,7 @@
 ## identical under either sign interpretation.
 
 import std/[options]
-import ./ffi, ./context, ./error, ./sort, ./ast
+import ./ffi, ./context, ./error, ./sort, ./ast, ./model
 # `solver` and `model` were imported in v0.2 for the BV-specific
 # `smtEquiv` and `eval` / `[]` overloads; v0.3 step 2 absorbed both
 # into generic versions in `z3/semantics` and `z3/model`, so the
@@ -485,6 +485,27 @@ proc toInt*[W: static int](a: Z3BitVec[W]): int64 =
 # v0.3 step 2 absorbed them into the single generic `eval[T]` / `[][T]`
 # in `z3/model` — works for every typed family automatically now that
 # `wrap[T]` is unified.
+
+# ============================================================================
+# eval shortcuts (v0.5 step 3)
+# ============================================================================
+#
+# The `evalXxx` convention: `evalXxx(m, a)` is shorthand for
+# `m.eval(a).toXxx`. Defined here for the `Z3BitVec[W]` family to
+# complete the model-extraction parity with `Z3Int.evalInt` /
+# `Z3Bool.evalBool` etc.
+
+proc evalUint*[W: static int](m: Z3Model, a: Z3BitVec[W],
+                              modelCompletion = true): uint64 {.inline.} =
+  ## Shorthand for `m.eval(a, modelCompletion).toUint` — extract the
+  ## unsigned BV value at `a` under the model. Requires `W <= 64`.
+  m.eval(a, modelCompletion).toUint
+
+proc evalInt*[W: static int](m: Z3Model, a: Z3BitVec[W],
+                             modelCompletion = true): int64 {.inline.} =
+  ## Shorthand for `m.eval(a, modelCompletion).toInt` — extract the
+  ## signed BV value at `a` under the model. Requires `W <= 64`.
+  m.eval(a, modelCompletion).toInt
 
 # ============================================================================
 # Pretty-print

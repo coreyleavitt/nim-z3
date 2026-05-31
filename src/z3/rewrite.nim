@@ -24,7 +24,7 @@
 ## Z3AnyAst)])`. The single-pair convenience handles the conversion
 ## automatically.
 
-import ./ffi, ./context, ./ast, ./introspect
+import ./ffi, ./context, ./error, ./ast, ./introspect
 
 # ============================================================================
 # substitute — by-term substitution

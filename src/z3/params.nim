@@ -10,7 +10,7 @@
 ## step 8 (tactics) needs `using_params`. Landing it here as the
 ## general primitive every consumer can pick up.
 
-import ./ffi, ./context, ./lifecycle
+import ./ffi, ./context, ./error, ./lifecycle
 
 type
   Z3ParamsOwn = object

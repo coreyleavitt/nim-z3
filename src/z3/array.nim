@@ -32,7 +32,7 @@
 ## - **`Z3_mk_array_ext`** (extensionality witness). Niche; defer
 ##   until tactics or v0.3.
 
-import ./ffi, ./context, ./ast, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./sortdispatch
 export sortdispatch
   # Downstream modules that historically imported `z3/array` for
   # `sortOfType` (notably `z3/datatypes`) keep working through this

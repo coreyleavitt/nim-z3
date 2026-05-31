@@ -280,7 +280,13 @@ If `assertConstraint` reads more clearly than `add` in a specific user-facing ex
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.6 / dropped / sibling-package).
 
-*(empty until the first deferral surfaces.)*
+### From step 1 (z3/context split — extract z3/error)
+
+- **Layering inversion.** The original plan said "z3/error imports z3/context for the `Z3Context` type used in proc/template signatures." That creates a cycle: `z3/context.requireCurrentContext` raises `Z3Error`, so `z3/context` needs `z3/error` too. **Correction:** `z3/error` depends only on `z3/ffi`. `raiseZ3Error` takes `rawCtx: RawZ3Context` (not `Z3Context`); `checkErr` / `checkErrVoid` accept `ctx: untyped` and dot-access `ctx.raw` at template expansion. This makes `z3/error` a *lower* layer than `z3/context` — siblings importing both get a clean one-directional dependency graph.
+- **`raiseZ3Error` signature change.** Five sibling call sites (`io.nim`, `model.nim` ×2, `solver.nim`, `introspect.nim`, `string.nim`) plus `tests/tcontext.nim` migrated from `raiseZ3Error(ctx, code)` → `raiseZ3Error(ctx.raw, code)`. Mechanical; one-line per site.
+- **`checkErr` template `ctx` parameter is now `untyped`.** Loses static type-checking on the first argument (a non-`Z3Context` value would fail at "undeclared field: raw" inside the template body rather than at the call site). Acceptable cost: every call site already passes a `Z3Context`-shaped value, and the failure mode is still clear. PhD-tier benefit: `z3/error` doesn't need `Z3Context` visible at definition time, enabling the layering inversion above.
+- **No re-export from `z3/context`.** Initially added `export error` from context for transitional convenience, then removed it: the plan's intent is that the seam is load-bearing. Every sibling module that uses the error discipline `import ./error` explicitly. `import z3` users still see `Z3Error` via `src/z3.nim`'s direct import of both modules.
+- **`Z3ErrorCode` enum re-exported as a type only.** Tried `export Z3_OK, Z3_INVALID_ARG, …` explicitly and hit `Error: cannot export: Z3_OK; enum field cannot be exported individually`. Resolution: `export Z3ErrorCode` re-exports the enum type *and its values* transitively per Nim 2 semantics. Less verbose, same result.
 
 ---
 

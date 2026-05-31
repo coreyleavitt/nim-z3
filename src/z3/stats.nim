@@ -17,7 +17,7 @@
 ##   Nim's `Table` iteration convention.
 ## - **Pretty** — `$s` renders Z3's multiline key/value listing.
 
-import ./ffi, ./context, ./lifecycle
+import ./ffi, ./context, ./error, ./lifecycle
 import std/math   # for NaN constant
 
 # ============================================================================

@@ -42,7 +42,7 @@
 ## use the named forms with an explicit `rmRTZ` etc. when rounding
 ## direction matters.
 
-import ./ffi, ./context, ./ast, ./model, ./bitvec
+import ./ffi, ./context, ./error, ./ast, ./model, ./bitvec
 
 # ============================================================================
 # Z3Fp[Ebits, Sbits] — phantom-typed FP value family

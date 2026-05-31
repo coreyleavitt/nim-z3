@@ -31,7 +31,7 @@
 ## this module. The default-params form covers the overwhelming
 ## majority of user calls anyway.
 
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./params
+import ./ffi, ./context, ./error, ./sort, ./ast, ./bitvec, ./params
 
 proc simplify*[S: static SortTag](a: Z3Ast[S]): Z3Ast[S] =
   ## Apply Z3's default simplifier to `a`. Result has the same sort

@@ -30,7 +30,7 @@
 ## arithmetic, regex membership, and free string variables may return
 ## `zsUnknown` or run for a long time.
 
-import ./ffi, ./context, ./ast, ./builder, ./model, ./char, ./seq
+import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./char, ./seq
 export seq
   # Re-export so `import z3/string` users get the generic Z3Seq surface
   # for free — that's where `len`, `concat`, `nth`, etc. now live.
@@ -78,7 +78,7 @@ proc toStr*(a: Z3String): string =
   let raw = Z3_get_lstring(a.ctx.raw, a.raw, addr length)
   let errCode = Z3_get_error_code(a.ctx.raw)
   if errCode != Z3_OK:
-    raiseZ3Error(a.ctx, errCode)
+    raiseZ3Error(a.ctx.raw, errCode)
   if raw.isNil:
     var e = newException(Z3Error,
       "Z3String.toStr: AST `" & $Z3_ast_to_string(a.ctx.raw, a.raw) &

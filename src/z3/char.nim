@@ -21,7 +21,7 @@
 ## operands), so building char ranges does NOT go through `Z3Char` —
 ## it goes through one-codepoint `Z3String` values.
 
-import ./ffi, ./context, ./ast
+import ./ffi, ./context, ./error, ./ast
 
 # ============================================================================
 # Z3Char — phantom-typed value family

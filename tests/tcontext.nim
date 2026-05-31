@@ -100,7 +100,7 @@ suite "Z3Error + checkErr template":
     # `noReturn`; we inspect the exception in the `except` branch.
     let ctx = newContext()
     try:
-      raiseZ3Error(ctx, Z3_INVALID_ARG)
+      raiseZ3Error(ctx.raw, Z3_INVALID_ARG)
     except Z3Error as e:
       check e.code == Z3_INVALID_ARG
       check e.msg.len > 0

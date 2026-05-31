@@ -38,9 +38,15 @@
 ## - `Z3_INVALID_USAGE` — a misuse pattern Z3 detected.
 ## - `Z3_MEMOUT_FAIL` — out of memory during solving.
 
-import ./ffi
+import ./ffi, ./error
 import std/tables
 import softlink
+
+# Note: `z3/error` is **not** re-exported. Modules that need the
+# error discipline (`Z3Error`, `checkErr`, `raiseZ3Error`) import it
+# explicitly. `z3/context` imports it only because
+# `requireCurrentContext` raises `Z3Error`; that's a private
+# implementation detail of context, not a re-export contract.
 
 # ============================================================================
 # Z3Context — ref-typed lifecycle wrapper
@@ -64,12 +70,6 @@ type
     ## who needs the underlying Z3 context (ASTs, solvers, models).
     ## `=destroy` fires only when the last reference drops, at which
     ## point both the Z3 context and its config are freed.
-
-  Z3Error* = object of CatchableError
-    ## Raised when a Z3 FFI call sets an error code other than `Z3_OK`.
-    ## `code` carries the typed `Z3ErrorCode`; `msg` is the
-    ## human-readable diagnostic Z3 provides for that code.
-    code*: Z3ErrorCode
 
 # --- error handler installed at context creation ----------------------------
 
@@ -234,38 +234,9 @@ proc raw*(ctx: Z3Context): RawZ3Context {.inline.} =
   ## with `not ctx.raw.isNil` before passing to FFI.
   if ctx == nil: result else: ctx.raw
 
-# ============================================================================
-# Error handling
-# ============================================================================
-
-proc raiseZ3Error*(ctx: Z3Context, code: Z3ErrorCode) {.noreturn.} =
-  ## Raise `Z3Error` with the Z3-supplied diagnostic for `code` against
-  ## `ctx`. Called by `checkErr` when an FFI call sets a non-OK error.
-  ## Public so user code can mirror our error-raising pattern in custom
-  ## FFI wrappers.
-  let msg = $Z3_get_error_msg(ctx.raw, code)
-  var e = newException(Z3Error, "Z3 " & $code & ": " & msg)
-  e.code = code
-  raise e
-
-template checkErr*(ctx: Z3Context, callExpr: untyped): untyped =
-  ## Wrap an FFI call: evaluate `callExpr`, query the context's error
-  ## code, raise `Z3Error` if non-OK, otherwise yield the call's result.
-  ##
-  ## Usage in builders:
-  ##
-  ## ```nim
-  ## let raw = ctx.checkErr Z3_mk_add(ctx.raw, 2, addr args[0])
-  ## ```
-  ##
-  ## Template so the call site (not this template body) appears in
-  ## stack traces — Z3 errors point at the user's code, not deep into
-  ## an FFI wrapper.
-  let res = callExpr
-  let err = Z3_get_error_code(ctx.raw)
-  if err != Z3_OK:
-    raiseZ3Error(ctx, err)
-  res
+# Error handling (`Z3Error`, `raiseZ3Error`, `checkErr`, `checkErrVoid`)
+# moved to `z3/error` in v0.5 step 1. Cross-cutting modules import
+# `./error` directly; this module no longer owns the error surface.
 
 # ============================================================================
 # Version probes
@@ -312,15 +283,4 @@ proc finalizeZ3Memory*() =
   if z3Loaded():
     Z3_finalize_memory()
 
-template checkErrVoid*(ctx: Z3Context, callExpr: untyped): untyped =
-  ## Void-returning peer of `checkErr` — same error-discipline, no
-  ## result. Use for FFI procs whose return type is `void`
-  ## (`Z3_solver_assert`, `Z3_solver_push`, `Z3_solver_pop`, …).
-  ## We could in principle dispatch on `typeof(callExpr) is void`
-  ## inside `checkErr` itself, but `untyped` template parameters
-  ## don't have a known type at template-expansion time; splitting
-  ## into two templates keeps the dispatch obvious at the call site.
-  callExpr
-  let err = Z3_get_error_code(ctx.raw)
-  if err != Z3_OK:
-    raiseZ3Error(ctx, err)
+# `checkErrVoid` moved to `z3/error` in v0.5 step 1.

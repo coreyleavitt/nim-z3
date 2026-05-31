@@ -32,7 +32,7 @@
 ## centralised refcount-discipline point — every place we create a new
 ## Nim handle to a Z3 AST goes through here.
 
-import ./ffi, ./context, ./sort, ./lifecycle
+import ./ffi, ./context, ./error, ./sort, ./lifecycle
 # Re-export so users get Z3Sort + SortTag and the unified `wrap[T]`
 # + lifecycle generators from `import z3/ast`. Every downstream module
 # already imports ast; piggy-backing the lifecycle surface here avoids

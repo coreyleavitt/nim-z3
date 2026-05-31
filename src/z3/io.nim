@@ -27,7 +27,7 @@
 ## bubble out as `Z3Error`. The parser context is auto-managed via
 ## `emitRefcountLifecycle`.
 
-import ./ffi, ./context, ./ast, ./solver, ./lifecycle, ./sort, ./funcdecl
+import ./ffi, ./context, ./error, ./ast, ./solver, ./lifecycle, ./sort, ./funcdecl
 
 # ============================================================================
 # Helpers
@@ -40,7 +40,7 @@ template guardParse(ctx: Z3Context, body: untyped): untyped =
   let r = body
   let err = Z3_get_error_code(ctx.raw)
   if err != Z3_OK:
-    raiseZ3Error(ctx, err)
+    raiseZ3Error(ctx.raw, err)
   r
 
 proc collectAsserts(ctx: Z3Context, vec: RawZ3AstVector): seq[Z3Bool] =

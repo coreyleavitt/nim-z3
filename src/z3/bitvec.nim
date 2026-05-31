@@ -34,7 +34,7 @@
 ## identical under either sign interpretation.
 
 import std/[options]
-import ./ffi, ./context, ./sort, ./ast
+import ./ffi, ./context, ./error, ./sort, ./ast
 # `solver` and `model` were imported in v0.2 for the BV-specific
 # `smtEquiv` and `eval` / `[]` overloads; v0.3 step 2 absorbed both
 # into generic versions in `z3/semantics` and `z3/model`, so the

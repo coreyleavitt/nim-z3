@@ -44,7 +44,7 @@
 ##
 ## Run `(get-tactics)` in a Z3 CLI session for the full list.
 
-import ./ffi, ./context, ./ast, ./params, ./solver, ./model
+import ./ffi, ./context, ./error, ./ast, ./params, ./solver, ./model
 # `solver` for Z3Status / wrap discipline; `model` for `wrapModel`
 # (needed by `convertModel` which round-trips models across sub-goals).
 

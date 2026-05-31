@@ -48,7 +48,7 @@
 ## `=destroy` on the decl decrements them in bulk.
 
 import std/[strformat, tables]
-import ./ffi, ./context, ./sort, ./ast, ./bitvec, ./array, ./sortdispatch
+import ./ffi, ./context, ./error, ./sort, ./ast, ./bitvec, ./array, ./sortdispatch
 
 # ============================================================================
 # Field + constructor specs — user-facing builders

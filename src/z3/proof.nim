@@ -35,7 +35,7 @@
 ## yields a conclusion that's a `Z3Bool`) rather than **specific**
 ## proof-tree shapes.
 
-import ./ffi, ./context, ./ast, ./introspect, ./solver
+import ./ffi, ./context, ./error, ./ast, ./introspect, ./solver
 
 # ============================================================================
 # Z3Proof — typed AST family

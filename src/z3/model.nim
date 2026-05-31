@@ -23,7 +23,7 @@
 ## actually needed to constrain.
 
 import std/options
-import ./ffi, ./context, ./ast, ./builder, ./solver
+import ./ffi, ./context, ./error, ./ast, ./builder, ./solver
 export solver
 
 type
@@ -91,7 +91,7 @@ proc eval*[T](m: Z3Model, a: T, modelCompletion = true): T =
   let ok = Z3_model_eval(m.ctx.raw, m.raw, a.raw, modelCompletion, addr outRaw)
   let errCode = Z3_get_error_code(m.ctx.raw)
   if errCode != Z3_OK:
-    raiseZ3Error(m.ctx, errCode)
+    raiseZ3Error(m.ctx.raw, errCode)
   if not ok:
     var e = newException(Z3Error,
       "Z3_model_eval returned false; the model couldn't evaluate the AST. " &
@@ -231,7 +231,7 @@ proc toRealApprox*(a: Z3Real): float =
   let v = Z3_get_numeral_double(a.ctx.raw, folded)
   let errCode = Z3_get_error_code(a.ctx.raw)
   if errCode != Z3_OK:
-    raiseZ3Error(a.ctx, errCode)
+    raiseZ3Error(a.ctx.raw, errCode)
   float(v)
 
 proc evalReal*(m: Z3Model, a: Z3Real, modelCompletion = true): float {.inline.} =

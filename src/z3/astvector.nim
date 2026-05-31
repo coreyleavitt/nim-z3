@@ -40,7 +40,7 @@
 ## output element holds an independent ref surviving the vector's
 ## destruction.
 
-import ./ffi, ./context, ./ast
+import ./ffi, ./context, ./error, ./ast
 
 # ============================================================================
 # Z3AstVector — typed ref-handle

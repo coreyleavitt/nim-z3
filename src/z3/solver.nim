@@ -31,7 +31,7 @@
 ## `assert` because Nim has a built-in `assert` template; overloading
 ## would create distracting ambiguity in user code.
 
-import ./ffi, ./context, ./ast, ./builder, ./boolean, ./lifecycle, ./params,
+import ./ffi, ./context, ./error, ./ast, ./builder, ./boolean, ./lifecycle, ./params,
        ./astvector, ./stats
 export builder, boolean
 
@@ -223,7 +223,7 @@ proc getConsequences*(s: Z3Solver,
     assumptionsVec.raw, variablesVec.raw, consequencesVec.raw)
   let errCode = Z3_get_error_code(s.ctx.raw)
   if errCode != Z3_OK:
-    raiseZ3Error(s.ctx, errCode)
+    raiseZ3Error(s.ctx.raw, errCode)
   result.status = cast[Z3Status](lbool)
   result.consequences = consequencesVec.toSeq(Z3Bool)
 

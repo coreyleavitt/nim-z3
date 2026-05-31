@@ -25,7 +25,7 @@
 ## Stick to one context per user-facing task when you can. Cross-
 ## context translation is a real Z3 capability but it's a sharp tool.
 
-import ./ffi, ./context, ./ast
+import ./ffi, ./context, ./error, ./ast
 
 # ============================================================================
 # translate — typed cross-context transfer

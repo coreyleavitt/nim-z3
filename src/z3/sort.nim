@@ -26,7 +26,7 @@
 ## `Z3Sort[stAny]` — a phantom-erased handle the FFI accepts but the
 ## type system treats as opaque.
 
-import ./ffi, ./context
+import ./ffi, ./context, ./error
 
 type
   SortTag* = enum

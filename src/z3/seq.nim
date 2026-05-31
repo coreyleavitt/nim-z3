@@ -16,7 +16,7 @@
 ## strings — strings are sequences). Treat `zsUnknown` as a possible
 ## outcome for non-trivial sequence proof obligations.
 
-import ./ffi, ./context, ./ast, ./builder, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./builder, ./sortdispatch
 
 # ============================================================================
 # Z3Seq[E] — phantom-typed value family

@@ -47,7 +47,7 @@
 ## `==(Z3Int, Z3Int)` resolves to ast.nim's generic; `==(Z3Int, int)`
 ## resolves to this module's lift.
 
-import ./ffi, ./context, ./sort, ./ast, ./builder
+import ./ffi, ./context, ./error, ./sort, ./ast, ./builder
 export builder
 
 # ============================================================================

@@ -32,7 +32,7 @@
 ## large / hard goals, all decided at solve time by inspecting the
 ## goal's structure.
 
-import ./ffi, ./context, ./ast, ./lifecycle, ./tactic
+import ./ffi, ./context, ./error, ./ast, ./lifecycle, ./tactic
 
 # ============================================================================
 # Z3Probe — typed ref-handle

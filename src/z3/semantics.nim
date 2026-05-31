@@ -22,7 +22,7 @@
 ## The implementation is `smtValid(a == b)` — same as the v0.2
 ## per-family overloads. The win is one definition instead of N.
 
-import ./ffi, ./context, ./ast, ./solver
+import ./ffi, ./context, ./error, ./ast, ./solver
 
 proc smtValid*(p: Z3Bool): bool =
   ## True iff `p` is valid — i.e. `(not p)` is unsatisfiable. Uses a

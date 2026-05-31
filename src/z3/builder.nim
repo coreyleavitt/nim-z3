@@ -25,7 +25,7 @@
 ## Type aliases (`Z3Int`, `Z3Real`, `Z3Bool`) live here so they're
 ## visible alongside the builders that produce them.
 
-import ./ffi, ./context, ./ast
+import ./ffi, ./context, ./error, ./ast
 export ast      # Z3Ast[S], $, astEqual; ast re-exports sort
 
 # Type aliases (Z3Int, Z3Real, Z3Bool) live in `ast.nim` so the

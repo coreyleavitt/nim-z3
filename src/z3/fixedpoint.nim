@@ -60,7 +60,7 @@
 ## doAssert fp.query(path(mkInt(1), mkInt(3))) == zsSat
 ## ```
 
-import ./ffi, ./context, ./ast, ./builder, ./solver, ./params,
+import ./ffi, ./context, ./error, ./ast, ./builder, ./solver, ./params,
        ./funcdecl, ./astvector, ./stats
 
 # ============================================================================

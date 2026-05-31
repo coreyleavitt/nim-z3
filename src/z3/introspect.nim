@@ -40,7 +40,7 @@
 ##   research-grade Relation / FiniteDomain / TypeVar — for
 ##   completeness with Z3's API.
 
-import ./ffi, ./context, ./ast, ./bitvec, ./char, ./fp, ./seq, ./string, ./regex, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./char, ./fp, ./seq, ./string, ./regex, ./sortdispatch
 
 # ============================================================================
 # Z3AstKind / Z3SortKind — Nim-side enums
@@ -185,7 +185,7 @@ proc getNumeralString*[T: Z3Term](a: T): string =
   let s = Z3_get_numeral_string(a.ctx.raw, a.raw)
   let errCode = Z3_get_error_code(a.ctx.raw)
   if errCode != Z3_OK:
-    raiseZ3Error(a.ctx, errCode)
+    raiseZ3Error(a.ctx.raw, errCode)
   $s
 
 # ============================================================================

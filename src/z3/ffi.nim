@@ -92,6 +92,22 @@ type
     ## **v0.4 step 14.** Stateful SMT-LIB2 parser. Holds incrementally-
     ## registered sorts and decls between successive parse calls;
     ## refcounted via `Z3_parser_context_inc_ref` / `_dec_ref`.
+  RawZ3FuncInterp* {.importc: "Z3_func_interp", header: "z3.h",
+                     bycopy.} = object
+    ## **v0.5 step 6A.** Tabular interpretation of an uninterpreted
+    ## function under a model — a sequence of `(args, value)` entries
+    ## plus an else-value. Refcounted via `Z3_func_interp_inc_ref` /
+    ## `_dec_ref`.
+  RawZ3FuncEntry* {.importc: "Z3_func_entry", header: "z3.h",
+                    bycopy.} = object
+    ## **v0.5 step 6A.** A single `(args, value)` row of a
+    ## `Z3_func_interp`. Refcounted via `Z3_func_entry_inc_ref` /
+    ## `_dec_ref`.
+  RawZ3ParamDescrs* {.importc: "Z3_param_descrs", header: "z3.h",
+                      bycopy.} = object
+    ## **v0.5 step 6B.** Schema description for the parameters a
+    ## solver / tactic / simplifier accepts. Refcounted via
+    ## `Z3_param_descrs_inc_ref` / `_dec_ref`.
 
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
@@ -100,7 +116,9 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Probe |
             RawZ3Probe | RawZ3Stats | RawZ3Fixedpoint |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
-            RawZ3Params | RawZ3ParserContext): bool {.inline.} =
+            RawZ3Params | RawZ3ParserContext |
+            RawZ3FuncInterp | RawZ3FuncEntry |
+            RawZ3ParamDescrs): bool {.inline.} =
   ## Nil check for opaque value types. The `bycopy` emission doesn't
   ## expose the underlying pointer for standard `isNil` to bind to;
   ## reinterpret-cast through `pointer` for a single-instruction check.
@@ -118,7 +136,8 @@ proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Probe |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
-          RawZ3ParserContext](
+          RawZ3ParserContext |
+          RawZ3FuncInterp | RawZ3FuncEntry | RawZ3ParamDescrs](
     a, b: T): bool {.inline.} =
   cast[pointer](a) == cast[pointer](b)
 
@@ -128,7 +147,8 @@ proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
           RawZ3Probe |
           RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
-          RawZ3ParserContext](
+          RawZ3ParserContext |
+          RawZ3FuncInterp | RawZ3FuncEntry | RawZ3ParamDescrs](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
 
@@ -809,6 +829,37 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Cast a `func_decl` to its underlying `ast` for refcounting.
     ## `Z3_inc_ref` / `Z3_dec_ref` operate on `ast`; we use this to
     ## keep the func_decls alive while their datatype decl is in scope.
+
+  # --- Z3FuncInterp (v0.5 step 6A) -----------------------------------------
+  proc Z3_model_get_func_interp(c: RawZ3Context, m: RawZ3Model,
+                                f: RawZ3FuncDecl): RawZ3FuncInterp
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_inc_ref(c: RawZ3Context, fi: RawZ3FuncInterp)
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_dec_ref(c: RawZ3Context, fi: RawZ3FuncInterp)
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_get_num_entries(c: RawZ3Context,
+                                      fi: RawZ3FuncInterp): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_get_entry(c: RawZ3Context, fi: RawZ3FuncInterp,
+                                i: cuint): RawZ3FuncEntry
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_get_arity(c: RawZ3Context, fi: RawZ3FuncInterp): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_get_else(c: RawZ3Context, fi: RawZ3FuncInterp): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_func_entry_inc_ref(c: RawZ3Context, e: RawZ3FuncEntry)
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_entry_dec_ref(c: RawZ3Context, e: RawZ3FuncEntry)
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_entry_get_value(c: RawZ3Context, e: RawZ3FuncEntry): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_entry_get_num_args(c: RawZ3Context, e: RawZ3FuncEntry): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_entry_get_arg(c: RawZ3Context, e: RawZ3FuncEntry,
+                             i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
 
   # --- Array sort + ops ----------------------------------------------------
 

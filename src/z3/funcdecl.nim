@@ -253,3 +253,95 @@ proc `$`*[ArgsTup: tuple, Ret](f: Z3FuncDecl[ArgsTup, Ret]): string =
   ## the generic `$[T: Z3Term]` in `z3/ast`.
   $Z3_ast_to_string(f.ctx.raw,
     Z3_func_decl_to_ast(f.ctx.raw, f.raw))
+
+# ============================================================================
+# Z3FuncInterp[ArgsTup, Ret] — tabular UF model interpretation (v0.5 step 6A)
+# ============================================================================
+#
+# After a satisfiable `check()`, Z3's model carries an interpretation
+# for each uninterpreted function. The interpretation is a finite
+# table mapping `(args, value)` tuples plus an else-value that
+# applies to all other arg tuples — exactly the structure a user
+# wants for "show me everywhere the solver pinned `f`."
+
+type
+  Z3FuncInterpOwn[ArgsTup: tuple, Ret] = object
+    raw: RawZ3FuncInterp
+    ctx: Z3Context
+  Z3FuncInterp*[ArgsTup: tuple, Ret] = ref Z3FuncInterpOwn[ArgsTup, Ret]
+    ## Phantom-typed handle to a `Z3_func_interp`. Phantom parameters
+    ## mirror the corresponding `Z3FuncDecl` so entry tuples deserialise
+    ## to the right typed family without runtime sort dispatch.
+
+# `emitRefcountLifecycle` doesn't unify across the two phantom
+# parameters, so spell the lifecycle hooks out per-instantiation.
+proc `=destroy`[ArgsTup: tuple, Ret](v: Z3FuncInterpOwn[ArgsTup, Ret])
+    {.raises: [].} =
+  if not v.raw.isNil and v.ctx != nil:
+    Z3_func_interp_dec_ref(v.ctx.raw, v.raw)
+
+proc raw*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]):
+    RawZ3FuncInterp {.inline.} = fi.raw
+proc ctx*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]):
+    Z3Context {.inline.} = fi.ctx
+
+proc getFuncInterp*[ArgsTup: tuple, Ret](m: Z3Model,
+    f: Z3FuncDecl[ArgsTup, Ret]): Z3FuncInterp[ArgsTup, Ret] =
+  ## Extract the tabular interpretation of `f` under model `m`.
+  ## Returns a refcounted handle whose `len` / `arity` /
+  ## `elseValue` / `[i]` surfaces decompose the table.
+  ##
+  ## Z3 may return `nil` for functions the model didn't constrain
+  ## (the solver picked a sat assignment without ever pinning `f`);
+  ## in that case this raises `Z3InvalidUsageError`.
+  let ctx = f.ctx
+  let raw = ctx.checkErr Z3_model_get_func_interp(ctx.raw, m.raw, f.raw)
+  if raw.isNil:
+    var e = newException(Z3InvalidUsageError,
+      "Z3 returned a nil func-interp — the model didn't constrain " &
+      "this function. (Check that the function is used in an asserted " &
+      "constraint and that `check()` returned `zsSat`.)")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  Z3_func_interp_inc_ref(ctx.raw, raw)
+  Z3FuncInterp[ArgsTup, Ret](raw: raw, ctx: ctx)
+
+proc len*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]): int =
+  ## Number of explicit `(args, value)` entries. The else-value
+  ## (accessible via `elseValue`) covers all other arg tuples and
+  ## is *not* counted in `len`.
+  int(Z3_func_interp_get_num_entries(fi.ctx.raw, fi.raw))
+
+proc arity*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]): int =
+  ## Function arity. Matches the number of fields in `ArgsTup`.
+  int(Z3_func_interp_get_arity(fi.ctx.raw, fi.raw))
+
+proc elseValue*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]): Ret =
+  ## The default value `f` takes on any arg tuple not explicitly
+  ## listed in the entry table.
+  let raw = fi.ctx.checkErr Z3_func_interp_get_else(fi.ctx.raw, fi.raw)
+  wrap[Ret](fi.ctx, raw)
+
+proc `[]`*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret],
+    i: int): tuple[args: ArgsTup, value: Ret] =
+  ## `i`-th `(args, value)` entry, decomposed into typed families
+  ## via the phantom parameters. `i` is 0-based; bounds-checked.
+  doAssert i >= 0 and i < fi.len,
+    "Z3FuncInterp[]: index " & $i & " out of bounds [0, " & $fi.len & ")"
+  let entry = fi.ctx.checkErr Z3_func_interp_get_entry(
+    fi.ctx.raw, fi.raw, cuint(i))
+  Z3_func_entry_inc_ref(fi.ctx.raw, entry)
+  try:
+    # Walk the `ArgsTup` fields and lift each `Z3_func_entry`'s
+    # i-th arg into the corresponding typed family.
+    var argsTuple: ArgsTup
+    var k = cuint(0)
+    for fieldVal in fields(argsTuple):
+      let raw = Z3_func_entry_get_arg(fi.ctx.raw, entry, k)
+      fieldVal = wrap[typeof(fieldVal)](fi.ctx, raw)
+      inc k
+    let valRaw = Z3_func_entry_get_value(fi.ctx.raw, entry)
+    result.args = argsTuple
+    result.value = wrap[Ret](fi.ctx, valRaw)
+  finally:
+    Z3_func_entry_dec_ref(fi.ctx.raw, entry)

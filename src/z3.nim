@@ -1,20 +1,33 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## v0.3 — **architectural-unification + theory-completion** release
+## v0.4 — **contract-completion** release. Closes the gap between the
+## wrapper's "every Z3 C-API capability" scope claim and reality.
+## Nine new modules: `z3/astvector`, `z3/introspect`, `z3/proof`,
+## `z3/fixedpoint`, `z3/rewrite`, `z3/translate`, `z3/probe`,
+## `z3/globalparams`, `z3/io`. Five new solver extensions
+## (`assertConstraintAndTrack` / `getUnsatCore` / `getStatistics` /
+## `getConsequences` / `getProof`). Runtime-erased `Z3AnyAst` family
+## + typed lifters. Per-context `datatypeRegistry` so
+## `Z3DatatypeValue[T]` participates in `sortdispatch`. Uninterpreted
+## sorts (`mkUninterpretedSort` / `declareSort`). Every §1 goal of the
+## v0.4 plan landed; see `docs/V0.4_PLAN.md` §8b for the audit.
+##
+## v0.3 was the architectural-unification + theory-completion release
 ## (`Z3Term` concept + unified `wrap[T]` + lifecycle generators;
 ## Char / String + alias `Z3String = Z3Seq[Z3Char]` / Regex /
 ## Sequences / FloatingPoint / uninterpreted functions; solver-tactic
-## bridges; `z3/sortdispatch` mixin-based dispatch closing the v0.2 §8
-## nested-arrays deferral). v0.2 was the theory-expansion release
-## (arrays, datatypes, quantifiers, optimisation, tactics + goals +
-## params); v0.1 was the core SMT primitives.
+## bridges). v0.2 was the theory-expansion release (arrays, datatypes,
+## quantifiers, optimisation, tactics + goals + params); v0.1 was the
+## core SMT primitives.
 ##
 ## Shipped architecture in [docs/V0.1_PLAN.md](../docs/V0.1_PLAN.md),
-## [docs/V0.2_PLAN.md](../docs/V0.2_PLAN.md), and
-## [docs/V0.3_PLAN.md](../docs/V0.3_PLAN.md); live work in
-## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md);
-## per-release diff in [CHANGELOG.md](../CHANGELOG.md); runnable
-## starter code in [examples/](../examples/). The headline use:
+## [docs/V0.2_PLAN.md](../docs/V0.2_PLAN.md),
+## [docs/V0.3_PLAN.md](../docs/V0.3_PLAN.md), and
+## [docs/V0.4_PLAN.md](../docs/V0.4_PLAN.md); live work in
+## [docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md) (now
+## the v0.5 1.0-readiness plan); per-release diff in
+## [CHANGELOG.md](../CHANGELOG.md); runnable starter code in
+## [examples/](../examples/). The headline use:
 ##
 ## ```nim
 ## import z3

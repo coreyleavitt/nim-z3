@@ -6,7 +6,191 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-— Work toward v0.4; see `docs/IMPLEMENTATION_PLAN.md`.
+— Work toward v0.5 (1.0-readiness polish); see
+`docs/IMPLEMENTATION_PLAN.md`.
+
+## [0.4.0] — 2026-05-30
+
+The **contract-completion** release. v0.3 unified the typed-family
+architecture and added the remaining theory families (FP, Char,
+String, Sequences, Regex, uninterpreted functions). v0.4 closes the
+gap between the wrapper's "every Z3 C-API capability" scope claim
+and reality: nine new modules (`z3/astvector`, `z3/introspect`,
+`z3/proof`, `z3/fixedpoint`, `z3/rewrite`, `z3/translate`, `z3/probe`,
+`z3/globalparams`, `z3/io`), five new solver extensions
+(`assertConstraintAndTrack` / `getUnsatCore` / `getStatistics` /
+`getConsequences` / `getProof`), the runtime-erased `Z3AnyAst`
+family, the per-context `datatypeRegistry` that lets
+`Z3DatatypeValue[T]` participate in `sortdispatch`, quantifier
+introspection, and the `mkUninterpretedSort` / `declareSort` surface
+surfaced as a real gap by step 14. Every §1 goal of the v0.4 plan
+landed. Tests: **1114 OKs** across `nim c` + `nim cpp` (up from
+v0.3's 890).
+
+Full per-step plan + audit: archived in
+[`docs/V0.4_PLAN.md`](docs/V0.4_PLAN.md) (§8b "Pre-tag audit" block).
+
+### Added
+
+- **`Z3AstVector` foundation + `Z3Term` concept** (`d472bef`) — typed
+  refcount-managed handle wrapping `Z3_ast_vector_*`. `newAstVector`,
+  `len`, `[i]`, `[]=` / `add[T: Z3Term]` / `resize`, `items` / `pairs`
+  iterators, `toSeq[T]` typed conversion, `$` SMT-LIB rendering. The
+  same step lands the `Z3Term` structural concept — anything with
+  `x.raw is RawZ3Ast; x.ctx is Z3Context` — making the wrapper's
+  cross-cutting surfaces (lifecycle hooks, `wrap[T]`, `eval[T]`,
+  `smtEquiv[T]`) generic over every typed family.
+- **Structural introspection** (`6acb50b`) — `z3/introspect`.
+  `Z3AstKind` enum mirroring `Z3_ast_kind`; `getAstKind[T: Z3Term]` /
+  `getSort` / `getAppNumArgs` / `getAppArg` / `getAppDecl` /
+  `unpackApp` / `getNumeralString`. `Z3SortKind` + `getSortKind` +
+  per-family parameter extractors (`bitVecWidth`, `arrayKey` /
+  `arrayRange`, `seqElement`, `regexBasis`, `fpEbits` / `fpSbits`,
+  `datatypeName`). The runtime-erased **`Z3AnyAst`** family with
+  `toAnyAst` up-cast + typed lifters (`asZ3Int`, `asZ3Real`,
+  `asZ3Bool`, `asZ3Char`, `asZ3BitVec[W]`, `asZ3Fp[E, S]`,
+  `asZ3Seq[E]`, `asZ3Regex[B]`) that runtime-verify sort + parameters.
+- **`Z3DatatypeValue` as a `sortdispatch` element** (`35ad348`) —
+  closes the v0.3 §8 carryover. Per-context `datatypeRegistry: Table[
+  string, RawZ3Sort]`; `declareDatatype[T]` registers under `$T`;
+  `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` looks it up and
+  raises `Z3UsageError` with a "call `declareDatatype[T]()` first"
+  hint if missing. Unlocks `Z3Array[Z3Int, Z3DatatypeValue[Foo]]`,
+  `Z3Seq[Z3DatatypeValue[Foo]]`,
+  `Z3FuncDecl[(Z3DatatypeValue[Foo],), Z3Bool]`, etc.
+- **`Z3Proof` family + `getProof`** (`ae9b105`) — new module
+  `z3/proof`. `Z3Proof` value family slotted into `Z3Term`. The
+  `ProofRule` enum mirrors every Z3 proof rule (`prRefl`,
+  `prModusPonens`, `prResolve`, `prHypothesis`, `prAxiom`, …,
+  `prTheoryLemma`, `prHyperResolve`, `prUnknown`) with paraphrased
+  Z3-doc-sourced docstrings. `getProofRule(p)` / `unpackProof(p) →
+  (rule, premises, conclusion)`. `Z3Solver.getProof` extracts the
+  proof witness after an unsat `check()` with `proof=true`. Plan
+  steps 4 and 7 merged because `Z3Proof` is untestable without
+  `getProof` (Z3 has no public proof-literal constructor).
+- **`Z3Fixedpoint`** (`2c29768`) — new module `z3/fixedpoint`,
+  Horn-clause / CHC solver. Refcounted handle; `newFixedpoint`,
+  `addRule(fp, rule, name)`, `addFact(fp, decl, args)`,
+  `query(fp, q): Z3Status` (formula and relation-decl forms),
+  `getAnswer(fp): Z3Bool`, `setParams(fp, p)`, `addCover` /
+  `getReachableExpressions` / `addVariable`, `$fp` SMT-LIB rendering.
+- **Solver `assertConstraintAndTrack` + `getUnsatCore`** (`9fb1c96`) —
+  closes the v0.3 step-8 half-implementation. Tag assertions with a
+  tracker proposition; extract the minimal unsatisfiable subset of
+  tagged assertions via the step-1 `Z3AstVector` plumbing.
+- **`Z3Stats` + `getStatistics` + `getConsequences`** (`4e24e99`) —
+  typed refcount-managed handle for solver runtime statistics.
+  `len`, `[key]`, `keys`, iteration. `getStatistics(s): Z3Stats`.
+  `getConsequences(s, assumptions, variables) → (status, consequences)`
+  for implied-literal enumeration.
+- **Term rewriting (`z3/rewrite`)** (`64df21b`) — `substitute[T:
+  Z3Term](a, replacements: openArray[(Z3AnyAst, Z3AnyAst)]): T` for
+  by-term substitution, `substituteVars[T: Z3Term](a, replacements:
+  openArray[Z3AnyAst]): T` for de-Bruijn-indexed substitution into
+  quantifier bodies. `mkBound(index, sort): Z3AnyAst` companion for
+  building bound-variable references.
+- **Cross-context transfer (`z3/translate`)** (`99894b5`) —
+  `translate[T: Z3Term](t, targetCtx): T` preserves the typed-family
+  phantom across contexts. `compatibleWith(a, b)` predicate uses a
+  no-op translation under exception capture.
+- **Quantifier introspection** (`f47fa36`) — extends `z3/quantifier`.
+  `getQuantifierNumBoundVars`, `getQuantifierBoundVarName` /
+  `getQuantifierBoundVarSort`, `getQuantifierBody`, `isForall` /
+  `isExists` / `isLambda`, `getQuantifierWeight`,
+  `getQuantifierNumPatterns` / `getQuantifierPatternAst`.
+  `assertIsQuantifier` template surfaces a clear precondition error
+  rather than Z3's opaque `Z3_INVALID_USAGE`. Bound-var sort returns
+  `RawZ3Sort`; users dispatch via step 2's `getSortKind`.
+- **Probes + condTactic (`z3/probe`)** (`fb09556`) — `Z3Probe`
+  ref-handle. `mkProbe(name)` / `mkProbeConst(value)`,
+  `apply(p, g): float`. Comparison operators (`<`, `<=`, `>`, `>=`,
+  `==`) return **`Z3Probe`** (not `bool`) — matches Z3's underlying
+  API and reads naturally at call sites; auto-lifts `float` literals
+  on both sides. Boolean `and` / `or` / `not`. `condTactic(probe,
+  ifT, elseT)` for adaptive tactic dispatch.
+- **Global parameters (`z3/globalparams`)** (`c8a31c2`) —
+  `setGlobalParam(name, value)`, `getGlobalParam(name): Option[
+  string]`, `resetGlobalParams()`. Auto-loads `libz3` via the newly-
+  exported `context.ensureLoaded` so calls work before any
+  `Z3Context` exists. `Option` semantics: `none` ⇔ Z3 doesn't
+  recognise the name; `some(v)` ⇔ effective value (override or
+  built-in default).
+- **SMT-LIB2 I/O surface refactor (`z3/io`)** (`1bfe4ff`) — relocates
+  `smt2Script` / `writeSmt2` / `parseSmt2` (renamed `parseSmt2String`)
+  out of `z3/pretty` into a dedicated module. Adds `parseSmt2File`,
+  `loadSmt2String` / `loadSmt2File` (direct-to-solver feed via
+  `Z3_solver_from_string` / `_from_file`), `evalSmt2`
+  (`Z3_eval_smtlib2_string` — runs `(check-sat)` etc. and returns
+  Z3's text response), `toSmt2Benchmark` for single-formula
+  serialisation, and `Z3ParserContext` refcount-managed streaming
+  parser with `addSort[S]` / `addDecl[A, R]` / `parseFromString`.
+- **Uninterpreted sorts** (`1bfe4ff`, surfaced during step 14) —
+  new `stUninterpreted` `SortTag` + `mkUninterpretedSort(name)` /
+  `declareSort(name)` in `z3/sort`. SMT-LIB-styled alias matches the
+  `(declare-sort Color)` reading site. Two sorts with the same name
+  in the same context are the same sort.
+
+### Changed
+
+- **`parseSmt2` → `parseSmt2String`**. Renamed for symmetry with
+  `parseSmt2File`. Pre-v1, no compat. Migrated
+  `tests/tproperty.nim` and `examples/pretty_and_smt2.nim`;
+  `tests/tpretty.nim`'s smt2 suites removed (covered exhaustively
+  by the new `tests/tio.nim`).
+- **`z3/pretty` slimmed to human-facing formatting only.** SMT-LIB2
+  emission and parsing moved to `z3/io`. `z3/pretty` now hosts only
+  the four `pretty(...)` overloads (ASTs, sorts, solvers, models).
+- **`context.ensureLoaded`** promoted from private to public —
+  documented entry point for any future symbol reachable before a
+  `Z3Context` exists (step 13 needed it for global-param calls).
+- **`wrapTactic` + `Z3Tactic.raw` / `.ctx` + `Z3Goal.raw` / `.ctx`**
+  promoted from private to public in `z3/tactic` — so `z3/probe`
+  can build a `Z3Tactic` from `Z3_tactic_cond` and evaluate probes
+  against `Z3Goal`s without a cyclic dep. Mirrors the step-5
+  `Z3FuncDecl` precedent.
+
+### Spec corrections logged mid-cycle (per §8b cross-reference)
+
+Every step that hit a Z3-spec assumption needing change surfaced it
+back to the user before continuing; the corrections live in their
+per-step §8 entries in [`docs/V0.4_PLAN.md`](docs/V0.4_PLAN.md).
+Headline corrections:
+
+- **Step 5**: `Z3_fixedpoint_get_ground_sat_answer` doesn't exist
+  as advertised in older docs — use `Z3_fixedpoint_get_answer`.
+  Three more Fixedpoint corrections (push/pop semantics differ;
+  datalog needs finite-domain sorts) all caught pre-ship.
+- **Steps 4 + 7 merged**: `Z3Proof` is untestable without
+  `Solver.getProof`; Z3 has no public proof-literal constructor.
+  Plan steps 4 and 7 merged into a single commit; slot 7 retained
+  for plan-traceability with a docs-only marker (`fb36a59`).
+- **Step 12**: probe operators return `Z3Probe`, not `bool` —
+  matches Z3 and reads naturally as a predicate constructor.
+- **Step 13**: `Z3_global_param_get` returns the **effective** value
+  (override or default), `false` only for unknown names — wrapper
+  documents `Option` semantics accordingly. `Z3_string_ptr` maps via
+  `pointer` + cast (strict cpp rejects `ptr cstring → char **`).
+- **Step 14**: `toSmt2Benchmark` `status=""` produces malformed SMT2
+  because Z3 unconditionally emits `(set-info :status <s>)` —
+  default changed to `"unknown"` (a valid SMT-LIB status). Surfaced
+  the uninterpreted-sort gap (no `Z3_mk_uninterpreted_sort` in the
+  wrapper) — closed by adding the surface in the same commit.
+
+### Scope-pruned / deferred to v0.5
+
+Documented in [`docs/V0.4_PLAN.md` §8b](docs/V0.4_PLAN.md). Summary:
+advanced Fixedpoint surface (assertion-set introspection;
+`from_string` / `from_file` for CHC ingestion now that `z3/io`
+exists); `Z3AstMap` typed handle; `Z3FuncInterp` tabular extraction
+(carried from v0.3); `Z3Char` BV interop (carried); `Z3Float16` /
+`Z3Float128` structured extraction (carried); param-descrs schema
+introspection (carried); CI items (carry-forward of v0.2 #1);
+`{.optional.}` softlink (no v0.4 step triggered a 4.13+-only
+symbol).
+
+### Dropped
+
+None this release. Every §1 goal of the v0.4 plan landed.
 
 ## [0.3.0] — 2026-05-30
 

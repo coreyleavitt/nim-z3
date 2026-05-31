@@ -212,17 +212,92 @@
 ##   `parseFromString`. **v0.4 step 14** (relocated from `z3/pretty`
 ##   and extended).
 
+# ============================================================================
+# Feature flags (v0.5 step 10)
+# ============================================================================
+#
+# Compile-time flags that **hide** theory families from the
+# `import z3` umbrella. Useful for users who want to scope their
+# surface to a subset of Z3's theories. See `docs/MINIMAL_BUILD.md`
+# for the full story including the honesty disclaimer ("hides
+# umbrella re-exports; doesn't necessarily reduce compile time").
+#
+# Cascades:
+#   z3WithoutSeq    → also hides String, Regex (String = Seq[Char];
+#                                              Regex needs a Seq basis)
+#   z3WithoutString → also hides Regex (regex needs string operands)
+#   z3WithoutTactics → also hides Probe (probe builds via Z3_tactic_cond)
+
+const
+  z3WithoutFPEff*        = defined(z3WithoutFP)
+  z3WithoutSeqEff*       = defined(z3WithoutSeq)
+  z3WithoutStringsEff*   = defined(z3WithoutStrings) or
+                           defined(z3WithoutString) or z3WithoutSeqEff
+  z3WithoutRegexEff*     = defined(z3WithoutRegex) or
+                           z3WithoutStringsEff or z3WithoutSeqEff
+  z3WithoutFuncDeclEff*  = defined(z3WithoutFuncDecl)
+  z3WithoutDatatypesEff* = defined(z3WithoutDatatypes)
+  z3WithoutOptimizeEff*  = defined(z3WithoutOptimize)
+  z3WithoutTacticsEff*   = defined(z3WithoutTactics)
+  z3WithoutProbeEff*     = defined(z3WithoutProbe) or z3WithoutTacticsEff
+
+# ============================================================================
+# Module imports + re-exports (always-on core)
+# ============================================================================
+
 import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/builder, z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec,
-       z3/pretty, z3/simplify, z3/array, z3/datatypes, z3/quantifier,
-       z3/optimize, z3/params, z3/tactic, z3/semantics, z3/char, z3/sequence,
-       z3/string, z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/stats,
+       z3/pretty, z3/simplify, z3/array, z3/quantifier,
+       z3/params, z3/semantics, z3/char,
+       z3/astvector, z3/stats,
        z3/introspect, z3/proof, z3/fixedpoint, z3/rewrite, z3/translate,
-       z3/probe, z3/globalparams, z3/io
+       z3/globalparams, z3/io
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
-       solver, model, bitvec, pretty, simplify, array, datatypes, quantifier,
-       optimize, params, tactic, semantics, char, sequence, string, regex, fp,
-       funcdecl, astvector, stats, introspect, proof, fixedpoint, rewrite,
-       translate, probe, globalparams, io
+       solver, model, bitvec, pretty, simplify, array, quantifier,
+       params, semantics, char,
+       astvector, stats,
+       introspect, proof, fixedpoint, rewrite,
+       translate, globalparams, io
+
+# ============================================================================
+# Gateable theories (re-exported only when the corresponding flag is off)
+# ============================================================================
+
+when not z3WithoutDatatypesEff:
+  import z3/datatypes
+  export datatypes
+
+when not z3WithoutOptimizeEff:
+  import z3/optimize
+  export optimize
+
+when not z3WithoutTacticsEff:
+  import z3/tactic
+  export tactic
+
+when not z3WithoutProbeEff:
+  import z3/probe
+  export probe
+
+when not z3WithoutSeqEff:
+  import z3/sequence
+  export sequence
+
+when not z3WithoutStringsEff:
+  import z3/string
+  export string
+
+when not z3WithoutRegexEff:
+  import z3/regex
+  export regex
+
+when not z3WithoutFPEff:
+  import z3/fp
+  export fp
+
+when not z3WithoutFuncDeclEff:
+  import z3/funcdecl
+  export funcdecl
+
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

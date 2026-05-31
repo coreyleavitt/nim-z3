@@ -8,7 +8,8 @@
 >
 > See also: [GOTCHAS.md](GOTCHAS.md) (user-facing pitfalls),
 > [INTERNAL_API.md](INTERNAL_API.md) (the "promoted private→public for
-> sibling modules" seam).
+> sibling modules" seam), [THREADING.md](THREADING.md) (per-thread
+> isolation contract).
 
 The `Z3Term` concept (defined in `src/z3/lifecycle.nim`) is:
 

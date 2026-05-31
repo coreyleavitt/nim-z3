@@ -22,6 +22,11 @@
 ## exit) for scoped/library-internal use that needs an explicit context
 ## without disturbing the caller's current setting.
 ##
+## **Threading contract:** `docs/THREADING.md` is the canonical
+## statement of what's safe across threads (per-thread contexts) and
+## what's UB (sharing handles between threads). Tests covering the
+## contract live in `tests/tconcurrency.nim`.
+##
 ## ## Error handling discipline
 ##
 ## Z3's default error handler aborts the process on any API error. That's

@@ -102,6 +102,9 @@ proc len*[E](a: Z3Seq[E]): Z3Int =
   ## SMT `(seq.len a)` — element count.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_seq_length(a.ctx.raw, a.raw))
 
+proc `$`*[E](a: Z3Seq[E]): string = termToSmt2(a)
+  ## SMT-LIB rendering of the sequence AST.
+
 proc evalSeqLen*[E](m: Z3Model, a: Z3Seq[E],
                     modelCompletion = true): int {.inline.} =
   ## Shorthand for `m.eval(a.len, modelCompletion).toInt` — extract

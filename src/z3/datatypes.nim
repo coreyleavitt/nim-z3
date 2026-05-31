@@ -642,8 +642,8 @@ proc `!=`*[T](
   let eq = a == b
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
-proc `$`*[T](v: Z3DatatypeValue[T]): string =
-  $Z3_ast_to_string(v.ctx.raw, v.raw)
+proc `$`*[T](v: Z3DatatypeValue[T]): string = termToSmt2(v)
+  ## SMT-LIB rendering of the datatype value AST.
 
 # ============================================================================
 # Datatype-sorted variables

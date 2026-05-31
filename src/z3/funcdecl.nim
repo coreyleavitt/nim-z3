@@ -239,3 +239,17 @@ proc evalAt*[ArgsTup: tuple, Ret](m: Z3Model,
     let raw = f.ctx.checkErr Z3_mk_app(f.ctx.raw, f.raw, cuint(raws.len),
       cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0]))
     m.eval(wrap[Ret](f.ctx, raw), modelCompletion)
+
+# ============================================================================
+# Pretty-print (v0.5 step 3D)
+# ============================================================================
+
+proc `$`*[ArgsTup: tuple, Ret](f: Z3FuncDecl[ArgsTup, Ret]): string =
+  ## SMT-LIB rendering of the function declaration:
+  ## `(declare-fun f (Int Int) Bool)`-shaped. `Z3FuncDecl` doesn't
+  ## match `Z3Term` (it carries `RawZ3FuncDecl`, not `RawZ3Ast`),
+  ## so this overload sits alongside the per-handle `$` on
+  ## `Z3Sort` / `Z3Solver` / etc. rather than being absorbed by
+  ## the generic `$[T: Z3Term]` in `z3/ast`.
+  $Z3_ast_to_string(f.ctx.raw,
+    Z3_func_decl_to_ast(f.ctx.raw, f.raw))

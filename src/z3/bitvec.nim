@@ -511,9 +511,8 @@ proc evalInt*[W: static int](m: Z3Model, a: Z3BitVec[W],
 # Pretty-print
 # ============================================================================
 
-proc `$`*[W: static int](a: Z3BitVec[W]): string =
+proc `$`*[W: static int](a: Z3BitVec[W]): string = termToSmt2(a)
   ## SMT-LIB rendering of the BV AST. Mirrors `$` on `Z3Ast[S]`.
-  $Z3_ast_to_string(a.ctx.raw, a.raw)
 
 # The BV-specific `smtEquiv` overload lived here in v0.2; v0.3 step 2
 # absorbed it into the generic `smtEquiv[T]` in `z3/semantics`.

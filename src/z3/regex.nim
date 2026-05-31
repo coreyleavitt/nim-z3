@@ -177,3 +177,8 @@ proc range*(ctx: Z3Context, lo, hi: string): Z3Regex[Z3String] =
 
 proc range*(lo, hi: string): Z3Regex[Z3String] =
   range(requireCurrentContext(), lo, hi)
+
+# Pretty-print (v0.5 step 3D)
+
+proc `$`*[Basis](r: Z3Regex[Basis]): string = termToSmt2(r)
+  ## SMT-LIB rendering of the regex AST.

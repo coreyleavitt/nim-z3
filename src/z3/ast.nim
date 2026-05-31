@@ -134,7 +134,18 @@ proc `!=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
   let eq = a == b
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
-proc `$`*[S: static SortTag](a: Z3Ast[S]): string =
+template termToSmt2*[T: Z3Term](v: T): string =
+  ## v0.5 step 3D helper: SMT-LIB serialisation of a `Z3Term`.
+  ## Each typed value family's `$` is one line calling this. The
+  ## attempt to write a single `$[T: Z3Term]` overload failed
+  ## because Nim 2's concept-constrained generics lose to
+  ## `system.$` for object types — the auto-derived tuple-style
+  ## `$` wins and you get `"(raw: (), ctx: ...)"` instead of
+  ## SMT-LIB. The per-family overloads stay; this helper keeps
+  ## the bodies one line each.
+  $Z3_ast_to_string(v.ctx.raw, v.raw)
+
+proc `$`*[S: static SortTag](a: Z3Ast[S]): string = termToSmt2(a)
   ## SMT-LIB rendering of the AST. Useful for debugging:
   ##
   ## ```nim
@@ -146,4 +157,3 @@ proc `$`*[S: static SortTag](a: Z3Ast[S]): string =
   ##
   ## The string is generated fresh by Z3 on each call; if you need it
   ## hot in a tight loop, cache it yourself.
-  $Z3_ast_to_string(a.ctx.raw, a.raw)

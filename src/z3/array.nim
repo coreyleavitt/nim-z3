@@ -151,6 +151,5 @@ proc `!=`*[Key, Val](a, b: Z3Array[Key, Val]): Z3Bool =
   let eq = a == b
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_not(a.ctx.raw, eq.raw))
 
-proc `$`*[Key, Val](a: Z3Array[Key, Val]): string =
+proc `$`*[Key, Val](a: Z3Array[Key, Val]): string = termToSmt2(a)
   ## SMT-LIB rendering.
-  $Z3_ast_to_string(a.ctx.raw, a.raw)

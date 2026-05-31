@@ -280,6 +280,15 @@ If `assertConstraint` reads more clearly than `add` in a specific user-facing ex
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.6 / dropped / sibling-package).
 
+### From step 3 (cross-family parity)
+
+- **`$[T: Z3Term]` generic doesn't beat `system.$` in Nim 2.** Initial implementation replaced 5 per-family `$` overloads with one `$[T: Z3Term]`. At runtime every `$mkInt(42)` produced `(raw: (), ctx: ...)` — the auto-derived tuple-style `$` from `system` won the overload resolution. Concept-constrained generics are *less* specific than `system`'s typed-object overloads in Nim 2.6. Resolution: keep per-family `$` overloads, factor the body into a shared `termToSmt2*[T: Z3Term]` template in `z3/ast`; each per-family `$` becomes a one-liner `= termToSmt2(v)`. Unification at the *body* level rather than the *signature* level. `astEqual[T: Z3Term]` and `pretty[T: Z3Renderable]` don't have this problem because there's no `system.astEqual` / `system.pretty` to lose to.
+- **`Z3Renderable` concept is wider than `Z3Term`.** Pretty-print covers sorts (`Z3Sort[S]` has `RawZ3Sort`, not `RawZ3Ast`) and ref handles (`Z3Solver` etc.). The shared invariant is `($x) is string; x.ctx is Z3Context` — captured cleanly by a new concept. Documented in [docs/PARITY.md](docs/PARITY.md).
+- **`mkCharVar` parity gap fixed.** Every other family had `mkXVar`; `Z3Char` was missing one. Required for the `evalChar` test (constructs an unknown the solver pins). Added alongside the eval shortcut audit.
+- **`evalChar` needs a simplify pass.** `m.eval(a.toInt)` returns `(char.to_int (_ Char N))` — Z3's evaluator doesn't auto-fold the `char.to_int` wrapper to the literal `N`. Resolution: `simplify(m.eval(a, ...).toInt).toInt`. Documented in the proc's docstring.
+- **`mkRegex` takes a `Z3Seq[E]`, not a string.** Initial test used `mkRegex("abc")` — wrong shape. Use `mkRegex(mkString("abc"))`. Noted because the v0.5 plan's goal-1 examples might bake this mistake in.
+- **`docs/PARITY.md`** lives alongside the planned (goal 7) `GOTCHAS.md` (user-facing) and (goal 12) `INTERNAL_API.md` (cross-module-internal seam). Contributor-facing checklist: when adding a new `Z3Foo` family, here are the items every existing family ships and why. The "for every new family, here's what you implement" rule from the plan now has a concrete home.
+
 ### From step 2 (naming + cohesion hygiene)
 
 - **`Z3Fixedpoint.assertConstraint` kept** (not deleted alongside the solver alias). Distinct semantics: Horn-clause domain has rules / facts / background axioms as three distinct ops; calling all three `add` would be ambiguous. Documented as the canonical axiom-assertion method.

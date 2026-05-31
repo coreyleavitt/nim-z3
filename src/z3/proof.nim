@@ -192,9 +192,8 @@ proc unpackProof*(p: Z3Proof): tuple[rule: ProofRule,
 # Pretty
 # ============================================================================
 
-proc `$`*(p: Z3Proof): string =
+proc `$`*(p: Z3Proof): string = termToSmt2(p)
   ## SMT-LIB rendering of the proof term.
-  $Z3_ast_to_string(p.ctx.raw, p.raw)
 
 # ============================================================================
 # Z3Solver.getProof — extraction (originally planned as v0.4 step 7; shipped

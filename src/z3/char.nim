@@ -108,6 +108,9 @@ proc toInt*(a: Z3Char): Z3Int =
   ## the AST-level codepoint extractor.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_char_to_int(a.ctx.raw, a.raw))
 
+proc `$`*(a: Z3Char): string = termToSmt2(a)
+  ## SMT-LIB rendering: e.g. `(_ Char 97)` for ASCII `'a'`.
+
 proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
   ## Shorthand for "extract the Unicode codepoint of `a` under the
   ## model as a Nim `int`." **v0.5 step 3.** Composes the AST-level

@@ -79,3 +79,30 @@ suite "pretty — generic over Z3Renderable":
     let r = mkRegex(mkString("abc"))
     let p = pretty(r)
     check p.len > 0
+
+suite "\\$ — generic over Z3Term":
+  test "\\$ renders Z3Char as SMT-LIB":
+    let ctx = newContext()
+    check ($mkChar('a')).len > 0
+
+  test "\\$ renders Z3Seq[Z3Int] as SMT-LIB":
+    let ctx = newContext()
+    let xs = mkSeqVar[Z3Int]("xs")
+    check ($xs).len > 0
+
+  test "\\$ renders Z3Fp[Float32] as SMT-LIB":
+    let ctx = newContext()
+    check ($mkFloat32(3.14'f32)).len > 0
+
+  test "\\$ renders Z3Regex[Z3String] as SMT-LIB":
+    let ctx = newContext()
+    check ($mkRegex(mkString("abc"))).len > 0
+
+  test "\\$ renders Z3RoundingMode as SMT-LIB":
+    let ctx = newContext()
+    check ($rmRNE()).len > 0
+
+  test "\\$ renders Z3FuncDecl as SMT-LIB":
+    let ctx = newContext()
+    let f = mkFuncDecl[(Z3Int,), Z3Int]("f")
+    check ($f).len > 0

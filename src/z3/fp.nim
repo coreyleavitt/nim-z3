@@ -418,3 +418,11 @@ proc toUbv*[E, S, W: static int](rm: Z3RoundingMode,
     a.ctx.checkErr Z3_mk_fpa_to_ubv(a.ctx.raw, rm.raw, a.raw, cuint(W)))
 proc toUbv*[E, S, W: static int](a: Z3Fp[E, S]): Z3BitVec[W] {.inline.} =
   toUbv[E, S, W](rmRNE(a.ctx), a)
+
+# Pretty-print (v0.5 step 3D)
+
+proc `$`*[E, S: static int](a: Z3Fp[E, S]): string = termToSmt2(a)
+  ## SMT-LIB rendering of the FP AST.
+
+proc `$`*(rm: Z3RoundingMode): string = termToSmt2(rm)
+  ## SMT-LIB rendering of the rounding-mode AST.

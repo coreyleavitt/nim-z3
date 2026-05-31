@@ -405,3 +405,69 @@ suite "property: shape — string algebraic laws":
         ensure smtValid(s.contains(s))
     let report = forAll(stringRecipes(maxDepth = 3), prop, fewExamples())
     check report.outcome == otPassed
+
+# ============================================================================
+# property: shape — algebraic laws over random Z3Seq[Z3Int] trees
+# ============================================================================
+
+suite "property: shape — sequence algebraic laws":
+  test "concat is associative on sequences":
+    let ctx = newContext()
+    let prop =
+      proc(p: (SeqRecipe, (SeqRecipe, SeqRecipe))) =
+        let a = interpret(p[0], ctx)
+        let b = interpret(p[1][0], ctx)
+        let c = interpret(p[1][1], ctx)
+        ensure smtValid(concat(concat(a, b), c) == concat(a, concat(b, c)))
+    let report = forAll(
+      tuples2(seqRecipes(maxDepth = 2),
+              tuples2(seqRecipes(maxDepth = 2),
+                      seqRecipes(maxDepth = 2))),
+      prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "empty seq is the left identity of concat":
+    let ctx = newContext()
+    let empty = mkSeqEmpty[Z3Int](ctx)
+    let prop =
+      proc(r: SeqRecipe) =
+        let s = interpret(r, ctx)
+        ensure smtValid(concat(empty, s) == s)
+    let report = forAll(seqRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "empty seq is the right identity of concat":
+    let ctx = newContext()
+    let empty = mkSeqEmpty[Z3Int](ctx)
+    let prop =
+      proc(r: SeqRecipe) =
+        let s = interpret(r, ctx)
+        ensure smtValid(concat(s, empty) == s)
+    let report = forAll(seqRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "length of concat: len(a ++ b) ≡ len(a) + len(b)":
+    let ctx = newContext()
+    let prop =
+      proc(p: (SeqRecipe, SeqRecipe)) =
+        let a = interpret(p[0], ctx)
+        let b = interpret(p[1], ctx)
+        ensure smtValid(concat(a, b).len == a.len + b.len)
+    let report = forAll(tuples2(seqRecipes(maxDepth = 2),
+                                seqRecipes(maxDepth = 2)),
+                        prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "length of empty is 0":
+    let ctx = newContext()
+    let empty = mkSeqEmpty[Z3Int](ctx)
+    check smtValid(empty.len == mkInt(0))
+
+  test "length of singleton unit is 1":
+    let ctx = newContext()
+    let prop =
+      proc(i: IntRecipe) =
+        let x = interpret(i, ctx)
+        ensure smtValid(mkSeqUnit(x).len == mkInt(1))
+    let report = forAll(intRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed

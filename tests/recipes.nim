@@ -234,6 +234,49 @@ proc stringRecipes*(maxDepth = 3): Strategy[StringRecipe] =
   recursive(stringRecipeBase(), stringRecipeExtend, maxDepth)
 
 # ============================================================================
+# SeqRecipe — Z3Seq[Z3Int] expression trees
+# ============================================================================
+#
+# Element-parameterised at the type level (Z3Seq[E]) but pinned to E =
+# Z3Int at the recipe level for simplicity — the algebraic laws hold
+# for every element type; one concrete instantiation is sufficient
+# coverage at the property layer.
+
+type
+  SeqRecipeKind* = enum sqrkEmpty, sqrkUnit, sqrkVar, sqrkConcat
+  SeqRecipe* = ref object
+    case kind*: SeqRecipeKind
+    of sqrkEmpty:  discard
+    of sqrkUnit:   elt*: IntRecipe
+    of sqrkVar:    name*: string
+    of sqrkConcat: l*, r*: SeqRecipe
+
+const seqVarNames* = @["xs", "ys", "zs"]
+
+proc seqRecipeBase*(): Strategy[SeqRecipe] =
+  oneOf(@[
+    sampledFrom(@[SeqRecipe(kind: sqrkEmpty)]),
+    intRecipes(maxDepth = 1).map(
+      proc(i: IntRecipe): SeqRecipe =
+        SeqRecipe(kind: sqrkUnit, elt: i)),
+    sampledFrom(seqVarNames).map(
+      proc(n: string): SeqRecipe =
+        SeqRecipe(kind: sqrkVar, name: n)),
+  ])
+
+proc seqRecipeExtend*(child: Strategy[SeqRecipe]):
+    Strategy[SeqRecipe] =
+  oneOf(@[
+    seqRecipeBase(),
+    tuples2(child, child).map(
+      proc(p: (SeqRecipe, SeqRecipe)): SeqRecipe =
+        SeqRecipe(kind: sqrkConcat, l: p[0], r: p[1])),
+  ])
+
+proc seqRecipes*(maxDepth = 3): Strategy[SeqRecipe] =
+  recursive(seqRecipeBase(), seqRecipeExtend, maxDepth)
+
+# ============================================================================
 # Interpreters — recipe → AST under a given context
 # ============================================================================
 
@@ -262,6 +305,14 @@ proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   of bvrkAnd: interpret(r.l, ctx) and interpret(r.r, ctx)
   of bvrkOr:  interpret(r.l, ctx) or  interpret(r.r, ctx)
   of bvrkXor: interpret(r.l, ctx) xor interpret(r.r, ctx)
+
+proc interpret*(r: SeqRecipe, ctx: Z3Context): Z3Seq[Z3Int] =
+  ## Build the Z3Seq[Z3Int] AST for `r` under `ctx`.
+  case r.kind
+  of sqrkEmpty:  mkSeqEmpty[Z3Int](ctx)
+  of sqrkUnit:   mkSeqUnit(interpret(r.elt, ctx))
+  of sqrkVar:    mkSeqVar[Z3Int](ctx, r.name)
+  of sqrkConcat: concat(interpret(r.l, ctx), interpret(r.r, ctx))
 
 proc interpret*(r: StringRecipe, ctx: Z3Context): Z3String =
   ## Build the Z3String AST for `r` under `ctx`.

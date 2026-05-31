@@ -158,6 +158,40 @@ proc bvRecipes*(maxDepth = 3): Strategy[BvRecipe] =
   recursive(bvRecipeBase(), bvRecipeExtend, maxDepth)
 
 # ============================================================================
+# FuncDeclRecipe — application trees over a fixed uninterpreted `f: Int → Int`
+# ============================================================================
+#
+# The function `f` is **not** part of the recipe — it's supplied at
+# interpret time (the test owns it). Recipes describe the *shape*
+# of an `f` application tree: a leaf is an `IntRecipe`; a branch is
+# `f(child)`. This separation lets a single property test reuse one
+# `f` declaration across all iterations (Z3's hash-consing then keeps
+# the assertion graph compact).
+
+type
+  FuncDeclRecipeKind* = enum fdrkLeaf, fdrkApp
+  FuncDeclRecipe* = ref object
+    case kind*: FuncDeclRecipeKind
+    of fdrkLeaf: ileaf*: IntRecipe
+    of fdrkApp:  arg*: FuncDeclRecipe
+
+proc fdRecipeBase*(): Strategy[FuncDeclRecipe] =
+  intRecipes(maxDepth = 2).map(
+    proc(i: IntRecipe): FuncDeclRecipe =
+      FuncDeclRecipe(kind: fdrkLeaf, ileaf: i))
+
+proc fdRecipeExtend*(child: Strategy[FuncDeclRecipe]):
+    Strategy[FuncDeclRecipe] =
+  oneOf(@[
+    fdRecipeBase(),
+    child.map(proc(e: FuncDeclRecipe): FuncDeclRecipe =
+      FuncDeclRecipe(kind: fdrkApp, arg: e)),
+  ])
+
+proc fdRecipes*(maxDepth = 3): Strategy[FuncDeclRecipe] =
+  recursive(fdRecipeBase(), fdRecipeExtend, maxDepth)
+
+# ============================================================================
 # Interpreters — recipe → AST under a given context
 # ============================================================================
 
@@ -186,6 +220,16 @@ proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   of bvrkAnd: interpret(r.l, ctx) and interpret(r.r, ctx)
   of bvrkOr:  interpret(r.l, ctx) or  interpret(r.r, ctx)
   of bvrkXor: interpret(r.l, ctx) xor interpret(r.r, ctx)
+
+proc interpret*(r: FuncDeclRecipe, f: Z3FuncDecl[(Z3Int,), Z3Int],
+                ctx: Z3Context): Z3Int =
+  ## Build the Z3Int AST for `r` under `ctx`, applying `f` at each
+  ## `fdrkApp` node. The fixed `f` is supplied by the caller so all
+  ## iterations of a property test reuse the same uninterpreted
+  ## function (and Z3 hash-conses the resulting AST graph compactly).
+  case r.kind
+  of fdrkLeaf: interpret(r.ileaf, ctx)
+  of fdrkApp:  f(interpret(r.arg, f, ctx))
 
 proc interpret*(r: BoolRecipe, ctx: Z3Context): Z3Bool =
   case r.kind

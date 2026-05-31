@@ -309,3 +309,38 @@ suite "property: shape — algebraic laws over random BV[8] trees":
       ensure smtEquiv(wide.extract(7, 0), e)
     let report = forAll(bvRecipes(maxDepth = 2), prop, fewExamples())
     check report.outcome == otPassed
+
+# ============================================================================
+# property: shape — uninterpreted-function laws over random application trees
+# ============================================================================
+
+suite "property: shape — uninterpreted-function laws":
+  test "function congruence: a == b implies f(a) == f(b)":
+    # The defining property of uninterpreted functions: equal inputs
+    # yield equal outputs. Holds for *any* shape of `f`-application
+    # tree because hash-consing makes structurally-identical sub-
+    # expressions share the same AST.
+    let ctx = newContext()
+    let f = mkFuncDecl[(Z3Int,), Z3Int]("fcongruence")
+    let prop =
+      proc(p: (FuncDeclRecipe, FuncDeclRecipe)) =
+        let a = interpret(p[0], f, ctx)
+        let b = interpret(p[1], f, ctx)
+        ensure smtValid((a == b).implies(f(a) == f(b)))
+    let report = forAll(tuples2(fdRecipes(maxDepth = 2),
+                                fdRecipes(maxDepth = 2)),
+                        prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "reflexivity: f(e) == f(e) for any application tree e":
+    # Trivial structurally but exercises the AST construction +
+    # hash-consing path for every recipe shape. If the wrapper's
+    # `mkFuncDecl` / `apply` / `==` paths ever drift, this catches it.
+    let ctx = newContext()
+    let f = mkFuncDecl[(Z3Int,), Z3Int]("frefl")
+    let prop =
+      proc(r: FuncDeclRecipe) =
+        let e = interpret(r, f, ctx)
+        ensure smtValid(f(e) == f(e))
+    let report = forAll(fdRecipes(maxDepth = 3), prop, fewExamples())
+    check report.outcome == otPassed

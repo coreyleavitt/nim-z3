@@ -91,16 +91,20 @@ proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [].} =
 # Identity check (not value equality — that's a Z3 operator producing an AST)
 # ============================================================================
 
-proc astEqual*[S: static SortTag](a, b: Z3Ast[S]): bool {.inline.} =
+proc astEqual*[T: Z3Term](a, b: T): bool {.inline.} =
   ## Pointer-level identity check: are `a` and `b` the same underlying
   ## Z3 AST? Distinct from semantic equality (which is the `==`
-  ## operator on Z3Ast[S] returning a `Z3Ast[stBool]`, defined in
-  ## the boolean ops module).
+  ## operator returning a `Z3Bool`, defined per family in the operator
+  ## modules).
   ##
   ## Two equivalently-built ASTs may or may not be identity-equal
   ## depending on Z3's internal hash-consing. The right tool for
   ## "are these the same Z3 term?" is this proc; the right tool for
   ## "do these terms reduce to the same value?" is the operator `==`.
+  ##
+  ## Generic over every typed value family (`Z3Term`) — v0.5 step 3
+  ## unification. Sort and ref-handle families don't qualify (their
+  ## raw types aren't `RawZ3Ast`).
   cast[pointer](a.raw) == cast[pointer](b.raw)
 
 # ============================================================================

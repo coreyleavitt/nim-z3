@@ -3,15 +3,13 @@ version 1
 strategy "maxver"
 
 dep "proptest" {
-    identity "sha256:a9ed563171a7c39e30e8306a569317342afe884e1926e47d3e9ce15e865ee24f"
+    identity "sha256:0efd758455476c681e90deee07817dc3d79030289f13c368ab752677982dca69"
     version "0.0.1"
     src_dir "src"
     requires
     provenance {
-        kind "git"
-        url "https://github.com/coreyleavitt/proptest.git"
-        ref "main"
-        commit_sha "21a1df63f5260dc4e97e9fda5a2a4e880a07f313"
+        kind "local"
+        path "/home/corey/projects/nimlibs/proptest"
     }
 }
 

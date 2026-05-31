@@ -1233,6 +1233,27 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `(=> (and a_1 ... a_n) lit)`.
   proc Z3_solver_check(c: RawZ3Context, s: RawZ3Solver): Z3LBool
     {.cdecl, header: "z3.h".}
+  proc Z3_solver_check_assumptions(c: RawZ3Context, s: RawZ3Solver,
+                                   num_assumptions: cuint,
+                                   assumptions: ptr UncheckedArray[RawZ3Ast]):
+                                   Z3LBool
+    {.cdecl, header: "z3.h".}
+    ## Check satisfiability under a temporary assumption set. Unlike
+    ## `Z3_solver_check`, the assumptions are not retained on the
+    ## solver — the next call sees only the persistent assertions.
+    ## v1.0 audit round 2, item #4.
+  proc Z3_solver_get_assertions(c: RawZ3Context, s: RawZ3Solver):
+                                RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Snapshot of the solver's current assertion set as an AST
+    ## vector. Each element is a Z3Bool (Z3 only accepts Boolean
+    ## assertions). v1.0 audit round 2, item #5.
+  proc Z3_solver_translate(source_ctx: RawZ3Context, s: RawZ3Solver,
+                           target_ctx: RawZ3Context): RawZ3Solver
+    {.cdecl, header: "z3.h".}
+    ## Translate a solver and all its assertions from `source_ctx` to
+    ## `target_ctx`. The result is a fresh solver in target_ctx with
+    ## an equivalent assertion stack. v1.0 audit round 2, item #6.
   proc Z3_solver_get_model(c: RawZ3Context, s: RawZ3Solver): RawZ3Model
     {.cdecl, header: "z3.h".}
   proc Z3_solver_push(c: RawZ3Context, s: RawZ3Solver) {.cdecl, header: "z3.h".}

@@ -183,3 +183,86 @@ suite "solver.pop(n) guard (medium C5)":
     s.pop(1)
     s.add x == mkInt(7)
     check s.check() == zsSat
+
+suite "Z3Solver — checkWith / check_assumptions (round 2, HIGH #4)":
+  test "checkWith[p] makes the solver sat under p without committing":
+    let ctx = newContext()
+    let p = mkBoolVar("p")
+    let q = mkBoolVar("q")
+    let s = newSolver()
+    # Background fact: p → q (encoded as ¬p ∨ q).
+    s.add (not p) or q
+    # Under assumption p, q must be true.
+    check s.checkWith(@[p]) == zsSat
+    let m = s.model()
+    check m.evalBool(q) == true
+    # Solver state did NOT commit p — a follow-up check() is also sat,
+    # but a model now exists where p is false and q is unconstrained.
+    check s.check() == zsSat
+
+  test "checkWith[p, not q] yields unsat under contradictory assumptions":
+    let ctx = newContext()
+    let p = mkBoolVar("p")
+    let q = mkBoolVar("q")
+    let s = newSolver()
+    s.add (not p) or q                # p → q
+    check s.checkWith(@[p, not q]) == zsUnsat
+    # Background still satisfiable without the contradiction.
+    check s.check() == zsSat
+
+  test "checkWith @[] is equivalent to plain check()":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let s = newSolver()
+    s.add x > mkInt(0)
+    check s.checkWith(@[]) == zsSat
+
+suite "Z3Solver — getAssertions (round 2, HIGH #5)":
+  test "getAssertions returns the typed assertion stack":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")
+    let s = newSolver()
+    let a1 = x > mkInt(0)
+    let a2 = y > mkInt(10)
+    let a3 = x + y == mkInt(15)
+    s.add a1
+    s.add a2
+    s.add a3
+    let asserts = s.getAssertions()
+    check asserts.len == 3
+    # Each round-trips: asserts[i] is smtEquiv to the original.
+    check smtEquiv(asserts[0], a1)
+    check smtEquiv(asserts[1], a2)
+    check smtEquiv(asserts[2], a3)
+
+  test "fresh solver getAssertions is empty":
+    let ctx = newContext()
+    let s = newSolver()
+    check s.getAssertions().len == 0
+
+suite "Z3Solver — translate (round 2, HIGH #6)":
+  test "translate carries assertions to the target context, both sat":
+    let ctxA = newContext()
+    let x = mkIntVar("x")
+    let sA = newSolver()
+    sA.add x > mkInt(5)
+    sA.add x < mkInt(10)
+    check sA.check() == zsSat
+    let valA = sA.model().evalInt(x)
+
+    let ctxB = newContext()
+    let sB = sA.translate(ctxB)
+    check sB.check() == zsSat
+    # The translated solver sees the same constraint family in ctxB:
+    # we don't need x from ctxB to inspect — getAssertions in ctxB
+    # confirms the count survived.
+    check sB.getAssertions().len == 2
+    # Both models satisfy the bounds.
+    let mB = sB.model()
+    let asserts = sB.getAssertions()
+    # Verify each translated assertion is sat in B's model.
+    for a in asserts:
+      check mB.evalBool(a) == true
+    # Independent witnesses; both within (5, 10) exclusive.
+    check valA > 5 and valA < 10

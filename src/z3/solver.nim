@@ -273,6 +273,59 @@ proc check*(s: Z3Solver): Z3Status =
   ##   etc.). `reasonUnknown()` returns a human-readable explanation.
   decodeLBool(s.ctx.checkErr Z3_solver_check(s.ctx.raw, s.raw))
 
+proc checkWith*(s: Z3Solver, assumptions: openArray[Z3Bool]): Z3Status =
+  ## Check satisfiability under a *temporary* assumption set. The
+  ## `assumptions` are conjoined to the solver's persistent
+  ## assertions for this one call only — the next `check()` /
+  ## `checkWith()` sees the original state.
+  ##
+  ## Standard pattern for incremental solving when push/pop frames
+  ## are too heavy: each `check_assumptions` call probes a different
+  ## branch of the search without rebuilding solver state.
+  ##
+  ## Empty `assumptions` is equivalent to `check()`.
+  ##
+  ## v1.0 audit round 2, item #4.
+  if assumptions.len == 0:
+    return s.check()
+  var raws = newSeq[RawZ3Ast](assumptions.len)
+  for i, a in assumptions:
+    raws[i] = a.raw
+  decodeLBool(s.ctx.checkErr Z3_solver_check_assumptions(
+    s.ctx.raw, s.raw, cuint(raws.len),
+    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+
+proc getAssertions*(s: Z3Solver): seq[Z3Bool] =
+  ## Snapshot of the solver's current assertion set as a typed
+  ## sequence. Each element is a `Z3Bool` — Z3 only accepts Boolean
+  ## assertions, so the typed return saves the caller a downstream
+  ## decode step.
+  ##
+  ## Useful for debugging (`for a in s.getAssertions(): echo $a`),
+  ## for serialising solver state outside `$s`, and as a building
+  ## block for solver-state transforms that compose with
+  ## `s.translate(otherCtx)`.
+  ##
+  ## v1.0 audit round 2, item #5.
+  let vec = wrapAstVector(s.ctx,
+    s.ctx.checkErr Z3_solver_get_assertions(s.ctx.raw, s.raw))
+  vec.toSeq(Z3Bool)
+
+proc translate*(s: Z3Solver, target: Z3Context): Z3Solver =
+  ## Translate `s` and its assertion stack into `target`. The result
+  ## is a fresh solver bound to `target` whose assertions are
+  ## sort-equivalent ASTs in the target context.
+  ##
+  ## Use case: migrate solver state across contexts when you want
+  ## to enable a feature flag (`proof`, `unsat_core`) that the
+  ## source context wasn't built with, or move analysis to a worker
+  ## thread that owns a different context (the rest of the wrapper's
+  ## one-context-one-thread discipline applies).
+  ##
+  ## v1.0 audit round 2, item #6.
+  wrapSolver(target,
+    s.ctx.checkErr Z3_solver_translate(s.ctx.raw, s.raw, target.raw))
+
 proc reasonUnknown*(s: Z3Solver): string =
   ## Human-readable explanation of why the last `check()` returned
   ## `zsUnknown`. Meaningful only after such a `check()`; otherwise

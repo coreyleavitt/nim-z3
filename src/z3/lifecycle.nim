@@ -185,3 +185,104 @@ template wrap*[T](theCtx: Z3Context, theRaw: RawZ3Ast): T =
     if not r.isNil:
       Z3_inc_ref(theCtx.raw, r)
     T(raw: r, ctx: theCtx)
+
+# ============================================================================
+# N-ary FFI helper (v0.5 step 2D)
+# ============================================================================
+#
+# Every typed family with a varargs op (`mkAnd` / `mkOr` / `mkDistinct` on
+# `Z3Bool`, `mkDistinct` on `Z3BitVec[W]` / `Z3Ast[S]`, `concat` on
+# `Z3Seq[E]`, `concat` / `union` / `intersect` on `Z3Regex[Basis]`) shares
+# the same four-line core:
+#
+#   1. Walk the input collecting `.raw` handles into a `seq[RawZ3Ast]`.
+#   2. Call the n-ary Z3 FFI builder with `(ctx, len, ptr)`.
+#   3. Wrap the returned raw handle as the result family.
+#
+# The variants differ only in **early-return policy** (required ≥1 vs
+# monoid-with-identity vs distinct-≤1-trivially-true). `naryFFICore` is the
+# shared core; the three `emitVarargs*` templates wrap it with the
+# appropriate guard.
+
+template naryFFICall*(ctx: untyped, raws: untyped, ffi: untyped): RawZ3Ast =
+  ## Internal helper template: hand off the `raws` array (already
+  ## populated by the caller) to the variadic Z3 FFI builder `ffi`,
+  ## guarded by `checkErr`. Expands to the inline call so the FFI
+  ## proc's `header: "z3.h"` binding stays at the syntactic call
+  ## site rather than passing through a proc-value indirection.
+  ctx.checkErr ffi(
+    ctx.raw, cuint(raws.len),
+    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0]))
+
+template emitVarargsRequired1Basis*(name, family, ffi: untyped) =
+  ## Define `name[Basis](xs: varargs[family]): family` — the
+  ## phantom-basis-parameterised variant. Used for `Z3Regex.concat`
+  ## / `union` / `intersect` where `family = Z3Regex[Basis]`.
+  proc name*[Basis](xs: varargs[family]): family =
+    doAssert xs.len >= 1,
+      astToStr(name) & " requires at least one argument"
+    if xs.len == 1:
+      return xs[0]
+    var raws = newSeq[RawZ3Ast](xs.len)
+    for i, x in xs:
+      raws[i] = x.raw
+    wrap[family](xs[0].ctx, naryFFICall(xs[0].ctx, raws, ffi))
+
+template emitVarargsRequired1E*(name, family, ffi: untyped) =
+  ## Define `name[E](xs: varargs[family]): family` — the
+  ## element-parameterised variant. Used for `Z3Seq.concat` where
+  ## `family = Z3Seq[E]`.
+  proc name*[E](xs: varargs[family]): family =
+    doAssert xs.len >= 1,
+      astToStr(name) & " requires at least one argument"
+    if xs.len == 1:
+      return xs[0]
+    var raws = newSeq[RawZ3Ast](xs.len)
+    for i, x in xs:
+      raws[i] = x.raw
+    wrap[family](xs[0].ctx, naryFFICall(xs[0].ctx, raws, ffi))
+
+template emitVarargsMonoid*(name, ffi, identityProc: untyped) =
+  ## Define `name(args: varargs[Z3Bool]): Z3Bool` with the "monoid
+  ## with identity" policy — empty input returns `identityProc(ctx)`,
+  ## singleton returns itself, otherwise n-ary FFI. Used for
+  ## `Z3Bool.mkAnd` (identity `mkTrue`) and `Z3Bool.mkOr` (identity
+  ## `mkFalse`). No generic spec because `Z3Bool` isn't parameterised.
+  proc name*(args: varargs[Z3Bool]): Z3Bool =
+    if args.len == 0:
+      return identityProc(requireCurrentContext())
+    if args.len == 1:
+      return args[0]
+    let ctx = args[0].ctx
+    var raws = newSeq[RawZ3Ast](args.len)
+    for i, a in args:
+      raws[i] = a.raw
+    wrap[Z3Bool](ctx, naryFFICall(ctx, raws, ffi))
+
+template emitVarargsDistinctS*(name, family: untyped) =
+  ## Define `name[S: static SortTag](xs: varargs[family]): Z3Bool`
+  ## with the "≤1 trivially-true, ≥2 builds (distinct ...)" policy.
+  ## Used for `Z3Bool.mkDistinct` over `Z3Ast[S]`.
+  proc name*[S: static SortTag](xs: varargs[family]): Z3Bool =
+    if xs.len <= 1:
+      let ctx = if xs.len == 1: xs[0].ctx else: requireCurrentContext()
+      return wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
+    let ctx = xs[0].ctx
+    var raws = newSeq[RawZ3Ast](xs.len)
+    for i, x in xs:
+      raws[i] = x.raw
+    wrap[Z3Bool](ctx, naryFFICall(ctx, raws, Z3_mk_distinct))
+
+template emitVarargsDistinctW*(name, family: untyped) =
+  ## Define `name[W: static int](xs: varargs[family]): Z3Bool` for
+  ## width-parameterised BV distinctness. Used for
+  ## `Z3BitVec.mkDistinct` over `Z3BitVec[W]`.
+  proc name*[W: static int](xs: varargs[family]): Z3Bool =
+    if xs.len <= 1:
+      let ctx = if xs.len == 1: xs[0].ctx else: requireCurrentContext()
+      return wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
+    let ctx = xs[0].ctx
+    var raws = newSeq[RawZ3Ast](xs.len)
+    for i, x in xs:
+      raws[i] = x.raw
+    wrap[Z3Bool](ctx, naryFFICall(ctx, raws, Z3_mk_distinct))

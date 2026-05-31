@@ -329,18 +329,11 @@ proc ite*[W: static int](cond: Z3Bool, t, e: Z3BitVec[W]): Z3BitVec[W] =
   wrap[Z3BitVec[W]](cond.ctx,
     cond.ctx.checkErr Z3_mk_ite(cond.ctx.raw, cond.raw, t.raw, e.raw))
 
-proc mkDistinct*[W: static int](xs: varargs[Z3BitVec[W]]): Z3Bool =
-  ## All-pairs-distinct constraint on a sequence of same-width BVs.
-  ## Returns a `Z3Bool`. Empty / singleton inputs are trivially true.
-  if xs.len <= 1:
-    return wrap[Z3Bool](xs[0].ctx,
-      xs[0].ctx.checkErr Z3_mk_true(xs[0].ctx.raw))
-  var raws = newSeq[RawZ3Ast](xs.len)
-  for i, x in xs:
-    raws[i] = x.raw
-  wrap[Z3Bool](xs[0].ctx, xs[0].ctx.checkErr Z3_mk_distinct(
-    xs[0].ctx.raw, cuint(raws.len),
-    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+# `mkDistinct` — all-pairs-distinct constraint on a sequence of
+# same-width BVs. Returns a `Z3Bool`. Empty / singleton inputs are
+# trivially true. (The pre-v0.5 version indexed `xs[0]` on empty
+# input — a bug fixed by the unified `emitVarargsDistinctW` helper.)
+emitVarargsDistinctW(mkDistinct, Z3BitVec[W])
 
 # ============================================================================
 # Literal lifts — `bv + 3'u32`, `3'u32 + bv`, `bv == 5'u32`, etc.

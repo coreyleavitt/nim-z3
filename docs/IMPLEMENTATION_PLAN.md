@@ -280,6 +280,13 @@ If `assertConstraint` reads more clearly than `add` in a specific user-facing ex
 
 Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why / where it goes** (v0.6 / dropped / sibling-package).
 
+### From step 2 (naming + cohesion hygiene)
+
+- **`Z3Fixedpoint.assertConstraint` kept** (not deleted alongside the solver alias). Distinct semantics: Horn-clause domain has rules / facts / background axioms as three distinct ops; calling all three `add` would be ambiguous. Documented as the canonical axiom-assertion method.
+- **`bitvec.mkDistinct` empty-input bug fixed incidentally.** The pre-v0.5 hand-written body indexed `xs[0].ctx` on empty input — would crash at runtime. The unified `emitVarargsDistinctW` helper handles the empty case via `requireCurrentContext()`. Bug → fix → no test added (empty `mkDistinct[W]()` was unreachable in the test suite); flagged here for the audit.
+- **`emitVarargsRequired1` couldn't take generics as a single `untyped` parameter.** Nim parses `proc name*generic(...)` as a binary expression at line start (`*` operator binds with whitespace), not as a proc-with-template-substituted-generics. Tried `proc \`name\`generic(...)` and macro routes; settled on per-shape templates — `emitVarargsRequired1Basis` (regex), `emitVarargsRequired1E` (sequence), `emitVarargsDistinctS` (boolean `Z3Ast[S]`), `emitVarargsDistinctW` (bitvec `Z3BitVec[W]`), `emitVarargsMonoid` (boolean `Z3Bool`, no generic). Five small templates rather than one giant macro; each instantiation is one line. The plan said "a macro `naryOp`" — this is the per-shape-template variant of that idea. The shared FFI-call core lives in `naryFFICall`.
+- **Docstring placement** matters under macro/template calls. `emitVarargsMonoid(mkAnd, ...)` followed by indented `## doc lines` parses the doc as the template-call body and breaks. Resolution: convert per-call docstrings to leading `#` comments above the macro call. Less ergonomic than `proc`-attached docs (no `nim doc` integration for those entries) — a real polish loss. Will revisit if `nim doc` generation becomes a v0.6 goal.
+
 ### From step 1 (z3/context split — extract z3/error)
 
 - **Layering inversion.** The original plan said "z3/error imports z3/context for the `Z3Context` type used in proc/template signatures." That creates a cycle: `z3/context.requireCurrentContext` raises `Z3Error`, so `z3/context` needs `z3/error` too. **Correction:** `z3/error` depends only on `z3/ffi`. `raiseZ3Error` takes `rawCtx: RawZ3Context` (not `Z3Context`); `checkErr` / `checkErrVoid` accept `ctx: untyped` and dot-access `ctx.raw` at template expansion. This makes `z3/error` a *lower* layer than `z3/context` — siblings importing both get a clean one-directional dependency graph.

@@ -123,59 +123,27 @@ proc ite*[S: static SortTag](cond: Z3Bool, t, e: Z3Ast[S]): Z3Ast[S] =
 # Varargs and/or
 # ----------------------------------------------------------------------------
 
-proc mkAnd*(args: varargs[Z3Bool]): Z3Bool =
-  ## N-ary conjunction. Empty input returns `mkTrue()` (identity).
-  ## One input returns the singleton unchanged. Otherwise builds an
-  ## n-ary `(and ...)` AST.
-  ##
-  ## ```nim
-  ## let constraints = @[x > mkInt(0), y > mkInt(0), x + y < mkInt(100)]
-  ## let composite = mkAnd(constraints)
-  ## ```
-  if args.len == 0:
-    return mkTrue(requireCurrentContext())
-  if args.len == 1:
-    return args[0]
-  let ctx = args[0].ctx
-  var raws = newSeq[RawZ3Ast](args.len)
-  for i, a in args:
-    raws[i] = a.raw
-  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_and(
-    ctx.raw, cuint(args.len),
-    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+# `mkAnd` — N-ary conjunction. Empty input returns `mkTrue()`
+# (identity). One input returns the singleton unchanged. Otherwise
+# builds an n-ary `(and ...)` AST.
+#
+# ```nim
+# let constraints = @[x > mkInt(0), y > mkInt(0), x + y < mkInt(100)]
+# let composite = mkAnd(constraints)
+# ```
+emitVarargsMonoid(mkAnd, Z3_mk_and, mkTrue)
 
-proc mkOr*(args: varargs[Z3Bool]): Z3Bool =
-  ## N-ary disjunction. Empty input returns `mkFalse()` (identity).
-  if args.len == 0:
-    return mkFalse(requireCurrentContext())
-  if args.len == 1:
-    return args[0]
-  let ctx = args[0].ctx
-  var raws = newSeq[RawZ3Ast](args.len)
-  for i, a in args:
-    raws[i] = a.raw
-  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_or(
-    ctx.raw, cuint(args.len),
-    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+# `mkOr` — N-ary disjunction. Empty input returns `mkFalse()`
+# (identity).
+emitVarargsMonoid(mkOr, Z3_mk_or, mkFalse)
 
 # ----------------------------------------------------------------------------
 # `distinct` — pairwise-distinct, generic over sort
 # ----------------------------------------------------------------------------
 
-proc mkDistinct*[S: static SortTag](args: varargs[Z3Ast[S]]): Z3Bool =
-  ## Pairwise-distinct constraint: `mkDistinct(a, b, c)` is true iff
-  ## `a != b && b != c && a != c`. Cheaper at the SMT level than the
-  ## equivalent quadratic conjunction of `!=` because Z3 has a
-  ## dedicated rewrite for this term.
-  ##
-  ## Generic over sort — works on `Z3Int`, `Z3Real`, `Z3Bool`, etc.
-  if args.len <= 1:
-    # `distinct` over fewer than 2 args is vacuously true.
-    return mkTrue(requireCurrentContext())
-  let ctx = args[0].ctx
-  var raws = newSeq[RawZ3Ast](args.len)
-  for i, a in args:
-    raws[i] = a.raw
-  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_distinct(
-    ctx.raw, cuint(args.len),
-    cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+# `mkDistinct` — pairwise-distinct constraint: `mkDistinct(a, b, c)`
+# is true iff `a != b && b != c && a != c`. Cheaper at the SMT level
+# than the equivalent quadratic conjunction of `!=` because Z3 has a
+# dedicated rewrite for this term. Generic over sort — works on
+# `Z3Int`, `Z3Real`, `Z3Bool`, etc.
+emitVarargsDistinctS(mkDistinct, Z3Ast[S])

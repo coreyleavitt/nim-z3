@@ -122,22 +122,15 @@ proc complement*[Basis](r: Z3Regex[Basis]): Z3Regex[Basis] =
 # Z3's `re_concat`, `re_union`, `re_intersect` are varargs at the C
 # level — we expose them as varargs at the Nim level too.
 
-template emitNary(name, ffi: untyped) =
-  proc name*[Basis](rs: varargs[Z3Regex[Basis]]): Z3Regex[Basis] =
-    doAssert rs.len >= 1,
-      "Z3Regex." & astToStr(name) & " requires at least one argument"
-    if rs.len == 1:
-      return rs[0]
-    var raws = newSeq[RawZ3Ast](rs.len)
-    for i, r in rs:
-      raws[i] = r.raw
-    wrap[Z3Regex[Basis]](rs[0].ctx, rs[0].ctx.checkErr ffi(
-      rs[0].ctx.raw, cuint(raws.len),
-      cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+# `Z3Regex[Basis]` carries a phantom basis-sort parameter — its varargs
+# bodies match the "≥1 required, singleton short-circuit" shape from
+# `lifecycle.emitVarargsRequired1`. We instantiate the template once
+# per FFI symbol; the per-`Basis` generic falls out of the family type
+# in the template body.
 
-emitNary(concat, Z3_mk_re_concat)
-emitNary(union, Z3_mk_re_union)
-emitNary(intersect, Z3_mk_re_intersect)
+emitVarargsRequired1Basis(concat,    Z3Regex[Basis], Z3_mk_re_concat)
+emitVarargsRequired1Basis(union,     Z3Regex[Basis], Z3_mk_re_union)
+emitVarargsRequired1Basis(intersect, Z3Regex[Basis], Z3_mk_re_intersect)
 
 # ============================================================================
 # Counted repetition + ranges

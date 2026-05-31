@@ -333,6 +333,109 @@ Same append-only format as v0.1 §18, v0.2 §8, v0.3 §8. Format: **what / why /
 
 ---
 
+## 8b. Pre-tag audit — v0.5
+
+Structured walk before tagging, mirroring the v0.2 / v0.3 / v0.4 precedent. Each §1 goal + §5 step is classified **landed / rolled to v0.6 / dropped / sibling-package**, with the commit hash for landed items.
+
+### §1 Goals
+
+| # | Goal | Status | Commit / Notes |
+|---|---|---|---|
+| 1 | Cross-family parity for the `Z3Term` concept surface | ✅ landed | `4b3b956` (3B astEqual), `ad25d3f` (3C evalXxx + mkCharVar + docs/PARITY.md), `eb9789b` (3A pretty), `fe5f07d` (3D `$`) |
+| 2 | Naming + cohesion hygiene | ✅ landed | `2de0447` (2A seq→sequence), `8a537a5` (2C RoundingMode consolidation), `463e6c2` (2D naryOp macro family) |
+| 3 | Error type hierarchy | ✅ landed | `db01dcc` — v0.5 step 4. 13 typed subclasses (more than plan's draft 8 — see §8 step 4) |
+| 4 | Memory + thread safety audit | ✅ landed | `9b3a067` (5A tconcurrency), `4f33a09` (5B nimble valgrind), `6b38b24` (5C THREADING.md) |
+| 5 | Property tests for v0.3 families | ✅ landed | `8a66190` (FuncDecl), `be546cf` (String), `34b0f5d` (Sequence), `4f8761f` (Regex), `13abd17` (FP) — 21 new shape-properties × 25 iterations = 525 generative invocations per backend |
+| 6 | Examples for v0.3 families | ✅ landed | `daddc4b` (tactic_pipeline), `49e75af` (uninterpreted_axioms), `b227adc` (float_verification), `9696697` (string_constraints) |
+| 7 | GOTCHAS doc + README freshness | ✅ landed | `ad908b4` (9A GOTCHAS.md), `3ea70aa` (9C README rewrite + cross-links) |
+| 8 | Feature flags + minimal-build story | ✅ landed | `aee9694` (10A cascading flags), `a39d01a` (10B config.nims.example), `8323095` (10C MINIMAL_BUILD.md), `61586bb` (10D testMinimal task) |
+| 9 | `z3/context` dual-responsibility split — extract `z3/error` | ✅ landed | `fc5d072` — v0.5 step 1 |
+| 10 | Z3 C-API micro-gap closure | ✅ landed | `004e8d2` (6A Z3FuncInterp), `3cc0f0a` (6B Z3ParamDescrs), `65b86a2` (6C Z3Char↔Z3BitVec) — closes the three v0.4 §8b asterisks; "every Z3 C-API capability is reachable" is now literally true |
+| 11 | `add` vs `assertConstraint` canonical-name resolution | ✅ landed | `3bc3f41` — v0.5 step 2B. `Z3Solver.assertConstraint` deleted; `Z3Fixedpoint.assertConstraint` kept (distinct semantics) |
+| 12 | Internal API documentation seam | ✅ landed | `5466c48` — v0.5 step 9B (`docs/INTERNAL_API.md`) |
+
+**Every §1 goal landed.** v0.5 is the polish release the plan promised; nothing rolled to v0.6.
+
+### §5 Steps
+
+| Step | Deliverable | Status | Commits |
+|---|---|---|---|
+| 1 | `z3/context` split — extract `z3/error` | ✅ landed | `fc5d072` |
+| 2 | Naming + cohesion hygiene + `add`/`assertConstraint` | ✅ landed | `2de0447` (A), `3bc3f41` (B), `8a537a5` (C), `463e6c2` (D) |
+| 3 | Cross-family parity | ✅ landed | `4b3b956` (B), `ad25d3f` (C), `eb9789b` (A), `fe5f07d` (D) |
+| 4 | Typed error hierarchy | ✅ landed | `db01dcc` |
+| 5 | Memory + thread safety audit | ✅ landed | `9b3a067` (A), `4f33a09` (B), `6b38b24` (C) |
+| 6 | Z3 C-API micro-gap closure | ✅ landed | `004e8d2` (A), `3cc0f0a` (B), `65b86a2` (C) |
+| 7 | Property tests for v0.3 families | ✅ landed | `8a66190` (A), `be546cf` (B), `34b0f5d` (C), `4f8761f` (D), `13abd17` (E) |
+| 8 | Examples for v0.3 families | ✅ landed | `daddc4b` (A), `49e75af` (B), `b227adc` (C), `9696697` (D) |
+| 9 | GOTCHAS + INTERNAL_API + README freshness | ✅ landed | `ad908b4` (A), `5466c48` (B), `3ea70aa` (C) |
+| 10 | Feature flags + minimal-build story | ✅ landed | `aee9694` (A), `a39d01a` (B), `8323095` (C), `61586bb` (D) |
+| 11 | Pre-tag audit + §8b block | ✅ this commit | The audit you are reading. |
+| 12 | v0.5 tag | next commit | The actual `v0.5.0` git tag, CHANGELOG entry, archive promotion. |
+
+### Spec corrections logged during v0.5 (cross-reference)
+
+Every step that hit a spec or Nim-language assumption needing change surfaced it back to the user before continuing; the corrections live in their per-step §8 entries above. Summary for the audit:
+
+- **Step 1** (extract `z3/error`): **layering inversion.** Original plan had `z3/error` importing `z3/context` for `Z3Context` type; that creates a cycle because `z3/context.requireCurrentContext` raises `Z3Error`. Resolution: `z3/error` depends only on `z3/ffi`; `raiseZ3Error` takes `RawZ3Context` (not `Z3Context`); `checkErr` accepts `ctx: untyped` and dot-accesses `ctx.raw` at template expansion. Five sibling raise sites + 1 test migrated from `raiseZ3Error(ctx, code)` → `raiseZ3Error(ctx.raw, code)`.
+- **Step 2** (naming hygiene): **`Z3Fixedpoint.assertConstraint` kept** (canonical axiom-assertion method; rules / facts / background axioms are three distinct ops). **`bitvec.mkDistinct` empty-input bug** fixed incidentally by the unified `emitVarargsDistinctW` helper. **`emitVarargsRequired1` can't take generics as a single `untyped` parameter** (Nim parses `proc name*generic(...)` as a binary expression); resolved with per-shape templates (`emitVarargsRequired1Basis`, `…E`, `emitVarargsDistinctS`, `…W`, `emitVarargsMonoid`). **`mkRoundingMode` collapsed to `rmRNE()` literal procs** — every other typed family is one family with literal-helper constructors; rounding mode was the lone holdout.
+- **Step 3** (parity): **`$[T: Z3Term]` doesn't beat `system.$` in Nim 2.6.** Concept-constrained generics lose to `system`'s typed-object overloads; the unified `$` produced `(raw: (), ctx: ...)` instead of SMT-LIB. Resolution: keep per-family `$` overloads, factor body into `termToSmt2*[T: Z3Term]` template. **`Z3Renderable` concept wider than `Z3Term`** for `pretty`. **`evalChar` needs a `simplify` pass** — Z3 doesn't auto-fold `(char.to_int (_ Char N))`. **`mkCharVar` parity gap fixed** (every other family had one).
+- **Step 4** (error hierarchy): **Nim's style-insensitive identifier rules cause naming collisions with FFI enum values.** `Z3SortError` ≡ `Z3_SORT_ERROR` and `Z3ParserError` ≡ `Z3_PARSER_ERROR` collapse to the same identifier. Resolution: rename to `Z3SortMismatchError` and `Z3ParseError`. **13 subclasses, not the plan's 8.** Audit of `Z3ErrorCode` added `Z3IndexOutOfBoundsError`, `Z3InvalidPatternError`, `Z3RefcountError`, `Z3OperationError`; renamed `Z3MemOutOfMemoryError` → `Z3MemoryError` and `Z3UnreachableError` → `Z3InternalError`. **`raiseSubclass` template needs `SubT: untyped`** (not `typedesc`) — `typedesc` form hit the same identifier-collision parsing.
+- **Step 5** (memory + thread safety): **`newContext()` auto-sets `currentZ3Ctx`** as a side effect — surfaced during the `withContext`-per-thread test; documented in [docs/THREADING.md](docs/THREADING.md). **`--threads:on` enforces gcsafe on thread procs** — FFI is gcsafe but softlink's function-pointer indirection breaks Nim's analysis; tests wrap FFI sites in `{.cast(gcsafe).}:` blocks. **Valgrind audit gates on `definitely lost: 0 bytes`**, not exit code — libz3 triggers ~3000 non-leak "Invalid read" warnings inside its hash-cons internals; only the leak summary is actionable.
+- **Step 6** (C-API micro-gaps): **`Z3FuncInterp` entry-vs-else representation is solver-dependent** — Z3 can fold a constraint into the else-value rather than emitting an entry. Tests pin semantic round-trip (not table shape). **Plan's `unicode-char-width` doesn't exist** — Z3 uses `encoding` global param (default Unicode = 18 bits). Wrapper commits to `Z3BitVec[18]`. **`(char.to_bv (_ Char N))` doesn't fold to a BV numeral** in Z3's evaluator. Tests use `smtValid` against explicit BV literal. **`emitRefcountLifecycle` doesn't unify across two phantom params** (`Z3FuncInterp[ArgsTup, Ret]`) — per-instantiation `=destroy` spelled inline.
+- **Step 7** (property tests): **`tuples3` doesn't exist in proptest** — used nested `tuples2(a, tuples2(b, c))` for 3-arg properties. **FP properties conditioned on `isFinite`** — naïve `x + 0 ≡ x` is false on NaN.
+- **Step 8** (examples): clean landing. All four examples landed first-try after one `import sequtils` for `anyIt`.
+- **Step 9** (docs): clean landing. Curated 14 user-facing GOTCHAS entries from the §8 ledgers; 4 INTERNAL_API.md categories driven by `grep`-audited symbol lists.
+- **Step 10** (feature flags): **`config.nims` template placed at `docs/config.nims.example`**, not at repo root — Nim auto-discovers `config.nims` at the project root; the template would break our own tests. **§7 open question 4 resolved** in favour of automatic-cascade design (vs. compile-time-error-if-deps-not-passed). **Honesty disclaimer in MINIMAL_BUILD.md**: flags hide the umbrella re-export but don't necessarily reduce wrapper compile time because `z3/introspect`, `z3/io`, etc. hard-import transitive theory modules.
+
+### Items rolled forward to v0.6
+
+These are logged per-step in §8 above. Consolidated here for the rollforward:
+
+- **Nothing.** v0.5 is the 1.0-readiness polish; v0.6 is the v1.0 tag with version-only delta. The plan's framing is "v0.5.0 → v1.0.0 with no new functionality between them." Anything not in v0.5 that's also not a real-user blocker rolls to a post-1.0 v1.x track.
+
+### Scope-pruned items (redirected to sibling packages or post-1.0 v1.x)
+
+Same as v0.4:
+
+- **DOT / GraphViz AST export** — sibling package (`nim-z3-tools` / `-viz`); not a wrapper concern.
+- **Visualisation / interactive REPL / SMT-COMP driver** — sibling packages.
+- **High-level macro DSL** — non-goal; the wrapper IS the API.
+- **Carry-forward CI items (#1)** — same private-dep blocker as v0.2 / v0.3 / v0.4.
+
+### Dropped (won't ship)
+
+(None this release.)
+
+### Cumulative test count
+
+v0.4 closed at **1114 OKs** across `nim c` + `nim cpp`. v0.5 closes at **1262 OKs** under the default config plus **18 OKs** for the minimal-build verification (`nimble testMinimal`). Step-by-step delta:
+
+| After step | Total | Delta | New tests (× 2 backends) |
+|---|---|---|---|
+| 1 (`z3/error` extracted)            | 1118 | +4   | 2 × 2  (tracer + behaviour) |
+| 2 (naming hygiene)                  | 1116 | −2   | −1 test (`assertConstraint` alias deleted) × 2 |
+| 3 (cross-family parity)             | 1148 | +32  | 16 × 2 (parity surfaces × 5 sub-items) |
+| 4 (typed error hierarchy)           | 1176 | +28  | 14 × 2 (subclass tree + dispatch) |
+| 5 (memory + thread safety)          | 1184 | +8   | 4 × 2 (concurrency); valgrind task adds no `[OK]`s |
+| 6 (C-API micro-gap closure)         | 1220 | +36  | 18 × 2 (FuncInterp + ParamDescrs + Char↔BV) |
+| 7 (property tests for v0.3)         | 1262 | +42  | 21 × 2 (5 sub-items: FuncDecl + String + Seq + Regex + FP) |
+| 8 (examples)                        | 1262 | 0    | 4 new example files; no `[OK]`s (examples assert via `doAssert`) |
+| 9 (docs)                            | 1262 | 0    | docs-only |
+| 10 (feature flags)                  | 1262 | 0    | default config unchanged; +18 OKs via `nimble testMinimal` (9 tests × 2 backends, separate task) |
+
+**Cumulative breakdown** (v0.4 → v0.5):
+- Tests: 1114 → 1262 OKs default (+148) + 18 minimal-config (`testMinimal` task)
+- New typed families: +2 (`Z3FuncInterp[Args, Ret]`, `Z3ParamDescrs`)
+- New modules: +1 (`z3/error`, extracted from `z3/context`)
+- Renamed module: `z3/seq` → `z3/sequence`
+- New typed sort: none (uninterpreted shipped in v0.4)
+- New polish docs: `GOTCHAS.md`, `INTERNAL_API.md`, `PARITY.md`, `THREADING.md`, `MINIMAL_BUILD.md`, `config.nims.example`
+- New nimble tasks: `valgrind`, `testMinimal`
+- Architecture: typed error hierarchy (13 subclasses); generic `pretty[T]`, `astEqual[T]`, `$` via `termToSmt2`; cascading feature flags
+
+---
+
 ## 9. Closing note
 
 v0.5 is the boring release. Nothing flashy lands; the wrapper just *settles*. After it ships, the work in v0.4 (which landed every contract-completion §1 goal) plus the load-bearing concepts + extracted error module + closed C-API micro-gaps + canonical names + documented internal seam in v0.5 IS what 1.0 looks like. The four goals added post-v0.4 (9 = `z3/error` split, 10 = C-API micro-gaps, 11 = `add`/`assertConstraint` canonical-name resolution, 12 = `INTERNAL_API.md`) make the v1.0 "every Z3 capability reachable" claim *literal* and the contributor-onboarding story explicit.

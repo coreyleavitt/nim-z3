@@ -297,3 +297,14 @@ proc convertModel*(r: Z3ApplyResult, idx: int, m: Z3Model): Z3Model =
   ## `Z3_goal_convert_model`. This wrapper preserves the more
   ## ergonomic apply-result indexing.
   r.subgoal(idx).convertModel(m)
+
+# ============================================================================
+# Schema introspection (v0.5 step 6B)
+# ============================================================================
+
+proc getParamDescrs*(t: Z3Tactic): Z3ParamDescrs =
+  ## Return the schema of parameters this tactic accepts. Twin of
+  ## `getParamDescrs(s: Z3Solver)`; see that proc's docstring for
+  ## the surface.
+  let raw = t.ctx.checkErr Z3_tactic_get_param_descrs(t.ctx.raw, t.raw)
+  wrapParamDescrs(t.ctx, raw)

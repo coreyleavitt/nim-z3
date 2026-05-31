@@ -328,3 +328,19 @@ proc `$`*(s: Z3Solver): string =
   ## # (assert (< x 100))
   ## ```
   $Z3_solver_to_string(s.ctx.raw, s.raw)
+
+# ============================================================================
+# Schema introspection (v0.5 step 6B)
+# ============================================================================
+
+proc getParamDescrs*(s: Z3Solver): Z3ParamDescrs =
+  ## Return the schema of parameters this solver accepts. Each
+  ## parameter has a name (queryable via `pd.keys`), a kind
+  ## (`pd[name]` returns a `ParamKind`), and a documentation
+  ## string (`pd.getDocumentation(name)`).
+  ##
+  ## Used by tooling that wants to enumerate legal params before
+  ## constructing a `Z3Params` against this solver, and for
+  ## human-readable `(help-solver)`-style output via `$pd`.
+  let raw = s.ctx.checkErr Z3_solver_get_param_descrs(s.ctx.raw, s.raw)
+  wrapParamDescrs(s.ctx, raw)

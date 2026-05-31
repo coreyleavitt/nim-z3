@@ -260,6 +260,19 @@ type
     Z3_TYPE_VAR = 14
     Z3_UNKNOWN_SORT = 1000
 
+  Z3ParamKindFFI* {.importc: "Z3_param_kind", header: "z3.h",
+                    size: sizeof(cint).} = enum
+    ## **v0.5 step 6B.** Mirrors Z3's `Z3_param_kind`. Used by
+    ## `Z3_param_descrs_get_kind` to classify each parameter the
+    ## schema lists.
+    Z3_PK_UINT    = 0
+    Z3_PK_BOOL    = 1
+    Z3_PK_DOUBLE  = 2
+    Z3_PK_SYMBOL  = 3
+    Z3_PK_STRING  = 4
+    Z3_PK_OTHER   = 5
+    Z3_PK_INVALID = 6
+
 # ============================================================================
 # Z3 callback types
 # ============================================================================
@@ -859,6 +872,31 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_func_entry_get_arg(c: RawZ3Context, e: RawZ3FuncEntry,
                              i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # --- Z3ParamDescrs (v0.5 step 6B) ----------------------------------------
+  proc Z3_solver_get_param_descrs(c: RawZ3Context,
+                                  s: RawZ3Solver): RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_get_param_descrs(c: RawZ3Context,
+                                  t: RawZ3Tactic): RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_inc_ref(c: RawZ3Context, p: RawZ3ParamDescrs)
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_dec_ref(c: RawZ3Context, p: RawZ3ParamDescrs)
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_size(c: RawZ3Context, p: RawZ3ParamDescrs): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_get_name(c: RawZ3Context, p: RawZ3ParamDescrs,
+                                i: cuint): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_get_kind(c: RawZ3Context, p: RawZ3ParamDescrs,
+                                n: RawZ3Symbol): Z3ParamKindFFI
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_get_documentation(c: RawZ3Context, p: RawZ3ParamDescrs,
+                                         s: RawZ3Symbol): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_param_descrs_to_string(c: RawZ3Context, p: RawZ3ParamDescrs): cstring
     {.cdecl, header: "z3.h".}
 
   # --- Array sort + ops ----------------------------------------------------

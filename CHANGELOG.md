@@ -245,7 +245,7 @@ Full per-step plan + audit: archived in
   closes the v0.3 §8 carryover. Per-context `datatypeRegistry: Table[
   string, RawZ3Sort]`; `declareDatatype[T]` registers under `$T`;
   `sortOf(_: typedesc[Z3DatatypeValue[T]], ctx)` looks it up and
-  raises `Z3UsageError` with a "call `declareDatatype[T]()` first"
+  raises `Z3InvalidUsageError` with a "call `declareDatatype[T]()` first"
   hint if missing. Unlocks `Z3Array[Z3Int, Z3DatatypeValue[Foo]]`,
   `Z3Seq[Z3DatatypeValue[Foo]]`,
   `Z3FuncDecl[(Z3DatatypeValue[Foo],), Z3Bool]`, etc.

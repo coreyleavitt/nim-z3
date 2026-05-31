@@ -79,8 +79,17 @@ type Z3Term* = concept x
   ## with `raw: RawZ3Ast` and `ctx: Z3Context` fields qualifies — that
   ## includes `Z3Ast[S]`, `Z3BitVec[W]`, `Z3Array[K, V]`, `Z3Seq[E]`,
   ## `Z3Char`, `Z3String` (= `Z3Seq[Z3Char]`), `Z3Regex[Basis]`,
-  ## `Z3Fp[E, S]`, `Z3DatatypeValue[T]`, `Z3RoundingMode`, `Z3Pattern`,
-  ## and (v0.4 step 2) `Z3AnyAst` / `Z3Proof`.
+  ## `Z3Fp[E, S]`, `Z3DatatypeValue[T]`, `Z3RoundingMode`,
+  ## `Z3AnyAst` (v0.4 step 2), and `Z3Proof` (v0.4 step 4).
+  ##
+  ## `Z3Pattern` is **not** a `Z3Term`. Its `raw` field is
+  ## `RawZ3Pattern` (it round-trips through `Z3_pattern_to_ast` for
+  ## refcounting; see §51 below for the lifecycle exception). Patterns
+  ## are quantifier-trigger annotations, not first-class ASTs;
+  ## generic ops (`eval`, `astEqual`, `pretty`, `$`) don't apply to
+  ## them. If you find yourself wanting a generic-`Z3Term` operation
+  ## on a `Z3Pattern`, the right move is to extract the underlying AST
+  ## via `Z3_pattern_to_ast` and wrap it explicitly.
   x.raw is RawZ3Ast
   x.ctx is Z3Context
 

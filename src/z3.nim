@@ -90,11 +90,10 @@
 ##   `concat`, `zeroExtend`, `signExtend`, `repeat`), polymorphic
 ##   `ite` / `mkDistinct` / `==` / `!=`, literal lifts, and signed +
 ##   unsigned model extraction (`toInt`, `toUint`). **Implemented.**
-## - `z3/solver` also exposes `smtValid(p: Z3Bool): bool` and
-##   `smtEquiv[S](a, b: Z3Ast[S]): bool` (with a `Z3BitVec[W]` overload
-##   in `z3/bitvec`) — validity / equivalence oracles built on a
-##   throwaway solver. Useful in property tests; also a clean primitive
-##   for downstream verification tooling.
+## - `z3/semantics` exposes `smtValid(p: Z3Bool): bool` and the generic
+##   `smtEquiv[T: Z3Term](a, b: T): bool` — validity / equivalence
+##   oracles built on a throwaway solver. Useful in property tests;
+##   also a clean primitive for downstream verification tooling.
 ## - `z3/params` — `Z3Params` typed parameter bag for tactics,
 ##   solvers, optimisers. `newParams` + overloaded `set(key, value)`
 ##   for `bool`, `uint`, `float`, and `string` values. **v0.2 step 8.**
@@ -148,11 +147,12 @@
 ##   Sbits]` phantom-typed over the encoding widths, with `Z3Float16`
 ##   / `Z3Float32` / `Z3Float64` / `Z3Float128` aliases. `mkFp` /
 ##   `mkFloat32` / `mkFloat64` / `mkNaN` / `mkInf` / `mkZero` and
-##   matching `Var` forms. Operators `+` `-` `*` `/` with default
-##   `rmRNE` rounding; explicit forms `fpAdd` / `fpSub` / `fpMul` /
-##   `fpDiv` accept a `RoundingMode` Nim enum (`rmRNE` / `rmRNA` /
-##   `rmRTP` / `rmRTN` / `rmRTZ`) or a `Z3RoundingMode` AST for
-##   quantification over rounding. **`==` / `!=` use IEEE semantics
+##   matching `Var` forms. Operators `+` `-` `*` `/` default to
+##   round-nearest-ties-to-even rounding; explicit forms `fpAdd` /
+##   `fpSub` / `fpMul` / `fpDiv` accept a `Z3RoundingMode` AST built
+##   via the literal helpers `rmRNE()` / `rmRNA()` / `rmRTP()` /
+##   `rmRTN()` / `rmRTZ()` (or `mkRoundingModeVar` for quantification
+##   over rounding modes). **`==` / `!=` use IEEE semantics
 ##   (NaN ≠ NaN, +0 = -0) — deliberate divergence from every other
 ##   typed family.** Predicates `isNaN` / `isInf` / `isZero` /
 ##   `isNormal` / `isSubnormal` / `isPositive` / `isNegative`. Ops

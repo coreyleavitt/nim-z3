@@ -54,7 +54,7 @@ binding to `ctx`.
 | Symbol | Module | Consumer modules | Why exported |
 |---|---|---|---|
 | `wrap*[T](ctx, raw): T` | `z3/lifecycle` | every typed-AST-family module | The unified-`wrap` generic over `Z3Term` — backbone of v0.3 step 1's lifecycle unification. |
-| `wrapSolver*(ctx, raw): Z3Solver` | `z3/solver` | `z3/tactic` (`newSolverFromTactic`), `z3/optimize` (`Z3_mk_optimize` indirectly), user code building solvers from custom-FFI paths | Solvers can be constructed from multiple FFI routes; one constructor delegate centralises the inc_ref + nil-check. |
+| `wrapSolver*(ctx, raw): Z3Solver` | `z3/solver` | `z3/tactic` (`newSolverFromTactic` builds a `Z3Solver` from `Z3_mk_solver_from_tactic`) | Solvers can be constructed from multiple FFI routes; the delegate centralises the inc_ref + nil-check. |
 | `wrapTactic*(ctx, raw): Z3Tactic` | `z3/tactic` | `z3/probe` (`condTactic` builds via `Z3_tactic_cond`) | v0.4 step 12 promotion. |
 | `wrapModel*(ctx, raw): Z3Model` | `z3/model` | `z3/solver` (`model()`), `z3/optimize`, future `Z3FuncInterp` walkers | Models are constructed in three places; one delegate. |
 | `wrapStats*(ctx, raw): Z3Stats` | `z3/stats` | `z3/solver` (`getStatistics`), `z3/optimize` | v0.4 step 8. |

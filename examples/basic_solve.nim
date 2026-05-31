@@ -24,7 +24,9 @@ proc main() =
   let y = mkIntVar("y")
 
   # A solver carries the working constraint set. `add` is the
-  # primary surface; `assertConstraint` is an explicit alias.
+  # canonical assertion call (matches `Z3Goal.add` and
+  # `Z3Optimize.add`); `s.assertConstraintAndTrack(c, tracker)` adds
+  # the same constraint tagged for unsat-core extraction.
   let s = newSolver()
   s.add (x + y == 10) and (x > 3)
 

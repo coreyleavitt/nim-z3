@@ -86,10 +86,25 @@ semantics are at the family's discretion (most use SMT structural
 equality via `Z3_mk_eq`; `Z3Fp` uses IEEE 754 equality via
 `Z3_mk_fpa_eq`). Document the choice loudly in the module docstring.
 
-### 1.6 No explicit `$` needed
+### 1.6 Per-family `$` overload required (one-liner)
 
-The generic `$[T: Z3Term]` in `z3/ast.nim` covers every Z3Term value
-family. Don't add a per-family `$` — it would shadow the generic.
+Add a per-family `$` overload that delegates to the shared
+`termToSmt2*[T: Z3Term]` template in `z3/ast`:
+
+```nim
+proc `$`*(a: Z3Foo): string = termToSmt2(a)
+  ## SMT-LIB rendering.
+```
+
+This is the bodyless one-line shape every existing family uses. The
+v0.5 step 3D spec correction discovered that a single
+`$[T: Z3Term]` generic **loses to `system.$`** in Nim 2.6 (concept-
+constrained generics rank below `system`'s typed-object overloads;
+the auto-derived tuple-style `$` wins overload resolution, producing
+`(raw: (), ctx: ...)` instead of SMT-LIB). The factored body via
+`termToSmt2` is the workaround: per-family signatures, one shared
+body. Don't skip the overload — your family will silently render as
+the tuple-style form if you do.
 
 ### 1.7 No explicit `astEqual` needed
 
@@ -173,14 +188,22 @@ When you add a new `Z3Foo` typed family:
       can be pulled from a literal)
 - [ ] `evalXxx(m: Z3Model, a: Z3Foo): Xxx` shortcut (paired with
       `toXxx` per §1.9)
+- [ ] **`proc \`$\`*(a: Z3Foo): string = termToSmt2(a)`** — one-line
+      per-family overload (per §1.6 — the unified
+      `$[T: Z3Term]` generic loses to `system.$` in Nim 2; per-family
+      signatures with shared body are the workaround)
 - [ ] Add a section to this file documenting the new family's eval
       pattern
 - [ ] Add tests covering at least: construction, equality, `==`
       compile-time sort safety (if applicable), model round-trip
-      through `evalXxx`
+      through `evalXxx`, and `$` rendering (any non-tuple-shape
+      output is a smoke check that the per-family overload won
+      resolution over `system.$`)
 
-You do **NOT** need to add `$`, `astEqual`, or `pretty` per-family
-— the generics cover them automatically once `Z3Term` matches.
+You do **NOT** need to add `astEqual` or `pretty` per-family —
+those generics (`astEqual[T: Z3Term]` and `pretty[T: Z3Renderable]`)
+work because no `system`-level overload outranks them. **`$` is
+the exception** — see §1.6.
 
 ---
 

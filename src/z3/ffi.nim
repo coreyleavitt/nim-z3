@@ -1400,7 +1400,17 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_mk_char_is_digit(c: RawZ3Context, ch: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
-  # Z3_mk_char_to_bv / Z3_mk_char_from_bv deferred — see z3/char.
+
+  # --- Z3Char <-> Z3BitVec interop (v0.5 step 6C) --------------------------
+  proc Z3_mk_char_to_bv(c: RawZ3Context, ch: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Convert a Z3Char to a `(_ BitVec unicode-char-width)`. The
+    ## width is determined by Z3's `encoding` global param
+    ## (default `unicode` = 18 bits).
+  proc Z3_mk_char_from_bv(c: RawZ3Context, bv: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Inverse of `Z3_mk_char_to_bv`. The BV's width must match the
+    ## current encoding width.
 
   # --- Strings + sequences (v0.3 step 4) -----------------------------------
   #

@@ -21,7 +21,7 @@
 ## operands), so building char ranges does NOT go through `Z3Char` —
 ## it goes through one-codepoint `Z3String` values.
 
-import ./ffi, ./context, ./error, ./ast, ./model, ./simplify
+import ./ffi, ./context, ./error, ./ast, ./model, ./simplify, ./bitvec
 
 # ============================================================================
 # Z3Char — phantom-typed value family
@@ -132,3 +132,48 @@ proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
 #   - resolving the bidirectional import between `z3/char` and
 #     `z3/bitvec` (currently bitvec doesn't import char).
 # Logged for v0.3 step 5+ work or a follow-up; not blocking step 4.
+
+# ============================================================================
+# Z3Char <-> Z3BitVec interop (v0.5 step 6C)
+# ============================================================================
+#
+# Z3 represents a `Z3Char` internally as a bit-vector whose width is
+# determined by the global `encoding` parameter:
+#
+#   - `unicode` (default): 18 bits (the full Unicode-21 code-point
+#     space rounded up to a power-of-two-shaped width)
+#   - `bmp`: 16 bits (Basic Multilingual Plane only)
+#   - `ascii`: 8 bits
+#
+# The wrapper commits to the **Unicode default** (`Z3BitVec[18]`).
+# If a user changes Z3's `encoding` global param to `bmp` or
+# `ascii`, the runtime BV width changes and these procs will
+# produce ASTs of the wrong width — Z3 will raise a sort mismatch
+# at solver time. That's advanced usage; users in that territory
+# should call `Z3_mk_char_to_bv` / `Z3_mk_char_from_bv` directly.
+
+const UnicodeCharWidth* = 18
+  ## Z3's `Z3Char` width when `encoding = unicode` (the default).
+  ## Locked at compile time on the wrapper's `toBitVec` /
+  ## `mkChar(bv: Z3BitVec[18])` overloads.
+
+proc toBitVec*(c: Z3Char): Z3BitVec[UnicodeCharWidth] =
+  ## Convert `c` to its underlying bit-vector representation. The
+  ## returned BV has width `UnicodeCharWidth` (18 bits) assuming
+  ## Z3's default `encoding = unicode` global param.
+  ##
+  ## ```nim
+  ## let codepoint = evalUint(m, mkChar('a').toBitVec)
+  ## # codepoint == 97
+  ## ```
+  wrap[Z3BitVec[UnicodeCharWidth]](c.ctx,
+    c.ctx.checkErr Z3_mk_char_to_bv(c.ctx.raw, c.raw))
+
+proc mkChar*(bv: Z3BitVec[UnicodeCharWidth]): Z3Char =
+  ## Build a `Z3Char` from a BV of width `UnicodeCharWidth`. Inverse
+  ## of `toBitVec`. The BV's value must be a valid Unicode codepoint
+  ## ([0, 0x10FFFF]); Z3 doesn't validate this in this builder, but
+  ## the value will be silently masked or rejected at consumer
+  ## boundaries (e.g. `Z3_mk_string_from_char` validates).
+  wrap[Z3Char](bv.ctx,
+    bv.ctx.checkErr Z3_mk_char_from_bv(bv.ctx.raw, bv.raw))

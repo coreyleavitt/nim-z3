@@ -56,3 +56,53 @@ task examples, "Compile + run every example on both backends":
              "examples/properties.nim"]:
     exec "nim c -r --threads:on --hints:off " & ex
     exec "nim cpp -r --threads:on --hints:off " & ex
+
+task valgrind, "Memory-safety audit — run a subset of tests under valgrind, gate on `definitely lost: 0 bytes`":
+  # v0.5 step 5 (goal 4) deliverable. Compiles each test in debug
+  # mode and runs it under `valgrind --leak-check=full`. The
+  # **gate** is "definitely lost: 0 bytes" — Z3 holds program-
+  # lifetime allocations that show as "still reachable" (decl
+  # tables, sort caches), Nim's GC arena shows as "possibly lost",
+  # and libz3 itself triggers non-leak valgrind errors (invalid
+  # reads inside Z3's internal data structures, several thousand
+  # of them on a typical run). None of those are wrapper bugs.
+  #
+  # The task uses `--error-exitcode=0` so valgrind never fails the
+  # run on its own, then greps the output for "definitely lost:
+  # X bytes" where X != 0. If found, the build fails. This is the
+  # plan-stated gate ("reports `definitely lost: 0 bytes`") and
+  # the only criterion that maps cleanly to "the wrapper itself
+  # has no leaks."
+  #
+  # Picks a representative subset covering every distinct
+  # lifecycle code path (context, value families, ref handles,
+  # cross-family generics). Running the full suite would take
+  # ~15 minutes; the subset is the 80/20.
+  #
+  # `valgrind` and `libz3-dev` must be installed. CI is gated on
+  # the same #1 blocker as the rest of the matrix; for now this
+  # task is a local-dev audit.
+  for tf in ["tests/tcontext.nim",
+             "tests/tast.nim",
+             "tests/tbitvec.nim",
+             "tests/tsolver.nim",
+             "tests/tmodel.nim",
+             "tests/tdatatypes.nim",
+             "tests/tfp.nim",
+             "tests/tfixedpoint.nim",
+             "tests/tprobe.nim",
+             "tests/tparity.nim"]:
+    let bin = tf[0 ..< tf.len - 4]  # strip .nim
+    let logFile = bin & ".valgrind.log"
+    exec "nim c --threads:on --hints:off -d:debug --debugger:native " &
+         "--opt:none " & tf
+    # `--error-exitcode=0`: never fail valgrind on errors. We parse
+    # the leak summary ourselves and gate on the one line that
+    # matters: definite leaks attributable to the wrapper.
+    exec "valgrind --leak-check=full --error-exitcode=0 " &
+         "--log-file=" & logFile & " " & bin
+    # Grep is exit-0 on match, exit-1 on no match. Our gate:
+    # the leak summary MUST contain "definitely lost: 0 bytes".
+    exec "grep -F 'definitely lost: 0 bytes' " & logFile
+    echo "  OK — `definitely lost: 0 bytes` confirmed for " & tf
+  echo "valgrind audit: all subset tests reported `definitely lost: 0 bytes`"

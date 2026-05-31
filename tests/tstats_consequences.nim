@@ -105,3 +105,18 @@ suite "Z3Solver.getConsequences — tracer":
     check status == zsSat
     # No literal over q is implied by p alone.
     check conseq.len == 0
+
+  test "non-empty assumptions drive conditional consequences":
+    # v0.5.0 medium-audit C4: the assumptions-vec build branch
+    # (solver.nim:219-220) had no test prior to this. Assert `p => q`,
+    # then under assumption `p` we expect `q` to come back as a
+    # consequence.
+    let ctx = newContext()
+    let s = newSolver()
+    let p = mkBoolVar("p")
+    let q = mkBoolVar("q")
+    s.add (not p) or q          # p => q
+    let (status, conseq) = s.getConsequences(@[p], @[q])
+    check status == zsSat
+    # At least one consequence over q must come back.
+    check conseq.len >= 1

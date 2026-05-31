@@ -113,8 +113,7 @@ proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
             RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
-          RawZ3Probe |
-            RawZ3Probe | RawZ3Stats | RawZ3Fixedpoint |
+            RawZ3Probe |
             RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
             RawZ3Params | RawZ3ParserContext |
             RawZ3FuncInterp | RawZ3FuncEntry |

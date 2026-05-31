@@ -146,7 +146,7 @@ proc query*(fp: Z3Fixedpoint, q: Z3Bool): Z3Status =
   ## with no error check, silently turning Z3 errors into garbage
   ## `Z3Status` values; v0.5.0 audit closed that gap.
   let res = fp.ctx.checkErr Z3_fixedpoint_query(fp.ctx.raw, fp.raw, q.raw)
-  cast[Z3Status](res)
+  decodeLBool(res)
 
 proc queryRelations*[ArgsTup: tuple, Ret](
     fp: Z3Fixedpoint,
@@ -160,7 +160,7 @@ proc queryRelations*[ArgsTup: tuple, Ret](
   let res = fp.ctx.checkErr Z3_fixedpoint_query_relations(
     fp.ctx.raw, fp.raw, cuint(raws.len),
     cast[ptr UncheckedArray[RawZ3FuncDecl]](addr raws[0]))
-  cast[Z3Status](res)
+  decodeLBool(res)
 
 proc getAnswer*(fp: Z3Fixedpoint): Z3Bool =
   ## Retrieve the answer formula after a `query` call. For sat

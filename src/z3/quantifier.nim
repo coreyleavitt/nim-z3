@@ -303,9 +303,9 @@ proc getQuantifierPattern*(q: Z3Bool, i: int): Z3Pattern =
   assertIsQuantifier(q, "getQuantifierPattern")
   doAssert i >= 0 and i < getQuantifierNumPatterns(q),
     "getQuantifierPattern: index " & $i & " out of range"
-  let rawPat = Z3_get_quantifier_pattern_ast(q.ctx.raw, q.raw, cuint(i))
-  let asAst = Z3_pattern_to_ast(q.ctx.raw, rawPat)
-  Z3_inc_ref(q.ctx.raw, asAst)
+  let rawPat = q.ctx.checkErr Z3_get_quantifier_pattern_ast(
+    q.ctx.raw, q.raw, cuint(i))
+  incRefPattern(q.ctx, rawPat)
   Z3Pattern(raw: rawPat, ctx: q.ctx)
 
 proc getQuantifierNumNoPatterns*(q: Z3Bool): int =

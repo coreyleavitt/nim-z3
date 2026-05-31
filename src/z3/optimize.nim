@@ -111,15 +111,19 @@ proc addSoft*(o: Z3Optimize, c: Z3Bool,
 # maximize / minimize
 # ============================================================================
 
-proc maximize*[T](o: Z3Optimize, t: T): Z3OptHandle[T] =
-  ## Register `t` as a maximisation objective. The bound term must be
-  ## a numeric / orderable AST family — `Z3Int`, `Z3Real`, or
-  ## `Z3BitVec[W]`. (Booleans aren't ordered; that would be a sort
-  ## error at the FFI.)
+proc maximize*[T: Z3Int | Z3Real | Z3BitVec](
+    o: Z3Optimize, t: T): Z3OptHandle[T] =
+  ## Register `t` as a maximisation objective. Constrained at compile
+  ## time to numeric / orderable families (`Z3Int`, `Z3Real`,
+  ## `Z3BitVec[W]`) — passing a `Z3Bool`, `Z3Seq`, `Z3Char`, etc.
+  ## was previously a runtime sort error from Z3 that the wrapper then
+  ## stuffed into a malformed `wrapBound` result; the constraint now
+  ## rejects them at compile time.
   let idx = o.ctx.checkErr Z3_optimize_maximize(o.ctx.raw, o.raw, t.raw)
   Z3OptHandle[T](idx: idx, parent: o)
 
-proc minimize*[T](o: Z3Optimize, t: T): Z3OptHandle[T] =
+proc minimize*[T: Z3Int | Z3Real | Z3BitVec](
+    o: Z3Optimize, t: T): Z3OptHandle[T] =
   ## Register `t` as a minimisation objective. Same type constraints
   ## as `maximize`.
   let idx = o.ctx.checkErr Z3_optimize_minimize(o.ctx.raw, o.raw, t.raw)
@@ -132,12 +136,7 @@ proc minimize*[T](o: Z3Optimize, t: T): Z3OptHandle[T] =
 proc check*(o: Z3Optimize): Z3Status =
   ## Solve the current hard + soft + objective set. Mirrors
   ## `Z3Solver.check()`.
-  let r = o.ctx.checkErr Z3_optimize_check(o.ctx.raw, o.raw, 0, nil)
-  case ord(r)
-  of -1: zsUnsat
-  of 0:  zsUnknown
-  of 1:  zsSat
-  else:  zsUnknown
+  decodeLBool(o.ctx.checkErr Z3_optimize_check(o.ctx.raw, o.raw, 0, nil))
 
 proc model*(o: Z3Optimize): Z3Model =
   ## Witness model after a `zsSat` check.

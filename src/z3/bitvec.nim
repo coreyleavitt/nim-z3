@@ -473,11 +473,14 @@ proc toInt*[W: static int](a: Z3BitVec[W]): int64 =
     # No room above the MSB; reinterpret the bit pattern as int64.
     cast[int64](v)
   else:
-    # MSB is bit (W-1). If set, subtract 2^W.
+    # MSB is bit (W-1). If set, subtract 2^W. We do the subtraction
+    # in the unsigned domain and then reinterpret as int64; computing
+    # `int64(v) - (1'i64 shl W)` overflows for W=63 because
+    # `1'i64 shl 63 == int64.low`.
     const signBit = 1'u64 shl (W - 1)
-    const modulus = 1'i64 shl W
+    const modulusU = 1'u64 shl W
     if (v and signBit) != 0:
-      int64(v) - modulus
+      cast[int64](v - modulusU)
     else:
       int64(v)
 

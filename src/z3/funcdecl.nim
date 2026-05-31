@@ -337,10 +337,12 @@ proc `[]`*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret],
     var argsTuple: ArgsTup
     var k = cuint(0)
     for fieldVal in fields(argsTuple):
-      let raw = Z3_func_entry_get_arg(fi.ctx.raw, entry, k)
+      let raw = fi.ctx.checkErr Z3_func_entry_get_arg(
+        fi.ctx.raw, entry, k)
       fieldVal = wrap[typeof(fieldVal)](fi.ctx, raw)
       inc k
-    let valRaw = Z3_func_entry_get_value(fi.ctx.raw, entry)
+    let valRaw = fi.ctx.checkErr Z3_func_entry_get_value(
+      fi.ctx.raw, entry)
     result.args = argsTuple
     result.value = wrap[Ret](fi.ctx, valRaw)
   finally:

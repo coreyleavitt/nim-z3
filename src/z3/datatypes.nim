@@ -407,7 +407,13 @@ proc declareDatatypes*[T1, T2](
   var work2 = buildRawConstructors(ctx, d2.cons,
     selfIdx = 1, nameToIdx = nameToIdx)
 
-  # Bundle into per-datatype constructor lists.
+  # Bundle into per-datatype constructor lists. `addr seq[0]` requires
+  # a non-empty seq; a zero-constructor datatype is invalid at the
+  # theory level anyway.
+  doAssert work1.rawCons.len > 0,
+    "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert work2.rawCons.len > 0,
+    "declareDatatypes: " & $T2 & " has zero constructors"
   let list1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
     cuint(work1.rawCons.len),
     cast[ptr UncheckedArray[RawZ3Constructor]](addr work1.rawCons[0]))
@@ -462,6 +468,12 @@ proc declareDatatypes*[T1, T2, T3](
   var work2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
   var work3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
 
+  doAssert work1.rawCons.len > 0,
+    "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert work2.rawCons.len > 0,
+    "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert work3.rawCons.len > 0,
+    "declareDatatypes: " & $T3 & " has zero constructors"
   let list1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
     cuint(work1.rawCons.len),
     cast[ptr UncheckedArray[RawZ3Constructor]](addr work1.rawCons[0]))

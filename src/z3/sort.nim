@@ -113,9 +113,9 @@ proc mkUninterpretedSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted]
   ##
   ## Two uninterpreted sorts with the same `name` in the same context
   ## are the same sort.
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   Z3Sort[stUninterpreted](
-    raw: ctx.checkErr Z3_mk_uninterpreted_sort(
-      ctx.raw, Z3_mk_string_symbol(ctx.raw, name.cstring)),
+    raw: ctx.checkErr Z3_mk_uninterpreted_sort(ctx.raw, sym),
     ctx: ctx)
 
 proc mkUninterpretedSort*(name: string): Z3Sort[stUninterpreted] =

@@ -62,15 +62,16 @@ proc compatibleWith*(ctxA, ctxB: Z3Context): bool =
     let trueA = Z3_mk_true(ctxA.raw)
     let errA = Z3_get_error_code(ctxA.raw)
     if errA != Z3_OK: return false
+    Z3_inc_ref(ctxA.raw, trueA)
+    defer: Z3_dec_ref(ctxA.raw, trueA)
     let translated = Z3_translate(ctxA.raw, trueA, ctxB.raw)
     let errB = Z3_get_error_code(ctxB.raw)
     if errB != Z3_OK: return false
     if translated.isNil: return false
-    # Release the transient handles immediately; Z3_translate did NOT
-    # inc_ref the result in our space, and Z3_mk_true didn't either.
-    # Adopting via wrap would inc_ref then immediately dec_ref on
-    # scope exit, which works but is unnecessary work — we just
-    # verify the translation succeeded.
+    # The translated handle lives in ctxB's refcount domain — adopt
+    # it with the same discipline as every other AST in the wrapper.
+    Z3_inc_ref(ctxB.raw, translated)
+    Z3_dec_ref(ctxB.raw, translated)
     true
   except CatchableError:
     false

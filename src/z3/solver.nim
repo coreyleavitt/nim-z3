@@ -56,6 +56,22 @@ type
     zsUnknown = 0
     zsSat = 1
 
+proc decodeLBool*(r: Z3_lbool): Z3Status {.inline.} =
+  ## Cross-module-internal helper. Z3's `Z3_lbool` is a C int and the
+  ## API contract is values in `{-1, 0, 1}`; we decode safely rather
+  ## than `cast[Z3Status]` (which silently produces an invalid enum
+  ## value if Z3 ever returns something out of range). The `else`
+  ## branch is defensive — Z3 doesn't define other values.
+  ##
+  ## Cross-module consumers: `z3/fixedpoint` (`query`,
+  ## `queryRelations`), `z3/solver` (`getConsequences`). See
+  ## docs/INTERNAL_API.md.
+  case ord(r)
+  of -1: zsUnsat
+  of 0:  zsUnknown
+  of 1:  zsSat
+  else:  zsUnknown
+
 # ============================================================================
 # Lifecycle
 # ============================================================================
@@ -226,7 +242,7 @@ proc getConsequences*(s: Z3Solver,
   let errCode = Z3_get_error_code(s.ctx.raw)
   if errCode != Z3_OK:
     raiseZ3Error(s.ctx.raw, errCode)
-  result.status = cast[Z3Status](lbool)
+  result.status = decodeLBool(lbool)
   result.consequences = consequencesVec.toSeq(Z3Bool)
 
 # Convenience: assert several constraints at once.
@@ -255,12 +271,7 @@ proc check*(s: Z3Solver): Z3Status =
   ##   `model()` will raise `Z3Error`.
   ## - `zsUnknown`: Z3 couldn't decide (timeout, incomplete theory,
   ##   etc.). `reasonUnknown()` returns a human-readable explanation.
-  let r = s.ctx.checkErr Z3_solver_check(s.ctx.raw, s.raw)
-  case ord(r)
-  of -1: zsUnsat
-  of 0:  zsUnknown
-  of 1:  zsSat
-  else:  zsUnknown   # defensive; Z3 doesn't define other values
+  decodeLBool(s.ctx.checkErr Z3_solver_check(s.ctx.raw, s.raw))
 
 proc reasonUnknown*(s: Z3Solver): string =
   ## Human-readable explanation of why the last `check()` returned

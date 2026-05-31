@@ -133,6 +133,21 @@ suite "model.eval / m[] are constrained to Z3Term":
     check compiles(m.eval(x))
     check compiles(m[x])
 
+  test "maximize/minimize only accept numeric families (v0.5.0 audit A8)":
+    # Compile-time guard: maximize on a Z3Bool was previously a runtime
+    # sort error that the wrapper then routed through wrapBound to
+    # produce a malformed result. The type constraint now rejects it.
+    let ctx = newContext()
+    let o = newOptimize()
+    let x = mkIntVar("x")
+    let b = mkBoolVar("b")
+    let bv = mkBitVecVar[8]("bv")
+    check compiles(o.maximize(x))
+    check compiles(o.minimize(x))
+    check compiles(o.maximize(bv))
+    check not compiles(o.maximize(b))
+    check not compiles(o.minimize(b))
+
   test "m.eval(int) does NOT compile (Nim int is not Z3Term)":
     # Constraint guard from v0.5.0 audit. A plain Nim `int` has no
     # `.raw is RawZ3Ast` field; the typed-eval generic correctly

@@ -31,7 +31,7 @@
 ## the same reformatter on `$node`.
 
 import std/[strutils]
-import ./sort, ./ast, ./bitvec, ./solver, ./model
+import ./context, ./sort, ./ast, ./bitvec, ./solver, ./model
 
 # ============================================================================
 # Tokeniser
@@ -204,23 +204,40 @@ proc reformat*(flat: string, indent = 2, width = 80): string =
     i = renderGroup(toks, i, 0, indent, width, result)
 
 # ============================================================================
-# Typed overloads
+# Generic surface (v0.5 step 3A)
 # ============================================================================
+#
+# Pre-v0.5 there were five per-family `pretty` overloads — `Z3Ast[S]`,
+# `Z3BitVec[W]`, `Z3Sort[S]`, `Z3Solver`, `Z3Model` — each with the
+# identical body `reformat($x, indent, width)`. The unification
+# constraint is "anything with `$x` defined and a `.ctx` field" —
+# captured by the `Z3Renderable` concept here. The concept is wider
+# than `Z3Term` (which requires `.raw is RawZ3Ast`) because pretty-
+# printing also covers sorts (`Z3Sort[S]` has `RawZ3Sort`) and ref
+# handles (`Z3Solver` has `RawZ3Solver`, etc.) — they all have `$`
+# defined and a `.ctx` accessor.
 
-proc pretty*[S: static SortTag](a: Z3Ast[S], indent = 2, width = 80): string =
-  reformat($a, indent, width)
+type Z3Renderable* = concept x
+  ## Anything with `$x` returning string and a `.ctx: Z3Context`
+  ## field. Used to constrain the generic `pretty[T]` — wider than
+  ## `Z3Term` because pretty-printing covers sorts and ref handles
+  ## in addition to typed AST families.
+  ($x) is string
+  x.ctx is Z3Context
 
-proc pretty*[W: static int](a: Z3BitVec[W], indent = 2, width = 80): string =
-  reformat($a, indent, width)
-
-proc pretty*[S: static SortTag](s: Z3Sort[S], indent = 2, width = 80): string =
-  reformat($s, indent, width)
-
-proc pretty*(s: Z3Solver, indent = 2, width = 80): string =
-  reformat($s, indent, width)
-
-proc pretty*(m: Z3Model, indent = 2, width = 80): string =
-  reformat($m, indent, width)
+proc pretty*[T: Z3Renderable](v: T, indent = 2, width = 80): string =
+  ## Reformat `$v` as an indented multi-line SMT-LIB-ish layout.
+  ## Generic over every typed family, every sort, and every ref
+  ## handle (`Z3Solver` / `Z3Model` / `Z3Goal` / `Z3Tactic` /
+  ## `Z3Fixedpoint` / `Z3Optimize` / `Z3Stats` / `Z3AstVector` /
+  ## `Z3Probe` / `Z3ParserContext` / `Z3FuncDecl[A, R]`).
+  ##
+  ## ```nim
+  ## echo pretty(s)             # Solver state, indent=2, width=80
+  ## echo pretty(formula, 4)    # AST with indent=4
+  ## echo pretty(model, width = 40)
+  ## ```
+  reformat($v, indent, width)
 
 # SMT2 emission / parsing / streaming parser live in `z3/io`
 # (v0.4 step 14 relocation). This module retains only the

@@ -60,3 +60,22 @@ suite "evalXxx shorthand — Z3Char + Z3Seq":
     s.add xs.len == mkInt(5)
     check s.check() == zsSat
     check evalSeqLen(s.model(), xs) == 5
+
+suite "pretty — generic over Z3Renderable":
+  test "pretty applies to Z3Char (no explicit overload pre-v0.5)":
+    let ctx = newContext()
+    let c = mkChar('a')
+    let p = pretty(c)
+    check p.len > 0
+
+  test "pretty applies to Z3Fp[Float32]":
+    let ctx = newContext()
+    let f = mkFloat32(3.14'f32)
+    let p = pretty(f, width = 40)
+    check p.len > 0
+
+  test "pretty applies to Z3Regex[Z3String]":
+    let ctx = newContext()
+    let r = mkRegex(mkString("abc"))
+    let p = pretty(r)
+    check p.len > 0

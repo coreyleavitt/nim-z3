@@ -85,7 +85,11 @@ proc wrapSolver*(ctx: Z3Context, raw: RawZ3Solver): Z3Solver =
   ## Raises `Z3Error` if `raw` is nil.
   if raw.isNil:
     var e = newException(Z3InvalidUsageError,
-      "Z3 returned a nil solver handle.")
+      "Z3 returned a nil solver handle. " &
+      "Likely causes: (a) tactic-to-solver bridge " &
+      "(`newSolverFromTactic`) called with a malformed tactic; " &
+      "(b) `Z3_solver_translate` against a context that no longer " &
+      "exists; (c) wrapper called before the dynlib was resolvable.")
     e.code = Z3_INVALID_USAGE
     raise e
   Z3_solver_inc_ref(ctx.raw, raw)

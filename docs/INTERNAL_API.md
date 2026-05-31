@@ -100,8 +100,7 @@ FFI calls, and `Z3Term`-generic operations.
 | `emitVarargsRequired1Basis*` | `z3/lifecycle` | `z3/regex` | "≥1 required" pattern for `Z3Regex[Basis]`-shaped families. |
 | `emitVarargsRequired1E*` | `z3/lifecycle` | `z3/sequence` | Same pattern for `Z3Seq[E]`-shaped families. |
 | `emitVarargsMonoid*` | `z3/lifecycle` | `z3/boolean` | Empty-input identity pattern (`mkAnd` / `mkOr`). |
-| `emitVarargsDistinctS*` | `z3/lifecycle` | `z3/boolean` | Distinct pattern over `Z3Ast[S]`. |
-| `emitVarargsDistinctW*` | `z3/lifecycle` | `z3/bitvec` | Distinct pattern over `Z3BitVec[W]`. |
+| `mkDistinct*[T: Z3Term]` | `z3/boolean` | every typed family (via the umbrella) | v0.5.0 medium audit B5 — collapsed `emitVarargsDistinctS` + `emitVarargsDistinctW` into one `[T: Z3Term]` generic. Lives in `z3/boolean` (not `z3/lifecycle`) because `Z3Bool` is defined in `z3/ast` which imports `z3/lifecycle` — the return type isn't visible upstream. |
 
 ### Per-context state — exported `Z3ContextOwn` fields
 

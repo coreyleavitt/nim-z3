@@ -112,7 +112,7 @@ suite "Z3AstVector — pretty-print":
     check s.contains("alpha")
     check s.contains("beta")
 
-suite "Z3AstVector — indexed setter (medium C11)":
+suite "Z3AstVector — indexed setter":
   test "v[i] = q overwrites entry i":
     let ctx = newContext()
     let v = newAstVector()

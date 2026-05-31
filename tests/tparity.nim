@@ -107,7 +107,7 @@ suite "\\$ — generic over Z3Term":
     let f = mkFuncDecl[(Z3Int,), Z3Int]("f")
     check ($f).len > 0
 
-suite "Z3RoundingMode — sortOf + equality (v0.5.0 audit #9, #22)":
+suite "Z3RoundingMode — sortOf + equality":
   test "sortOf overload makes Z3RoundingMode usable as element type":
     # Without sortOf, mkSeq[Z3RoundingMode] / mkFuncDecl with
     # Z3RoundingMode args wouldn't compile — exercised by actually
@@ -125,7 +125,7 @@ suite "Z3RoundingMode — sortOf + equality (v0.5.0 audit #9, #22)":
     check smtValid(rmRNE() != rmRTZ())
 
 suite "B1/B4/B5 — generic simplify / ite / mkDistinct across families":
-  test "simplify[T: Z3Term] works on Z3Fp, Z3Seq, Z3Char (medium B1)":
+  test "simplify[T: Z3Term] works on Z3Fp, Z3Seq, Z3Char":
     let ctx = newContext()
     let f = mkFloat32(3.14'f32)
     let s = mkSeqUnit(mkInt(7))
@@ -138,7 +138,7 @@ suite "B1/B4/B5 — generic simplify / ite / mkDistinct across families":
     check ($s2).len > 0
     check ($c2).len > 0
 
-  test "ite[T: Z3Term] works for Z3Fp, Z3Seq, Z3Char (medium B4)":
+  test "ite[T: Z3Term] works for Z3Fp, Z3Seq, Z3Char":
     let ctx = newContext()
     let p = mkBoolVar("p")
     # When p is true, ite picks the first branch; when false, the
@@ -156,7 +156,7 @@ suite "B1/B4/B5 — generic simplify / ite / mkDistinct across families":
     check smtValid((p == mkBool(false)).implies(s == mkSeqUnit(mkInt(2))))
     check smtValid((p == mkBool(false)).implies(c == mkChar('b')))
 
-  test "mkDistinct[T: Z3Term] enforces same-sort at compile time (medium B5)":
+  test "mkDistinct[T: Z3Term] enforces same-sort at compile time":
     let ctx = newContext()
     let x = mkIntVar("x")
     let y = mkIntVar("y")
@@ -180,7 +180,7 @@ suite "model.eval / m[] are constrained to Z3Term":
     check compiles(m.eval(x))
     check compiles(m[x])
 
-  test "maximize/minimize only accept numeric families (v0.5.0 audit A8)":
+  test "maximize/minimize only accept numeric families":
     # Compile-time guard: maximize on a Z3Bool was previously a runtime
     # sort error that the wrapper then routed through wrapBound to
     # produce a malformed result. The type constraint now rejects it.

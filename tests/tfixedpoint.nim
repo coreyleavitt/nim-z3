@@ -121,7 +121,7 @@ suite "Z3Fixedpoint — pretty":
     check s.len > 0
     check "myrel" in s
 
-suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations (medium C7-C9)":
+suite "Z3Fixedpoint — updateRule / addConstraint / queryRelations":
   # These tests confirm the wrapper's FFI path completes without
   # raising and returns a well-formed Z3Status. Behavioral semantics
   # of `updateRule` / `addConstraint` / `queryRelations` are

@@ -153,7 +153,7 @@ suite "Typed lifters — error cases":
     expect Z3Error:
       discard asZ3Fp[11, 53](any)
 
-suite "introspect — asZ3Char / asZ3Seq / asZ3Regex (medium C10)":
+suite "introspect — asZ3Char / asZ3Seq / asZ3Regex":
   test "asZ3Char round-trips a Z3Char":
     let ctx = newContext()
     let c = mkChar('Z')

@@ -191,7 +191,7 @@ suite "z3/io — errors":
     expect Z3Error:
       discard parseSmt2String(ctx, "(((not smt-lib at all")
 
-suite "toSmt2Benchmark with non-empty assumptions (medium C6)":
+suite "toSmt2Benchmark with non-empty assumptions":
   test "assumptions are included in the rendered benchmark":
     let ctx = newContext()
     let x = mkIntVar("x")

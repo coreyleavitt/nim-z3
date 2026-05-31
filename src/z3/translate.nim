@@ -68,8 +68,10 @@ proc compatibleWith*(ctxA, ctxB: Z3Context): bool =
     let errB = Z3_get_error_code(ctxB.raw)
     if errB != Z3_OK: return false
     if translated.isNil: return false
-    # The translated handle lives in ctxB's refcount domain — adopt
-    # it with the same discipline as every other AST in the wrapper.
+    # Z3_translate does not inc_ref the result; we acquire then
+    # release immediately. This is a zero-net refcount round-trip
+    # whose purpose is just to verify the translation produced a
+    # well-formed handle — we don't keep the handle past this point.
     Z3_inc_ref(ctxB.raw, translated)
     Z3_dec_ref(ctxB.raw, translated)
     true

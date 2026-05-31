@@ -165,7 +165,7 @@ suite "Z3Solver — pretty-print":
     check str.contains("declare-fun y")
     check str.contains("(= (+ x y) 10)")
 
-suite "solver.pop(n) guard (medium C5)":
+suite "solver.pop(n) guard":
   test "pop(0) and pop(-1) are no-ops; assertion stack unchanged":
     let ctx = newContext()
     let s = newSolver()
@@ -184,7 +184,7 @@ suite "solver.pop(n) guard (medium C5)":
     s.add x == mkInt(7)
     check s.check() == zsSat
 
-suite "Z3Solver — checkWith / check_assumptions (round 2, HIGH #4)":
+suite "Z3Solver — checkWith / check_assumptions":
   test "checkWith[p] makes the solver sat under p without committing":
     let ctx = newContext()
     let p = mkBoolVar("p")
@@ -217,7 +217,7 @@ suite "Z3Solver — checkWith / check_assumptions (round 2, HIGH #4)":
     s.add x > mkInt(0)
     check s.checkWith(@[]) == zsSat
 
-suite "Z3Solver — getAssertions (round 2, HIGH #5)":
+suite "Z3Solver — getAssertions":
   test "getAssertions returns the typed assertion stack":
     let ctx = newContext()
     let x = mkIntVar("x")
@@ -241,7 +241,7 @@ suite "Z3Solver — getAssertions (round 2, HIGH #5)":
     let s = newSolver()
     check s.getAssertions().len == 0
 
-suite "Z3Solver — translate (round 2, HIGH #6)":
+suite "Z3Solver — translate":
   test "translate carries assertions to the target context, both sat":
     let ctxA = newContext()
     let x = mkIntVar("x")

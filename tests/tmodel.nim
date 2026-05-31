@@ -230,7 +230,7 @@ suite "the headline end-to-end example":
     check vals[1] != vals[2] and vals[1] != vals[3]
     check vals[2] != vals[3]
 
-suite "model.eval with modelCompletion=false (medium C3)":
+suite "model.eval with modelCompletion=false":
   test "unconstrained variable evaluates back to itself, not a literal":
     # Pre-audit C3: only modelCompletion=true had coverage. With
     # false, an unconstrained variable should round-trip back as

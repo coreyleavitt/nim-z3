@@ -167,6 +167,11 @@ proc wrapBound[T](ctx: Z3Context, raw: RawZ3Ast): T =
   ## return promise holds. Everything else routes through the unified
   ## `wrap[T]` template from `z3/lifecycle`.
   when T is Z3BitVec:
+    # `T.W` accesses the static-int generic parameter from the type
+    # variable. This compiles cleanly in Nim 2.2 for parameterised
+    # `Z3BitVec[W]` instantiations; the alternative `default(T).W` is
+    # equivalent but allocates a throwaway value, which the optimiser
+    # then has to elide. We use the typedesc form for clarity.
     let bvRaw = ctx.checkErr Z3_mk_int2bv(ctx.raw, cuint(T.W), raw)
     wrap[T](ctx, bvRaw)
   else:

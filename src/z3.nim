@@ -1,8 +1,14 @@
 ## z3 — type-safe, memory-safe Nim wrapper for the Z3 SMT solver.
 ##
-## v0.5 — **1.0-readiness polish** release. v0.4 closed the C-API
-## contract ("every Z3 capability is reachable"); v0.5 polishes that
-## surface for 1.0. Two new typed families
+## v1.0-readiness audit cycle complete (rounds 1 + 2 closed all
+## critical + high + medium + low findings; see CHANGELOG). The
+## library targets v1.0.0 as a stable surface — see
+## docs/IMPLEMENTATION_PLAN.md for the tag plan and
+## README's `## Stability` section for the post-1.0 SemVer
+## commitment.
+##
+## What v0.5 delivered (recap, since v0.6 = v1.0.0 is a
+## version-only delta from v0.5.0): two new typed families
 ## (`Z3FuncInterp[Args, Ret]`, `Z3ParamDescrs`); one new module
 ## extracted from `z3/context` (`z3/error`); typed error hierarchy
 ## (12 subclasses of the abstract `Z3Error` base); cross-family

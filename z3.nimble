@@ -44,8 +44,13 @@ task test, "Run the test suite":
              "tests/tparamdescrs.nim", "tests/tcharbv.nim",
              "tests/tstringexport.nim", "tests/tinterrupt.nim",
              "tests/tlambda.nim", "tests/thash.nim"]:
-    # Note: tproperty.nim depends on proptest (test-only dep). The CI
-    # job resolves milpa so the path is on --nimcache.
+    # Notes:
+    # * `tproperty.nim` and `tsimplify.nim` depend on proptest (test-only
+    #   dep). CI resolves milpa so the path is on --nimcache.
+    # * `tests/tminimal.nim` is intentionally NOT in this list. It
+    #   verifies the canonical full-`z3WithoutX`-flag configuration and
+    #   needs flag definitions at compile time. Run it via the dedicated
+    #   `nimble testMinimal` task.
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf
 

@@ -110,3 +110,28 @@ task valgrind, "Memory-safety audit — run a subset of tests under valgrind, ga
     exec "grep -F 'definitely lost: 0 bytes' " & logFile
     echo "  OK — `definitely lost: 0 bytes` confirmed for " & tf
   echo "valgrind audit: all subset tests reported `definitely lost: 0 bytes`"
+
+task testMinimal, "Compile + run tests/tminimal.nim with all z3WithoutX flags set — verifies the umbrella's gateable theories are hidden and the always-on core still works":
+  # v0.5 step 10 (goal 8) deliverable. Pins the canonical minimal
+  # config:
+  #   z3WithoutFP / Seq / Strings / Regex / FuncDecl / Datatypes /
+  #   Optimize / Tactics
+  # all set. Cascades implicitly disable Probe (via Tactics).
+  #
+  # The test (tests/tminimal.nim) has two suites:
+  #   1. Core surface still works (Int/Bool/BV/Solver/Model/SMT2)
+  #   2. Scope-hiding invariants (compiles() checks per gated family)
+  #
+  # Runs on both backends. CI integration is gated on the same
+  # private-dep blocker (#1) as the rest of the matrix; locally
+  # this task is the canonical 'flags work' verification.
+  const flags =
+    " -d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutStrings" &
+    " -d:z3WithoutRegex -d:z3WithoutFuncDecl -d:z3WithoutDatatypes" &
+    " -d:z3WithoutOptimize -d:z3WithoutTactics"
+  exec "nim c -r --threads:on --hints:off" & flags &
+       " tests/tminimal.nim"
+  exec "nim cpp -r --threads:on --hints:off" & flags &
+       " tests/tminimal.nim"
+  echo "minimal-build verification: tracer + scope-hiding " &
+       "invariants confirmed under the canonical full-flag config"

@@ -1,0 +1,59 @@
+# nim-z3 minimal-build configuration template (v0.5).
+#
+# Copy this file into your **own project's** repository root as
+# `config.nims` to pin the feature-flag set for every compile in
+# that project. Nim's compilation auto-discovers `config.nims` at
+# the project root.
+#
+# Each flag **hides** a theory from the `import z3` umbrella —
+# scope hiding for ergonomics + bug-surface reduction. See
+# `docs/MINIMAL_BUILD.md` for the honesty disclaimer about
+# compile-time impact (short version: the umbrella re-export is
+# hidden but transitive modules like `z3/introspect` still
+# compile their dependencies).
+#
+# Cascades — passing a high-level flag implicitly passes its
+# downstream flags:
+#
+#   z3WithoutSeq     → also disables Strings, Regex
+#   z3WithoutStrings → also disables Regex
+#   z3WithoutTactics → also disables Probe
+#
+# To find which flag corresponds to a theory, the rule is
+# `z3Without` + the family name (`FP`, `Seq`, `Strings`, `Regex`,
+# `FuncDecl`, `Datatypes`, `Optimize`, `Tactics`).
+
+# --- example minimal configs ------------------------------------------------
+
+# (1) ALL theory extensions disabled — solver + Int/Real/Bool/BV only.
+#     The most aggressive minimal config; demonstrated to compile
+#     by the `nimble test-minimal` task in the nim-z3 repo.
+# --define:"z3WithoutFP"
+# --define:"z3WithoutSeq"          # cascades: Strings, Regex
+# --define:"z3WithoutFuncDecl"
+# --define:"z3WithoutDatatypes"
+# --define:"z3WithoutOptimize"
+# --define:"z3WithoutTactics"      # cascades: Probe
+
+# (2) "I don't need floating-point" — common for pure-integer
+#     verification or symbolic-execution use cases.
+# --define:"z3WithoutFP"
+
+# (3) "I'm doing constraint solving over algebraic structures" —
+#     keep datatypes + funcdecl, drop FP / strings / regex.
+# --define:"z3WithoutFP"
+# --define:"z3WithoutSeq"          # cascades: Strings, Regex
+
+# (4) "Pure SMT only — no tactics, no optimisation, no Horn clauses"
+# --define:"z3WithoutTactics"      # cascades: Probe
+# --define:"z3WithoutOptimize"
+# (Z3Fixedpoint is not currently gateable; if you want it gone,
+#  don't `import z3/fixedpoint` directly.)
+
+# --- combined-with-Nim flags ------------------------------------------------
+
+# Recommended Nim flags for any nim-z3 project — these are
+# orthogonal to the feature flags but the umbrella expects them:
+# --threads:on
+# --define:"release"        # for production builds
+# --define:"danger"         # for max-perf builds; disables runtime checks

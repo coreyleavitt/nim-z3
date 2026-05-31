@@ -60,7 +60,7 @@ surface that the gated flags assume as a foundation:
 
 - `z3/ffi` — softlink-loaded FFI block
 - `z3/context` — `Z3Context` + threadvar
-- `z3/error` — `Z3Error` + 13 subclasses
+- `z3/error` — `Z3Error` abstract base + 12 typed subclasses
 - `z3/sort`, `z3/sortdispatch`
 - `z3/ast`, `z3/builder`, `z3/boolean`, `z3/arith`
 - `z3/bitvec` — `Z3BitVec[W]`

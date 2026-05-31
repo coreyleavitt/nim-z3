@@ -175,7 +175,7 @@ warning if you discard the result.
 including errors you wanted to handle differently. `e.code` gives you
 discrimination but `except` clauses can't filter on a field.
 
-**Cause.** v0.5 step 4 introduced 13 typed subclasses of `Z3Error`
+**Cause.** v0.5 step 4 introduced 12 typed subclasses of `Z3Error`
 (see `z3/error.nim`). The base class still works as a catch-all, but
 narrow handlers should target the specific subclass.
 

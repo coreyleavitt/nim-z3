@@ -15,7 +15,8 @@ The **1.0-readiness polish** release. v0.4 closed the C-API
 contract ("every Z3 capability is reachable"); v0.5 polishes that
 surface for 1.0. Two new typed families (`Z3FuncInterp[Args, Ret]`,
 `Z3ParamDescrs`); one new module extracted from `z3/context`
-(`z3/error`); typed error hierarchy (13 subclasses); cross-family
+(`z3/error`); typed error hierarchy (12 typed subclasses + abstract
+`Z3Error` base); cross-family
 parity (generic `pretty[T: Z3Renderable]`, generic `astEqual[T:
 Z3Term]`, `evalXxx` shorthand audit, `$` parity via `termToSmt2`);
 naming + cohesion hygiene (`z3/seq` → `z3/sequence`, `RoundingMode`
@@ -46,14 +47,15 @@ Full per-step plan + audit: archived in
   `raiseZ3Error` proc. Layering inversion (logged §8): takes raw
   context (`RawZ3Context`), not `Z3Context`, so `z3/error` stays
   at a lower layer than `z3/context`.
-- **Typed `Z3Error` subclass tree** (`db01dcc`) — 13 subclasses:
+- **Typed `Z3Error` subclass tree** (`db01dcc`) — 12 typed
+  subclasses plus the abstract `Z3Error` base:
   `Z3SortMismatchError`, `Z3IndexOutOfBoundsError`,
   `Z3InvalidArgError`, `Z3ParseError`, `Z3InvalidPatternError`,
   `Z3MemoryError`, `Z3FileError`, `Z3InternalError`,
   `Z3InvalidUsageError`, `Z3RefcountError`, `Z3OperationError`,
-  `Z3UnknownError`, plus the abstract `Z3Error` base. `raiseZ3Error`
-  dispatches on `Z3ErrorCode` to the right subclass. 33 direct
-  raise sites across 13 modules migrated to the right subclass.
+  `Z3UnknownError`. `raiseZ3Error` dispatches on `Z3ErrorCode` to
+  the right subclass. 33 direct raise sites across 13 modules
+  migrated to the right subclass.
   Naming: `Z3SortMismatchError` and `Z3ParseError` (not
   `Z3SortError` / `Z3ParserError`) to avoid Nim's
   style-insensitive identifier collision with the FFI enum values.

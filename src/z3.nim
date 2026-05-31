@@ -4,9 +4,10 @@
 ## contract ("every Z3 capability is reachable"); v0.5 polishes that
 ## surface for 1.0. Two new typed families
 ## (`Z3FuncInterp[Args, Ret]`, `Z3ParamDescrs`); one new module
-## extracted from `z3/context` (`z3/error`); 13-class typed error
-## hierarchy; cross-family parity (generic
-## `pretty[T: Z3Renderable]`, generic `astEqual[T: Z3Term]`,
+## extracted from `z3/context` (`z3/error`); typed error hierarchy
+## (12 subclasses of the abstract `Z3Error` base); cross-family
+## parity (generic `pretty[T: Z3Renderable]`,
+## generic `astEqual[T: Z3Term]`,
 ## `evalXxx` shorthand audit, `$` parity via `termToSmt2`); naming
 ## hygiene (`z3/seq` → `z3/sequence`, `RoundingMode` consolidation,
 ## `naryOp` macro family, `add`/`assertConstraint` resolution);

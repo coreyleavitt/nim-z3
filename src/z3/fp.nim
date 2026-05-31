@@ -29,18 +29,26 @@
 ##
 ## ## Rounding modes
 ##
-## FP arithmetic is rounding-mode parameterised. Two shapes ship:
+## FP arithmetic is rounding-mode parameterised. Rounding modes are
+## **first-class typed ASTs** — values of the `Z3RoundingMode`
+## family — constructed via the literal helpers `rmRNE()`,
+## `rmRNA()`, `rmRTP()`, `rmRTN()`, `rmRTZ()`. The same family is
+## used for the ergonomic case (passing a literal rounding mode to
+## `fpAdd`) and for quantification (`forall rm. add(rm, x, y) ==
+## add(rm, y, x)` — `rm` is a `Z3RoundingMode` bound variable from
+## `mkRoundingModeVar`).
 ##
-## 1. `RoundingMode` Nim enum (`rmRNE`, `rmRNA`, `rmRTP`, `rmRTN`,
-##    `rmRTZ`) — what you want 99% of the time.
-## 2. `Z3RoundingMode` typed AST family — needed when you quantify
-##    over rounding modes (`forall rm. add(rm, x, y) == add(rm, y, x)`).
-##
-## Every rounding-aware op (`fpAdd`, `fpSub`, `fpMul`, `fpDiv`, `sqrt`,
-## `fma`, `roundToIntegral`) overloads on both. The `+`/`-`/`*`/`/`
-## operators default to `rmRNE` (IEEE default round-half-to-even);
-## use the named forms with an explicit `rmRTZ` etc. when rounding
+## Every rounding-aware op (`fpAdd`, `fpSub`, `fpMul`, `fpDiv`,
+## `sqrt`, `fma`, `roundToIntegral`, `toSbv`, `toUbv`) takes one
+## `Z3RoundingMode` argument. The `+`/`-`/`*`/`/` operators default
+## to round-nearest-ties-to-even (the IEEE 754 default); use the
+## named forms with an explicit `rmRTZ()` etc. when rounding
 ## direction matters.
+##
+## **v0.5 step 2C consolidation:** the previous dual representation
+## (`RoundingMode` Nim enum + `Z3RoundingMode` AST + `mkRoundingMode`
+## lifter) collapsed into one family. Source delta is mostly
+## `rmRNE` → `rmRNE()` and `mkRoundingMode(rmX)` → `rmX()`.
 
 import ./ffi, ./context, ./error, ./ast, ./model, ./bitvec
 
@@ -79,34 +87,38 @@ proc sortOf*[E, S: static int](_: typedesc[Z3Fp[E, S]],
 
 type
   Z3RoundingMode* = object
-    ## SMT-LIB `RoundingMode` sort as a typed AST. Most users want the
-    ## `RoundingMode` enum below instead; this exists for the
-    ## `forall rm. ...` quantification use case.
+    ## SMT-LIB `RoundingMode` sort as a typed AST. Construct literal
+    ## values via `rmRNE()` / `rmRNA()` / `rmRTP()` / `rmRTN()` /
+    ## `rmRTZ()`; construct free variables for quantification via
+    ## `mkRoundingModeVar(name)`.
     raw*: RawZ3Ast
     ctx*: Z3Context
 
-  RoundingMode* = enum
-    ## Nim-side rounding-mode enum; lifts to `Z3RoundingMode` at op
-    ## call sites via `mkRoundingMode`.
-    rmRNE   ## round-nearest, ties to even (IEEE 754 default)
-    rmRNA   ## round-nearest, ties away from zero
-    rmRTP   ## round toward positive infinity
-    rmRTN   ## round toward negative infinity
-    rmRTZ   ## round toward zero (truncation)
-
 emitTermLifecycle(Z3RoundingMode, Z3_dec_ref, Z3_inc_ref)
 
-proc mkRoundingMode*(ctx: Z3Context, rm: RoundingMode): Z3RoundingMode =
-  ## Lift a Nim `RoundingMode` enum value to a Z3 rounding-mode AST.
-  let raw = case rm
-    of rmRNE: ctx.checkErr Z3_mk_fpa_round_nearest_ties_to_even(ctx.raw)
-    of rmRNA: ctx.checkErr Z3_mk_fpa_round_nearest_ties_to_away(ctx.raw)
-    of rmRTP: ctx.checkErr Z3_mk_fpa_round_toward_positive(ctx.raw)
-    of rmRTN: ctx.checkErr Z3_mk_fpa_round_toward_negative(ctx.raw)
-    of rmRTZ: ctx.checkErr Z3_mk_fpa_round_toward_zero(ctx.raw)
-  wrap[Z3RoundingMode](ctx, raw)
-proc mkRoundingMode*(rm: RoundingMode): Z3RoundingMode =
-  mkRoundingMode(requireCurrentContext(), rm)
+# ----------------------------------------------------------------------------
+# Literal helpers — one proc per IEEE-754 rounding mode. Each returns a
+# `Z3RoundingMode` AST built on `ctx` (or the current context). Generated via
+# a template so the five entry points share one body.
+# ----------------------------------------------------------------------------
+
+template defRm(name: untyped, ffi: untyped, descr: string) =
+  proc name*(ctx: Z3Context): Z3RoundingMode =
+    ## **descr** — `Z3RoundingMode` literal on `ctx`.
+    wrap[Z3RoundingMode](ctx, ctx.checkErr ffi(ctx.raw))
+  proc name*(): Z3RoundingMode =
+    name(requireCurrentContext())
+
+defRm(rmRNE, Z3_mk_fpa_round_nearest_ties_to_even,
+      "round-nearest, ties to even (IEEE 754 default)")
+defRm(rmRNA, Z3_mk_fpa_round_nearest_ties_to_away,
+      "round-nearest, ties away from zero")
+defRm(rmRTP, Z3_mk_fpa_round_toward_positive,
+      "round toward positive infinity")
+defRm(rmRTN, Z3_mk_fpa_round_toward_negative,
+      "round toward negative infinity")
+defRm(rmRTZ, Z3_mk_fpa_round_toward_zero,
+      "round toward zero (truncation)")
 
 proc mkRoundingModeVar*(ctx: Z3Context, name: string): Z3RoundingMode =
   ## Free rounding-mode variable — usable as a bound var under
@@ -305,25 +317,21 @@ proc max*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] =
 # Rounding-aware arithmetic
 # ============================================================================
 #
-# Each op overloads three ways:
-#   1. `name(rm: Z3RoundingMode, ...)` — full AST form
-#   2. `name(rm: RoundingMode, ...)`   — Nim-enum convenience
-#   3. `name(...)` — default-RM (rmRNE)
+# Each op has two overloads:
+#   1. `name(rm: Z3RoundingMode, ...)` — explicit rounding mode
+#   2. `name(...)` — default RM (rmRNE, IEEE 754 default)
 #
-# The infix operators `+ - * /` use form 3 (default RM). Users wanting
-# explicit RM call the `fpAdd` / `fpSub` / `fpMul` / `fpDiv` named
-# forms.
+# The infix operators `+ - * /` use form 2. Users wanting explicit RM
+# call the `fpAdd` / `fpSub` / `fpMul` / `fpDiv` named forms with a
+# literal `rmRTZ()` etc.
 
 template fpBin(named, ffi: untyped) =
   proc named*[E, S: static int](rm: Z3RoundingMode,
                                 a, b: Z3Fp[E, S]): Z3Fp[E, S] =
     wrap[Z3Fp[E, S]](a.ctx,
       a.ctx.checkErr ffi(a.ctx.raw, rm.raw, a.raw, b.raw))
-  proc named*[E, S: static int](rm: RoundingMode,
-                                a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-    named(mkRoundingMode(a.ctx, rm), a, b)
   proc named*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-    named(rmRNE, a, b)
+    named(rmRNE(a.ctx), a, b)
 
 fpBin(fpAdd, Z3_mk_fpa_add)
 fpBin(fpSub, Z3_mk_fpa_sub)
@@ -337,31 +345,23 @@ proc `/`*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} = fpDiv(a, 
 
 proc sqrt*[E, S: static int](rm: Z3RoundingMode, a: Z3Fp[E, S]): Z3Fp[E, S] =
   wrap[Z3Fp[E, S]](a.ctx, a.ctx.checkErr Z3_mk_fpa_sqrt(a.ctx.raw, rm.raw, a.raw))
-proc sqrt*[E, S: static int](rm: RoundingMode, a: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  sqrt(mkRoundingMode(a.ctx, rm), a)
 proc sqrt*[E, S: static int](a: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  sqrt(rmRNE, a)
+  sqrt(rmRNE(a.ctx), a)
 
 proc fma*[E, S: static int](rm: Z3RoundingMode,
                             a, b, c: Z3Fp[E, S]): Z3Fp[E, S] =
   ## Fused multiply-add — `a * b + c` computed with a single rounding.
   wrap[Z3Fp[E, S]](a.ctx,
     a.ctx.checkErr Z3_mk_fpa_fma(a.ctx.raw, rm.raw, a.raw, b.raw, c.raw))
-proc fma*[E, S: static int](rm: RoundingMode,
-                            a, b, c: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  fma(mkRoundingMode(a.ctx, rm), a, b, c)
 proc fma*[E, S: static int](a, b, c: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  fma(rmRNE, a, b, c)
+  fma(rmRNE(a.ctx), a, b, c)
 
 proc roundToIntegral*[E, S: static int](rm: Z3RoundingMode,
                                        a: Z3Fp[E, S]): Z3Fp[E, S] =
   wrap[Z3Fp[E, S]](a.ctx,
     a.ctx.checkErr Z3_mk_fpa_round_to_integral(a.ctx.raw, rm.raw, a.raw))
-proc roundToIntegral*[E, S: static int](rm: RoundingMode,
-                                       a: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  roundToIntegral(mkRoundingMode(a.ctx, rm), a)
 proc roundToIntegral*[E, S: static int](a: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
-  roundToIntegral(rmRNE, a)
+  roundToIntegral(rmRNE(a.ctx), a)
 
 # ============================================================================
 # Conversions
@@ -390,13 +390,9 @@ template fpToFp3(name, ffi, srcConstraint: untyped) =
                                _: typedesc[Z3Fp[E, S]]): Z3Fp[E, S] =
     wrap[Z3Fp[E, S]](x.ctx,
       x.ctx.checkErr ffi(x.ctx.raw, rm.raw, x.raw, fpSort[E, S](x.ctx)))
-  proc name*[E, S: static int](rm: RoundingMode,
-                               x: srcConstraint,
-                               t: typedesc[Z3Fp[E, S]]): Z3Fp[E, S] {.inline.} =
-    name(mkRoundingMode(x.ctx, rm), x, t)
   proc name*[E, S: static int](x: srcConstraint,
                                t: typedesc[Z3Fp[E, S]]): Z3Fp[E, S] {.inline.} =
-    name(rmRNE, x, t)
+    name(rmRNE(x.ctx), x, t)
 
 fpToFp3(toFp,           Z3_mk_fpa_to_fp_float,    Z3Fp)
 fpToFp3(toFp,           Z3_mk_fpa_to_fp_real,     Z3Real)
@@ -413,18 +409,12 @@ proc toSbv*[E, S, W: static int](rm: Z3RoundingMode,
   ## FP → signed BV of width `W`. Rounding-aware.
   wrap[Z3BitVec[W]](a.ctx,
     a.ctx.checkErr Z3_mk_fpa_to_sbv(a.ctx.raw, rm.raw, a.raw, cuint(W)))
-proc toSbv*[E, S, W: static int](rm: RoundingMode,
-                                 a: Z3Fp[E, S]): Z3BitVec[W] {.inline.} =
-  toSbv[E, S, W](mkRoundingMode(a.ctx, rm), a)
 proc toSbv*[E, S, W: static int](a: Z3Fp[E, S]): Z3BitVec[W] {.inline.} =
-  toSbv[E, S, W](rmRNE, a)
+  toSbv[E, S, W](rmRNE(a.ctx), a)
 
 proc toUbv*[E, S, W: static int](rm: Z3RoundingMode,
                                  a: Z3Fp[E, S]): Z3BitVec[W] =
   wrap[Z3BitVec[W]](a.ctx,
     a.ctx.checkErr Z3_mk_fpa_to_ubv(a.ctx.raw, rm.raw, a.raw, cuint(W)))
-proc toUbv*[E, S, W: static int](rm: RoundingMode,
-                                 a: Z3Fp[E, S]): Z3BitVec[W] {.inline.} =
-  toUbv[E, S, W](mkRoundingMode(a.ctx, rm), a)
 proc toUbv*[E, S, W: static int](a: Z3Fp[E, S]): Z3BitVec[W] {.inline.} =
-  toUbv[E, S, W](rmRNE, a)
+  toUbv[E, S, W](rmRNE(a.ctx), a)

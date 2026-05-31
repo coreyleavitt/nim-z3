@@ -69,7 +69,7 @@ type
     skRelation       ## `Z3_relation_sort` — research-grade.
     skFiniteDomain   ## `Z3_finite_domain_sort` — research-grade.
     skFp             ## `(_ FloatingPoint E S)`.
-    skRoundingMode   ## `RoundingMode`.
+    skRoundingMode   ## SMT-LIB `RoundingMode` sort (`Z3RoundingMode`).
     skSeq            ## `(Seq E)` (also covers `String = (Seq Char)`).
     skRegex          ## `(RegEx Basis)`.
     skChar           ## Unicode character.

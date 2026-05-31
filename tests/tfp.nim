@@ -87,7 +87,7 @@ suite "Z3Fp — signaling comparisons":
     check smtValid(not (nan <= one))
     check smtValid(not (nan >= one))
 
-suite "Z3Fp — arithmetic (default RM = rmRNE)":
+suite "Z3Fp — arithmetic (default RM = rmRNE())":
   test "+ - * /":
     let ctx = newContext()
     check smtValid(mkFloat32(1.0'f32) + mkFloat32(2.0'f32) == mkFloat32(3.0'f32))
@@ -109,7 +109,7 @@ suite "Z3Fp — arithmetic (default RM = rmRNE)":
     check smtValid(min(mkFloat32(1.0'f32), mkFloat32(2.0'f32)) == mkFloat32(1.0'f32))
     check smtValid(max(mkFloat32(1.0'f32), mkFloat32(2.0'f32)) == mkFloat32(2.0'f32))
 
-  test "sqrt (default rmRNE)":
+  test "sqrt (default rmRNE())":
     let ctx = newContext()
     check smtValid(sqrt(mkFloat32(9.0'f32)) == mkFloat32(3.0'f32))
     check smtValid(sqrt(mkFloat32(2.0'f32)) == mkFloat32(sqrt(2.0'f32)))
@@ -121,28 +121,28 @@ suite "Z3Fp — arithmetic (default RM = rmRNE)":
       mkFloat32(7.0'f32))
 
 suite "Z3Fp — explicit rounding modes":
-  test "rmRTZ truncates 0.1 + 0.2 differently than rmRNE":
+  test "rmRTZ() truncates 0.1 + 0.2 differently than rmRNE()":
     let ctx = newContext()
     # On float32, 0.1 + 0.2 isn't exactly representable; RTZ vs RNE
     # produce different results for the sum.
     let a = mkFloat32(0.1'f32)
     let b = mkFloat32(0.2'f32)
-    let rne_sum = fpAdd(rmRNE, a, b)
-    let rtz_sum = fpAdd(rmRTZ, a, b)
+    let rne_sum = fpAdd(rmRNE(), a, b)
+    let rtz_sum = fpAdd(rmRTZ(), a, b)
     # They differ on this canonical "FP can't add a tenth" example.
     check smtValid(rne_sum != rtz_sum)
 
-  test "rmRTP rounds 1/3 upward, rmRTN downward":
+  test "rmRTP() rounds 1/3 upward, rmRTN() downward":
     let ctx = newContext()
     let one = mkFloat32(1.0'f32)
     let three = mkFloat32(3.0'f32)
-    let up = fpDiv(rmRTP, one, three)
-    let down = fpDiv(rmRTN, one, three)
+    let up = fpDiv(rmRTP(), one, three)
+    let down = fpDiv(rmRTN(), one, three)
     check smtValid(up > down)
 
   test "Z3RoundingMode AST form accepts the same modes":
     let ctx = newContext()
-    let rne = mkRoundingMode(rmRNE)
+    let rne = rmRNE()
     check smtValid(
       fpAdd(rne, mkFloat32(1.0'f32), mkFloat32(2.0'f32)) == mkFloat32(3.0'f32))
 
@@ -156,16 +156,16 @@ suite "Z3Fp — roundToIntegral":
   test "RTZ truncates":
     let ctx = newContext()
     check smtValid(
-      roundToIntegral(rmRTZ, mkFloat32(3.7'f32)) == mkFloat32(3.0'f32))
+      roundToIntegral(rmRTZ(), mkFloat32(3.7'f32)) == mkFloat32(3.0'f32))
     check smtValid(
-      roundToIntegral(rmRTZ, mkFloat32(-3.7'f32)) == mkFloat32(-3.0'f32))
+      roundToIntegral(rmRTZ(), mkFloat32(-3.7'f32)) == mkFloat32(-3.0'f32))
 
   test "RTP rounds up; RTN rounds down":
     let ctx = newContext()
     check smtValid(
-      roundToIntegral(rmRTP, mkFloat32(3.2'f32)) == mkFloat32(4.0'f32))
+      roundToIntegral(rmRTP(), mkFloat32(3.2'f32)) == mkFloat32(4.0'f32))
     check smtValid(
-      roundToIntegral(rmRTN, mkFloat32(3.7'f32)) == mkFloat32(3.0'f32))
+      roundToIntegral(rmRTN(), mkFloat32(3.7'f32)) == mkFloat32(3.0'f32))
 
 suite "Z3Fp — conversions":
   test "toIeeeBv + toFp(bv) round-trips":

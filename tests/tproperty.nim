@@ -70,7 +70,7 @@ suite "property: BV ↔ native arithmetic":
   test "bvadd on BV[8] agrees with native uint8 modular addition":
     let ctx = newContext()
     let report = forAll(
-      tuples2(integers(0, 255), integers(0, 255)),
+      map(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
         let got = (mkBitVec[8](uint32(p[0])) + mkBitVec[8](uint32(p[1]))).toUint
         let expected = uint64(uint8(p[0]) + uint8(p[1]))
@@ -80,7 +80,7 @@ suite "property: BV ↔ native arithmetic":
   test "bvsub on BV[8] agrees with native uint8 modular subtraction":
     let ctx = newContext()
     let report = forAll(
-      tuples2(integers(0, 255), integers(0, 255)),
+      map(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
         let got = (mkBitVec[8](uint32(p[0])) - mkBitVec[8](uint32(p[1]))).toUint
         let expected = uint64(uint8(p[0]) - uint8(p[1]))
@@ -90,7 +90,7 @@ suite "property: BV ↔ native arithmetic":
   test "bvmul on BV[8] agrees with native uint8 modular multiplication":
     let ctx = newContext()
     let report = forAll(
-      tuples2(integers(0, 255), integers(0, 255)),
+      map(integers(0, 255), integers(0, 255)),
       proc(p: (int, int)) =
         let got = (mkBitVec[8](uint32(p[0])) * mkBitVec[8](uint32(p[1]))).toUint
         let expected = uint64(uint8(p[0]) * uint8(p[1]))
@@ -143,20 +143,21 @@ suite "property: shape — algebraic laws over random int trees":
       let b = interpret(p[1], ctx)
       ensure smtEquiv(a + b, b + a)
     let report = forAll(
-      tuples2(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2)),
+      map(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
   test "associativity: (e1+e2)+e3 ≡ e1+(e2+e3)":
     let ctx = newContext()
-    let prop = proc(p: (IntRecipe, (IntRecipe, IntRecipe))) =
+    let prop = proc(p: (IntRecipe, IntRecipe, IntRecipe)) =
       let a = interpret(p[0], ctx)
-      let b = interpret(p[1][0], ctx)
-      let c = interpret(p[1][1], ctx)
+      let b = interpret(p[1], ctx)
+      let c = interpret(p[2], ctx)
       ensure smtEquiv((a + b) + c, a + (b + c))
     let report = forAll(
-      tuples2(intRecipes(maxDepth = 2),
-              tuples2(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2))),
+      map(intRecipes(maxDepth = 2),
+          intRecipes(maxDepth = 2),
+          intRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -200,7 +201,7 @@ suite "property: shape — algebraic laws over random bool trees":
       let b = interpret(p[1], ctx)
       ensure smtEquiv(not (a and b), (not a) or (not b))
     let report = forAll(
-      tuples2(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
+      map(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -211,7 +212,7 @@ suite "property: shape — algebraic laws over random bool trees":
       let b = interpret(p[1], ctx)
       ensure smtEquiv(not (a or b), (not a) and (not b))
     let report = forAll(
-      tuples2(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
+      map(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -224,7 +225,7 @@ suite "property: shape — algebraic laws over random bool trees":
       ensure smtEquiv(a or b,  b or  a)
       ensure smtEquiv(a xor b, b xor a)
     let report = forAll(
-      tuples2(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
+      map(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -245,7 +246,7 @@ suite "property: shape — algebraic laws over random bool trees":
       ensure smtEquiv(p and (p or q), p)
       ensure smtEquiv(p or (p and q), p)
     let report = forAll(
-      tuples2(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
+      map(boolRecipes(maxDepth = 2), boolRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -257,7 +258,7 @@ suite "property: shape — algebraic laws over random BV[8] trees":
       let b = interpret(p[1], ctx)
       ensure smtEquiv(a + b, b + a)
     let report = forAll(
-      tuples2(bvRecipes(maxDepth = 2), bvRecipes(maxDepth = 2)),
+      map(bvRecipes(maxDepth = 2), bvRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -270,7 +271,7 @@ suite "property: shape — algebraic laws over random BV[8] trees":
       ensure smtEquiv(a or b,  b or  a)
       ensure smtEquiv(a xor b, b xor a)
     let report = forAll(
-      tuples2(bvRecipes(maxDepth = 2), bvRecipes(maxDepth = 2)),
+      map(bvRecipes(maxDepth = 2), bvRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -327,7 +328,7 @@ suite "property: shape — uninterpreted-function laws":
         let a = interpret(p[0], f, ctx)
         let b = interpret(p[1], f, ctx)
         ensure smtValid((a == b).implies(f(a) == f(b)))
-    let report = forAll(tuples2(fdRecipes(maxDepth = 2),
+    let report = forAll(map(fdRecipes(maxDepth = 2),
                                 fdRecipes(maxDepth = 2)),
                         prop, fewExamples())
     check report.outcome == otPassed
@@ -353,15 +354,15 @@ suite "property: shape — string algebraic laws":
   test "concat is associative: (a ++ b) ++ c ≡ a ++ (b ++ c)":
     let ctx = newContext()
     let prop =
-      proc(p: (StringRecipe, (StringRecipe, StringRecipe))) =
+      proc(p: (StringRecipe, StringRecipe, StringRecipe)) =
         let a = interpret(p[0], ctx)
-        let b = interpret(p[1][0], ctx)
-        let c = interpret(p[1][1], ctx)
+        let b = interpret(p[1], ctx)
+        let c = interpret(p[2], ctx)
         ensure smtValid(concat(concat(a, b), c) == concat(a, concat(b, c)))
     let report = forAll(
-      tuples2(stringRecipes(maxDepth = 2),
-              tuples2(stringRecipes(maxDepth = 2),
-                      stringRecipes(maxDepth = 2))),
+      map(stringRecipes(maxDepth = 2),
+          stringRecipes(maxDepth = 2),
+          stringRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -392,7 +393,7 @@ suite "property: shape — string algebraic laws":
         let a = interpret(p[0], ctx)
         let b = interpret(p[1], ctx)
         ensure smtValid(concat(a, b).len == a.len + b.len)
-    let report = forAll(tuples2(stringRecipes(maxDepth = 2),
+    let report = forAll(map(stringRecipes(maxDepth = 2),
                                 stringRecipes(maxDepth = 2)),
                         prop, fewExamples())
     check report.outcome == otPassed
@@ -414,15 +415,15 @@ suite "property: shape — sequence algebraic laws":
   test "concat is associative on sequences":
     let ctx = newContext()
     let prop =
-      proc(p: (SeqRecipe, (SeqRecipe, SeqRecipe))) =
+      proc(p: (SeqRecipe, SeqRecipe, SeqRecipe)) =
         let a = interpret(p[0], ctx)
-        let b = interpret(p[1][0], ctx)
-        let c = interpret(p[1][1], ctx)
+        let b = interpret(p[1], ctx)
+        let c = interpret(p[2], ctx)
         ensure smtValid(concat(concat(a, b), c) == concat(a, concat(b, c)))
     let report = forAll(
-      tuples2(seqRecipes(maxDepth = 2),
-              tuples2(seqRecipes(maxDepth = 2),
-                      seqRecipes(maxDepth = 2))),
+      map(seqRecipes(maxDepth = 2),
+          seqRecipes(maxDepth = 2),
+          seqRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
@@ -453,7 +454,7 @@ suite "property: shape — sequence algebraic laws":
         let a = interpret(p[0], ctx)
         let b = interpret(p[1], ctx)
         ensure smtValid(concat(a, b).len == a.len + b.len)
-    let report = forAll(tuples2(seqRecipes(maxDepth = 2),
+    let report = forAll(map(seqRecipes(maxDepth = 2),
                                 seqRecipes(maxDepth = 2)),
                         prop, fewExamples())
     check report.outcome == otPassed
@@ -519,7 +520,7 @@ suite "property: shape — regex laws":
         let b = interpret(p[1], ctx)
         ensure smtValid(s.matches(union(a, b)) == s.matches(union(b, a)))
     let report = forAll(
-      tuples2(regexRecipes(maxDepth = 2), regexRecipes(maxDepth = 2)),
+      map(regexRecipes(maxDepth = 2), regexRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 

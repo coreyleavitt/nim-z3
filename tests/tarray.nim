@@ -93,24 +93,24 @@ suite "Z3Array — read-over-write axioms (random shapes)":
       let v = interpret(t[1], ctx)
       ensure smtEquiv(a.store(i, v)[i], v)
     let report = forAll(
-      tuples2(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2)),
+      map(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 
   test "select(store(a, i, v), j) ≡ ite(i == j, v, select(a, j))":
     let ctx = newContext()
     let a = mkArrayVar[Z3Int, Z3Int]("a")
-    let prop = proc(t: ((IntRecipe, IntRecipe), IntRecipe)) =
-      let i = interpret(t[0][0], ctx)
-      let j = interpret(t[0][1], ctx)
-      let v = interpret(t[1], ctx)
+    let prop = proc(t: (IntRecipe, IntRecipe, IntRecipe)) =
+      let i = interpret(t[0], ctx)
+      let j = interpret(t[1], ctx)
+      let v = interpret(t[2], ctx)
       let lhs = a.store(i, v)[j]
       let rhs = ite(i == j, v, a[j])
       ensure smtEquiv(lhs, rhs)
     let report = forAll(
-      tuples2(
-        tuples2(intRecipes(maxDepth = 2), intRecipes(maxDepth = 2)),
-        intRecipes(maxDepth = 2)),
+      map(intRecipes(maxDepth = 2),
+          intRecipes(maxDepth = 2),
+          intRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
 

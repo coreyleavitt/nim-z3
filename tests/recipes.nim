@@ -47,12 +47,15 @@ proc intRecipeExtend*(child: Strategy[IntRecipe]): Strategy[IntRecipe] =
     intRecipeBase(),
     child.map(proc(e: IntRecipe): IntRecipe =
       IntRecipe(kind: irkNeg, e: e)),
-    tuples2(child, child).map(proc(p: (IntRecipe, IntRecipe)): IntRecipe =
-      IntRecipe(kind: irkAdd, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (IntRecipe, IntRecipe)): IntRecipe =
-      IntRecipe(kind: irkSub, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (IntRecipe, IntRecipe)): IntRecipe =
-      IntRecipe(kind: irkMul, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: IntRecipe): IntRecipe =
+        IntRecipe(kind: irkAdd, l: l, r: r)),
+    map(child, child,
+      proc(l, r: IntRecipe): IntRecipe =
+        IntRecipe(kind: irkSub, l: l, r: r)),
+    map(child, child,
+      proc(l, r: IntRecipe): IntRecipe =
+        IntRecipe(kind: irkMul, l: l, r: r)),
   ])
 
 proc intRecipes*(maxDepth = 3): Strategy[IntRecipe] =
@@ -88,18 +91,21 @@ proc boolRecipeExtend*(child: Strategy[BoolRecipe]): Strategy[BoolRecipe] =
     boolRecipeBase(),
     child.map(proc(e: BoolRecipe): BoolRecipe =
       BoolRecipe(kind: brkNot, e: e)),
-    tuples2(child, child).map(proc(p: (BoolRecipe, BoolRecipe)): BoolRecipe =
-      BoolRecipe(kind: brkAnd, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BoolRecipe, BoolRecipe)): BoolRecipe =
-      BoolRecipe(kind: brkOr, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BoolRecipe, BoolRecipe)): BoolRecipe =
-      BoolRecipe(kind: brkXor, l: p[0], r: p[1])),
-    tuples2(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1)).map(
-      proc(p: (IntRecipe, IntRecipe)): BoolRecipe =
-        BoolRecipe(kind: brkEq, il: p[0], ir: p[1])),
-    tuples2(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1)).map(
-      proc(p: (IntRecipe, IntRecipe)): BoolRecipe =
-        BoolRecipe(kind: brkLt, il: p[0], ir: p[1])),
+    map(child, child,
+      proc(l, r: BoolRecipe): BoolRecipe =
+        BoolRecipe(kind: brkAnd, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BoolRecipe): BoolRecipe =
+        BoolRecipe(kind: brkOr, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BoolRecipe): BoolRecipe =
+        BoolRecipe(kind: brkXor, l: l, r: r)),
+    map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
+      proc(il, ir: IntRecipe): BoolRecipe =
+        BoolRecipe(kind: brkEq, il: il, ir: ir)),
+    map(intRecipes(maxDepth = 1), intRecipes(maxDepth = 1),
+      proc(il, ir: IntRecipe): BoolRecipe =
+        BoolRecipe(kind: brkLt, il: il, ir: ir)),
   ])
 
 proc boolRecipes*(maxDepth = 3): Strategy[BoolRecipe] =
@@ -140,18 +146,24 @@ proc bvRecipeExtend*(child: Strategy[BvRecipe]): Strategy[BvRecipe] =
     bvRecipeBase(),
     child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNeg, e: e)),
     child.map(proc(e: BvRecipe): BvRecipe = BvRecipe(kind: bvrkNot, e: e)),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkAdd, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkSub, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkMul, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkAnd, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkOr, l: p[0], r: p[1])),
-    tuples2(child, child).map(proc(p: (BvRecipe, BvRecipe)): BvRecipe =
-      BvRecipe(kind: bvrkXor, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkAdd, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkSub, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkMul, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkAnd, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkOr, l: l, r: r)),
+    map(child, child,
+      proc(l, r: BvRecipe): BvRecipe =
+        BvRecipe(kind: bvrkXor, l: l, r: r)),
   ])
 
 proc bvRecipes*(maxDepth = 3): Strategy[BvRecipe] =
@@ -225,9 +237,9 @@ proc stringRecipeExtend*(child: Strategy[StringRecipe]):
     Strategy[StringRecipe] =
   oneOf(@[
     stringRecipeBase(),
-    tuples2(child, child).map(
-      proc(p: (StringRecipe, StringRecipe)): StringRecipe =
-        StringRecipe(kind: srkConcat, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: StringRecipe): StringRecipe =
+        StringRecipe(kind: srkConcat, l: l, r: r)),
   ])
 
 proc stringRecipes*(maxDepth = 3): Strategy[StringRecipe] =
@@ -268,9 +280,9 @@ proc seqRecipeExtend*(child: Strategy[SeqRecipe]):
     Strategy[SeqRecipe] =
   oneOf(@[
     seqRecipeBase(),
-    tuples2(child, child).map(
-      proc(p: (SeqRecipe, SeqRecipe)): SeqRecipe =
-        SeqRecipe(kind: sqrkConcat, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: SeqRecipe): SeqRecipe =
+        SeqRecipe(kind: sqrkConcat, l: l, r: r)),
   ])
 
 proc seqRecipes*(maxDepth = 3): Strategy[SeqRecipe] =
@@ -318,12 +330,12 @@ proc regexRecipeExtend*(child: Strategy[RegexRecipe]):
       RegexRecipe(kind: rrxPlus, e: e)),
     child.map(proc(e: RegexRecipe): RegexRecipe =
       RegexRecipe(kind: rrxOption, e: e)),
-    tuples2(child, child).map(
-      proc(p: (RegexRecipe, RegexRecipe)): RegexRecipe =
-        RegexRecipe(kind: rrxConcat, l: p[0], r: p[1])),
-    tuples2(child, child).map(
-      proc(p: (RegexRecipe, RegexRecipe)): RegexRecipe =
-        RegexRecipe(kind: rrxUnion, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: RegexRecipe): RegexRecipe =
+        RegexRecipe(kind: rrxConcat, l: l, r: r)),
+    map(child, child,
+      proc(l, r: RegexRecipe): RegexRecipe =
+        RegexRecipe(kind: rrxUnion, l: l, r: r)),
   ])
 
 proc regexRecipes*(maxDepth = 2): Strategy[RegexRecipe] =
@@ -372,15 +384,15 @@ proc fpRecipeExtend*(child: Strategy[FpRecipe]): Strategy[FpRecipe] =
     fpRecipeBase(),
     child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkNeg, e: e)),
     child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkAbs, e: e)),
-    tuples2(child, child).map(
-      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
-        FpRecipe(kind: fprkAdd, l: p[0], r: p[1])),
-    tuples2(child, child).map(
-      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
-        FpRecipe(kind: fprkSub, l: p[0], r: p[1])),
-    tuples2(child, child).map(
-      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
-        FpRecipe(kind: fprkMul, l: p[0], r: p[1])),
+    map(child, child,
+      proc(l, r: FpRecipe): FpRecipe =
+        FpRecipe(kind: fprkAdd, l: l, r: r)),
+    map(child, child,
+      proc(l, r: FpRecipe): FpRecipe =
+        FpRecipe(kind: fprkSub, l: l, r: r)),
+    map(child, child,
+      proc(l, r: FpRecipe): FpRecipe =
+        FpRecipe(kind: fprkMul, l: l, r: r)),
   ])
 
 proc fpRecipes*(maxDepth = 3): Strategy[FpRecipe] =

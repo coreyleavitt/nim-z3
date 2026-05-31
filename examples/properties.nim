@@ -32,7 +32,7 @@ proc soundnessRoundTrip(): Report[int] =
 proc bvWraparound(): Report[(int, int)] =
   let ctx = newContext()
   forAll(
-    tuples2(integers(0, 255), integers(0, 255)),
+    map(integers(0, 255), integers(0, 255)),
     proc(p: (int, int)) =
       let got = (mkBitVec[8](uint32(p[0])) + mkBitVec[8](uint32(p[1]))).toUint
       ensure got == uint64(uint8(p[0]) + uint8(p[1])))

@@ -151,7 +151,19 @@ The wrapper ships **37 user-facing modules** (plus the internal `z3/ffi` FFI blo
 
 Pre-1.0 the public surface may shift between minor versions. We track deferrals and design changes in the live `docs/IMPLEMENTATION_PLAN.md` (and the archived `V0.1_PLAN.md` §18 / `V0.2_PLAN.md` §8 / `V0.3_PLAN.md` §8 + §8b / `V0.4_PLAN.md` §8 + §8b / `V0.5_PLAN.md` §8 + §8b for prior-version deferrals); consult `CHANGELOG.md` for the per-release diff.
 
-v0.6 = v1.0.0 is the stability commitment with a version-only delta from v0.5.0. Post-1.0 the wrapper enforces SemVer: breaking changes only on major bumps (`2.0.0`, …).
+## Stability
+
+v0.6 = v1.0.0 is the stability commitment with a version-only delta from v0.5.0.
+
+Post-1.0 the wrapper enforces SemVer:
+
+- **Patch** (`1.0.x`): bug fixes, internal refactors, docs. No public-surface changes.
+- **Minor** (`1.x.0`): additive only — new procs, new typed families, new flags. Existing call sites keep compiling and behaving the same.
+- **Major** (`2.0.0`, …): breaking changes (renames, removed procs, semantics shifts). Will be batched and accompanied by a migration guide in the corresponding `V2.0_PLAN.md`.
+
+What "public surface" means: everything reachable from `import z3` (the umbrella) plus the documented submodule paths `z3/<name>` listed in [Modules at a glance](#modules-at-a-glance). `RawZ3*` C handles, `*Impl*` width-arithmetic helpers, and cross-module-internal seams catalogued in [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) are **not** part of the public surface; they may change at any time without a major bump.
+
+Feature-flag `-d:z3WithoutX` gates are part of the public surface and follow the same SemVer rules.
 
 ## License
 

@@ -60,7 +60,8 @@ binding to `ctx`.
 | `wrapStats*(ctx, raw): Z3Stats` | `z3/stats` | `z3/solver` (`getStatistics`), `z3/optimize` | v0.4 step 8. |
 | `wrapAstVector*(ctx, raw): Z3AstVector` | `z3/astvector` | `z3/solver` (`getUnsatCore`, `getConsequences`), `z3/io` (`parseSmt2String` results), `z3/fixedpoint` | v0.4 step 1's foundational handle. |
 | `wrapProbe(ctx, raw): Z3Probe` | `z3/probe` | (private — same-module only) | v0.4 step 12. Was `*`-exported pre-v0.5.0 "for symmetry"; un-exported in the v0.5.0 audit because no cross-module consumer materialized and locking a no-consumer surface at v1.0 wasn't worth it. |
-| `wrapParamDescrs*(ctx, raw): Z3ParamDescrs` | `z3/params` | `z3/solver` (`getParamDescrs`), `z3/tactic` (`getParamDescrs`) | v0.5 step 6B. The handle lives in `z3/params` but the constructors live in `z3/solver` and `z3/tactic` to keep dependency layering one-directional. |
+| `wrapParamDescrs*(ctx, raw): Z3ParamDescrs` | `z3/params` | `z3/solver` (`getParamDescrs`), `z3/tactic` (`getParamDescrs`), `z3/optimize` (`getParamDescrs`, v0.5.0 audit B3) | v0.5 step 6B. The handle lives in `z3/params` but the constructors live in `z3/solver` / `z3/tactic` / `z3/optimize` to keep dependency layering one-directional. |
+| `decodeLBool*(r: Z3_lbool): Z3Status` | `z3/solver` | `z3/fixedpoint` (`query`, `queryRelations`), `z3/optimize` (`check`) | v0.5.0 medium-audit A1/A2. Z3's `Z3_lbool` is a C int whose API contract is values in `{-1, 0, 1}`; this helper decodes safely (case-on-ord) rather than `cast[Z3Status]` (which silently produces invalid enum values on out-of-range returns). Pre-audit, `getConsequences` / `fixedpoint.query` / `optimize.check` each open-coded the decode with `cast` in three different ways. |
 
 ### Raw-handle accessors — `.raw` / `.ctx`
 

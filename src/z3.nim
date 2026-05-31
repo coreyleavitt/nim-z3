@@ -90,10 +90,6 @@
 ##   `concat`, `zeroExtend`, `signExtend`, `repeat`), polymorphic
 ##   `ite` / `mkDistinct` / `==` / `!=`, literal lifts, and signed +
 ##   unsigned model extraction (`toInt`, `toUint`). **Implemented.**
-## - `z3/semantics` exposes `smtValid(p: Z3Bool): bool` and the generic
-##   `smtEquiv[T: Z3Term](a, b: T): bool` — validity / equivalence
-##   oracles built on a throwaway solver. Useful in property tests;
-##   also a clean primitive for downstream verification tooling.
 ## - `z3/params` — `Z3Params` typed parameter bag for tactics,
 ##   solvers, optimisers. `newParams` + overloaded `set(key, value)`
 ##   for `bool`, `uint`, `float`, and `string` values. **v0.2 step 8.**

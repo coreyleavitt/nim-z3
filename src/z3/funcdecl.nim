@@ -32,8 +32,8 @@
 {.experimental: "callOperator".}
 
 import std/[macros]
-import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./array, ./bitvec, ./char,
-       ./sequence, ./string, ./fp, ./model
+import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./arrays, ./bitvec, ./chars,
+       ./sequence, ./strings, ./fp, ./model
 # The leaf-family imports are intentional: funcdecl's domainSorts
 # iterates an arbitrary tuple at compile time, and `sortOfType[FieldT]`
 # resolves through `mixin sortOf` at the iteration site (which is

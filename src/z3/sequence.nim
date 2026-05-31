@@ -2,7 +2,7 @@
 ##
 ## `Z3Seq[E]` is a finite sequence whose elements have AST family `E`.
 ## Z3 defines `String = (Seq Char)`, so `Z3String = Z3Seq[Z3Char]`
-## (alias in `z3/string`); everything generic here is automatically
+## (alias in `z3/strings`); everything generic here is automatically
 ## available on strings too.
 ##
 ## Phantom design parallels `Z3Array[Key, Val]` and `Z3Regex[Basis]`:

@@ -3,7 +3,7 @@
 ## Sequences are the generalisation of strings (which Z3 defines as
 ## `(Seq Char)`). The wrapper surfaces them as `Z3Seq[E]`, phantom-
 ## typed over the element AST family. Every `seq.*` op Z3 ships lives
-## here; `z3/string`'s previously-string-specific surface migrates to
+## here; `z3/strings`'s previously-string-specific surface migrates to
 ## use these.
 
 import std/[unittest]

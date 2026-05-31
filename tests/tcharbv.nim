@@ -1,4 +1,4 @@
-## `z3/char.toBitVec` + `mkChar(bv)` tests — Z3Char ↔ BV interop
+## `z3/chars.toBitVec` + `mkChar(bv)` tests — Z3Char ↔ BV interop
 ## (v0.5 step 6C).
 ##
 ## Z3's char sort has a fixed bit-width determined by its `encoding`

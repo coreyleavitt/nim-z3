@@ -34,7 +34,7 @@
 
 import ./ffi, ./context, ./error, ./ast, ./sortdispatch
 export sortdispatch
-  # Downstream modules that historically imported `z3/array` for
+  # Downstream modules that historically imported `z3/arrays` for
   # `sortOfType` (notably `z3/datatypes`) keep working through this
   # re-export. The v0.3 step 9 consolidation moved the actual
   # dispatcher to `z3/sortdispatch`.

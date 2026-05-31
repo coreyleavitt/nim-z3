@@ -447,3 +447,46 @@ hits Ctrl-C, while the main thread is in `s.check()`. See
 If you need a single-thread timeout instead, set the `timeout`
 param on `Z3Params` and pass it to `s.setParams(p)`; Z3's internal
 timer polls the same cancellation hook.
+
+---
+
+## 16. Z3 ASTs don't drop into `Table[K, V]` / `HashSet[T]` directly
+
+**Symptom.** `var t: Table[Z3Int, string]` fails with `type mismatch:
+got 'Z3Bool' for 't.data[h].key == key' but expected 'bool'`.
+
+**Cause.** Z3 typed ASTs overload `==` to return `Z3Bool` (SMT-level
+semantic equality), so `s.add(x == y)` builds an SMT formula. But
+`std/tables` and `std/sets` require `==(K, K): bool` (Nim-level
+structural equality). The two contracts can't coexist on the same
+type without breaking one of the canonical patterns; the wrapper
+keeps `==: Z3Bool` because that's where the canonical use lies.
+
+**Wrapper behaviour.** `astHash[T: Z3Term](a: T): uint` is the
+exported structural-identity hash (it walks Z3's hashcons, so two
+ASTs built from structurally-identical syntax share a hash). It is
+*not* automatically registered as `hash[T: Z3Term]: Hash` because
+that would only solve half the equation — `==` still returns the
+wrong type for table use.
+
+**What you should do.** Wrap the AST in a Nim `distinct` type whose
+`==` uses `astEqual` (Z3-side raw-pointer identity, returning Nim
+`bool`) and whose `hash` uses `astHash`. The wrapper procs must
+live at module scope so std/tables finds them during generic
+instantiation:
+
+```nim
+import std/[tables, hashes]
+import z3
+
+type Z3IntKey = distinct Z3Int
+proc `==`(a, b: Z3IntKey): bool = astEqual(Z3Int(a), Z3Int(b))
+proc hash(k: Z3IntKey): Hash = cast[Hash](astHash(Z3Int(k)))
+
+var t: Table[Z3IntKey, string]
+t[Z3IntKey(mkInt(1))] = "one"
+```
+
+See `tests/thash.nim` for the canonical pattern. The same shape
+works for `HashSet[Z3IntKey]` and for any other typed family
+(`distinct Z3BitVec[8]`, `distinct Z3Char`, …).

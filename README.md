@@ -73,9 +73,9 @@ You also need:
 |---|---|---|
 | `z3/ast` + `z3/builder` + `z3/boolean` + `z3/arith` | `Z3Int`, `Z3Real`, `Z3Bool` | `+`, `-`, `*`, `div`, `mod`, `<`, `<=`, `==`, `and`, `or`, `not`, `xor`, `implies`, `iff`, `ite`, `mkDistinct`, literal lifts |
 | `z3/bitvec` | `Z3BitVec[W: static int]` | Modular arithmetic, `bvudiv`/`bvsdiv`/`bvult`/`bvslt`/…, width-typed `extract`/`concat`/`zeroExtend`/`signExtend`/`repeat` |
-| `z3/array` | `Z3Array[Key, Val]` | `store` / `select` / `[]`, equality |
+| `z3/arrays` | `Z3Array[Key, Val]` | `store` / `select` / `[]`, equality |
 | `z3/datatypes` | `Z3DatatypeValue[T]` | `declareDatatype` / `declareDatatypes`, constructors / accessors / recognizers |
-| `z3/char` + `z3/string` + `z3/sequence` + `z3/regex` | `Z3Char`, `Z3String = Z3Seq[Z3Char]`, `Z3Seq[E]`, `Z3Regex[Basis]` | SMT-LIB string / regex theory; `range`, `star`, `plus`, `option`, `concat`, `union`; `mkChar(bv: Z3BitVec[18])` ↔ `toBitVec(c: Z3Char)` |
+| `z3/chars` + `z3/strings` + `z3/sequence` + `z3/regex` | `Z3Char`, `Z3String = Z3Seq[Z3Char]`, `Z3Seq[E]`, `Z3Regex[Basis]` | SMT-LIB string / regex theory; `range`, `star`, `plus`, `option`, `concat`, `union`; `mkChar(bv: Z3BitVec[18])` ↔ `toBitVec(c: Z3Char)` |
 | `z3/fp` | `Z3Fp[E, S]`, aliases `Z3Float32`/`64`/etc., `Z3RoundingMode` | IEEE 754 arithmetic with literal rounding-mode helpers (`rmRNE()` / `rmRTZ()` / …), predicates, conversions, `==` uses IEEE semantics |
 | `z3/funcdecl` | `Z3FuncDecl[Args, Ret]`, `Z3FuncInterp[Args, Ret]` | Phantom-typed function decls + tabular UF model extraction |
 | `z3/quantifier` | `forall` / `exists` with per-arity templates, `Z3Pattern` triggers, introspection (`isForall` / `isExists` / `isLambda`, `getQuantifierBody`, bound-var names + sorts, patterns) |

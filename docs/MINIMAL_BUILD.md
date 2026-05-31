@@ -28,7 +28,7 @@ error.
 |---|---|
 | `z3WithoutFP` | `z3/fp` — IEEE 754 FP family + rounding modes |
 | `z3WithoutSeq` | `z3/sequence` — `Z3Seq[E]` |
-| `z3WithoutStrings` | `z3/string` — `Z3String` alias + string ops |
+| `z3WithoutStrings` | `z3/strings` — `Z3String` alias + string ops |
 | `z3WithoutRegex` | `z3/regex` — `Z3Regex[Basis]` family |
 | `z3WithoutFuncDecl` | `z3/funcdecl` — `Z3FuncDecl` + `Z3FuncInterp` |
 | `z3WithoutDatatypes` | `z3/datatypes` — `Z3DatatypeValue[T]` |
@@ -64,10 +64,10 @@ surface that the gated flags assume as a foundation:
 - `z3/sort`, `z3/sortdispatch`
 - `z3/ast`, `z3/builder`, `z3/boolean`, `z3/arith`
 - `z3/bitvec` — `Z3BitVec[W]`
-- `z3/array` — `Z3Array[K, V]`
+- `z3/arrays` — `Z3Array[K, V]`
 - `z3/solver`, `z3/model`
 - `z3/params`, `z3/quantifier`, `z3/pretty`, `z3/simplify`
-- `z3/char` — `Z3Char` (the alphabet underneath Strings, but
+- `z3/chars` — `Z3Char` (the alphabet underneath Strings, but
   usable on its own without the Sequences theory)
 - `z3/astvector`, `z3/stats`
 - `z3/introspect` — AST + sort introspection, `Z3AnyAst`

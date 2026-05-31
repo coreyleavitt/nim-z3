@@ -4,7 +4,7 @@
 ## v0.2 + v0.3-steps-1..8 had **three near-duplicate cascades** turning
 ## a typedesc into a `RawZ3Sort`:
 ##
-## - `z3/array.sortOfType[T]` — Int / Real / Bool / BV[W]
+## - `z3/arrays.sortOfType[T]` — Int / Real / Bool / BV[W]
 ## - `z3/sequence.sortOfTypeSeq[E]` — adds Char / Seq[E']
 ## - `z3/funcdecl.sortOfTypeFD[T]` — adds Fp[E, S]
 ##

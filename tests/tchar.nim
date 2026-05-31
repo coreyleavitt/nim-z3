@@ -1,4 +1,4 @@
-## `z3/char` tests — SMT-LIB Char sort.
+## `z3/chars` tests — SMT-LIB Char sort.
 ##
 ## Covers what Z3 actually ships on the Char theory: codepoint literal
 ## construction, ordering (`<=`, `<`), digit predicate, and the

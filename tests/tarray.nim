@@ -1,4 +1,4 @@
-## `z3/array` tests — phantom-typed Z3Array[Key, Val] with store /
+## `z3/arrays` tests — phantom-typed Z3Array[Key, Val] with store /
 ## select / mkConstArray / extensionality via `==`.
 
 import std/[unittest]

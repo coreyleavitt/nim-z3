@@ -121,7 +121,7 @@
 ##   validity / equivalence oracles; covers every typed family with
 ##   an `==` operator (Z3Ast[S], Z3BitVec[W], Z3Array[K, V],
 ##   Z3DatatypeValue[T], …). **v0.3 step 2.**
-## - `z3/char` — `Z3Char` Unicode-codepoint AST family. Construction
+## - `z3/chars` — `Z3Char` Unicode-codepoint AST family. Construction
 ##   from int codepoint or ASCII `char` literal; ordering (`<=` / `<`),
 ##   `isDigit` predicate, `toInt` codepoint extractor. **v0.3 step 4.**
 ## - `z3/sequence` — `Z3Seq[E]` SMT-LIB sequence theory, phantom-typed
@@ -132,7 +132,7 @@
 ##   Supports any element type with a `sortOfTypeSeq` case (`Z3Int`,
 ##   `Z3Real`, `Z3Bool`, `Z3BitVec[W]`, `Z3Char`, nested
 ##   `Z3Seq[E']`). **v0.3 step 5.**
-## - `z3/string` — **alias `Z3String = Z3Seq[Z3Char]`** plus the
+## - `z3/strings` — **alias `Z3String = Z3Seq[Z3Char]`** plus the
 ##   string-specific surface only: `mkString` (via `Z3_mk_lstring`),
 ##   `mkStringVar`, `toStr` / `evalStr` model extraction, `strToInt`
 ##   / `intToStr` int interop, Nim-`string`-literal lifts on `==` /
@@ -197,7 +197,7 @@
 ##   `declareDatatype` / `forDatatype` / `declareDatatypes`, `.con` /
 ##   `.recognizer` / `.accessor`, `.apply` / `.test` / `.read`,
 ##   `mkDatatypeVar`. **v0.2 steps 4 + 5.**
-## - `z3/array` — `Z3Array[Key, Val]` phantom-typed over typedescs
+## - `z3/arrays` — `Z3Array[Key, Val]` phantom-typed over typedescs
 ##   of AST families (so `Z3Array[Z3BitVec[32], Z3BitVec[8]]` is a
 ##   distinct type from `Z3Array[Z3BitVec[64], Z3BitVec[8]]`).
 ##   Surface: `mkConstArray`, `mkArrayVar`, `store`, `select`, `[]`,
@@ -258,14 +258,14 @@ const
 
 import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/builder, z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec,
-       z3/pretty, z3/simplify, z3/array, z3/quantifier,
-       z3/params, z3/semantics, z3/char,
+       z3/pretty, z3/simplify, z3/arrays, z3/quantifier,
+       z3/params, z3/semantics, z3/chars,
        z3/astvector, z3/stats,
        z3/introspect, z3/proof, z3/fixedpoint, z3/rewrite, z3/translate,
        z3/globalparams, z3/io
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
-       solver, model, bitvec, pretty, simplify, array, quantifier,
-       params, semantics, char,
+       solver, model, bitvec, pretty, simplify, arrays, quantifier,
+       params, semantics, chars,
        astvector, stats,
        introspect, proof, fixedpoint, rewrite,
        translate, globalparams, io
@@ -295,8 +295,8 @@ when not z3WithoutSeqEff:
   export sequence
 
 when not z3WithoutStringsEff:
-  import z3/string
-  export string
+  import z3/strings
+  export strings
 
 when not z3WithoutRegexEff:
   import z3/regex

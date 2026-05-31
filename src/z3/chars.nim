@@ -1,4 +1,4 @@
-## `z3/char` — SMT-LIB Char sort (Unicode codepoint).
+## `z3/chars` — SMT-LIB Char sort (Unicode codepoint).
 ##
 ## Z3's `Char` is a Unicode codepoint type — the basis alphabet
 ## underneath the String and Regex theories (`String = (Seq Char)`,
@@ -129,7 +129,7 @@ proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
 # Surfacing them well needs:
 #   - deciding whether to lock to `Z3BitVec[18]` (the default and what
 #     ~everyone uses) or surface a `--char-width` setting too, and
-#   - resolving the bidirectional import between `z3/char` and
+#   - resolving the bidirectional import between `z3/chars` and
 #     `z3/bitvec` (currently bitvec doesn't import char).
 # Logged for v0.3 step 5+ work or a follow-up; not blocking step 4.
 

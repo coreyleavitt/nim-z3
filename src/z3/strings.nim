@@ -1,4 +1,4 @@
-## `z3/string` — SMT-LIB String theory.
+## `z3/strings` — SMT-LIB String theory.
 ##
 ## Strings in SMT-LIB are `(Seq Char)`: finite sequences of Unicode
 ## characters. Z3 reflects this in its C API; the wrapper makes it
@@ -30,9 +30,9 @@
 ## arithmetic, regex membership, and free string variables may return
 ## `zsUnknown` or run for a long time.
 
-import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./char, ./sequence
+import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./chars, ./sequence
 export sequence
-  # Re-export so `import z3/string` users get the generic Z3Seq surface
+  # Re-export so `import z3/strings` users get the generic Z3Seq surface
   # for free — that's where `len`, `concat`, `nth`, etc. now live. The
   # pre-v0.5 spelling `export seq` was renamed in v0.5 step 2A but
   # the re-export line was left stale; v0.5.0 audit caught it.

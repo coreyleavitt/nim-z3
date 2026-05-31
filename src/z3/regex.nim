@@ -14,8 +14,8 @@
 ## cases (large counted repetitions, intersections that produce
 ## exponential DFAs). Treat `zsUnknown` as a possible solver outcome.
 
-import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./char, ./sequence, ./string
-export char
+import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./chars, ./sequence, ./strings
+export chars
 
 # ============================================================================
 # Z3Regex[Basis] — phantom-typed value family

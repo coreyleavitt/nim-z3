@@ -6,6 +6,83 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
+**v1.0-readiness audit cycle (rounds 1 + 2).** Post-v0.5.0 review
+turned up 1 critical, 14 high, ~24 medium, and ~12 low-priority
+items. Rounds 1 + 2 closed all critical + high.
+
+### BREAKING — module renames
+
+Three modules renamed to stop shadowing Nim built-in type
+identifiers when `import z3` is combined with stdlib generics
+like `Table[K, string]`:
+
+- `z3/string` → `z3/strings`
+- `z3/char` → `z3/chars`
+- `z3/array` → `z3/arrays`
+
+Discovery during the round-2 medium audit: `export string` from
+the umbrella shadowed `system.string`, silently breaking
+`Table[K, string]` and similar generic instantiations downstream.
+The fix is the rename; the user-facing types
+(`Z3String`, `Z3Char`, `Z3Array[K, V]`) are unchanged. Direct
+submodule importers must update `import z3/string` →
+`import z3/strings` and so on. Users on `import z3` only see no
+type-name changes.
+
+### Added
+
+- `Z3Context.interrupt()` — cross-thread cancellation of in-flight
+  `check()` / `optimize.check()` / `fixedpoint.query()`. Documented
+  cross-thread exception to the one-context-one-thread discipline.
+  Round-2 CRITICAL #1.
+- `lambda[K, V](bound, body): Z3Array[K, V]` — Z3 lambdas as
+  first-class typed arrays via `Z3_mk_lambda_const`. HIGH #2.
+- `arrayDefault[K, V](a): V` — dual of `mkConstArray`. HIGH #3.
+- `Z3Solver.checkWith(assumptions): Z3Status` —
+  `Z3_solver_check_assumptions` wrapper. HIGH #4.
+- `Z3Solver.getAssertions(): seq[Z3Bool]` — typed solver-state
+  snapshot. HIGH #5.
+- `Z3Solver.translate(target: Z3Context): Z3Solver` — cross-context
+  solver migration. HIGH #6.
+- `examples/optimize_scheduling.nim` — worked `Z3Optimize` example
+  (hard/soft constraints, `maximize`, `withFrame`,
+  `getParamDescrs`). HIGH #8.
+- `runnableExamples` on `newSolver` / `add` / `check` / `eval` /
+  `smtValid` — top-five hot-path docstrings now compile-checked
+  by `nim doc`. HIGH #7.
+- `getSortKind[T: Z3Term](a)` — ergonomic overload that pulls
+  context from the AST. Closes the round-2 medium "two-step
+  `getSort` → `getSortKind` friction."
+- `astHash[T: Z3Term](a): uint` — Z3-side structural-identity hash,
+  generic over every typed family. Plus GOTCHAS #16 documenting
+  the distinct-wrapper pattern for `Table[K, V]` and
+  `HashSet[T]` use (Z3 `==` returns `Z3Bool`, std/tables wants
+  `bool`, so direct use is impossible without wrapping).
+- GOTCHAS #15 — `interrupt` cross-thread semantics.
+
+### Fixed (correctness)
+
+(see commits 8e0d513 / 977adb3 / 9278f0b / 931d21c / 8d55074 /
+0916001 for the round-1 medium phase A-D commits — covers
+safe-`lbool` decode lift to `decodeLBool`, missing `checkErr`
+around `Z3_func_entry_get_*` and `Z3_mk_string_symbol` in
+`mkUninterpretedSort`, `bitvec.toInt` W=63 sign-extend overflow
+fix, `wrapBound` numeric-family compile-time guard via
+`maximize/minimize[T: Z3Int | Z3Real | Z3BitVec]`,
+`translate.compatibleWith` zero-net inc_ref/dec_ref discipline,
+`ffi.isNil` union dedup, `declareDatatypes` empty-constructor
+guards, `quantifier.getQuantifierPattern` route via
+`incRefPattern` helper.)
+
+### API parity
+
+- Generic `simplify[T: Z3Term]` and generic `ite[T: Z3Term]`
+  replace per-family overloads (B1, B4).
+- Generic `mkDistinct[T: Z3Term]` collapses `emitVarargsDistinctS`
+  + `emitVarargsDistinctW` into one definition (B5).
+- `Z3Optimize.withFrame` + `Z3Optimize.getParamDescrs` parity with
+  `Z3Solver` (B2, B3).
+
 — Work toward v0.6 = v1.0.0 (the stability commitment, with no new
 functionality); see `docs/IMPLEMENTATION_PLAN.md`.
 

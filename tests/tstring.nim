@@ -1,4 +1,4 @@
-## `z3/string` tests — String theory (sequence of unicode chars).
+## `z3/strings` tests — String theory (sequence of unicode chars).
 ##
 ## Strings in SMT-LIB are `(Seq Char)`; in Z3 they're exposed as a
 ## first-class sort with dedicated builders (`Z3_mk_string`,

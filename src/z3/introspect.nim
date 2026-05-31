@@ -40,7 +40,7 @@
 ##   research-grade Relation / FiniteDomain / TypeVar — for
 ##   completeness with Z3's API.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./char, ./fp, ./sequence, ./string, ./regex, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./chars, ./fp, ./sequence, ./strings, ./regex, ./sortdispatch
 
 # ============================================================================
 # Z3AstKind / Z3SortKind — Nim-side enums
@@ -197,6 +197,36 @@ proc getSortKind*(ctx: Z3Context, s: RawZ3Sort): Z3SortKind {.inline.} =
   ## to (Int / Bool / BitVec / Array / Seq / Regex / Fp / Datatype /
   ## …).
   toZ3SortKind(Z3_get_sort_kind(ctx.raw, s))
+
+proc getSortKind*[T: Z3Term](a: T): Z3SortKind {.inline.} =
+  ## Ergonomic overload on any typed AST. Pulls the context from `a`
+  ## itself — no need for the two-step
+  ## `getSort(a)` → `getSortKind(ctx, sort)` dance.
+  getSortKind(a.ctx, getSort(a))
+
+# ============================================================================
+# Hash — Z3-side AST hashcons via Z3_get_ast_hash
+# ============================================================================
+#
+# Z3 hashcons every AST: structurally-equal ASTs share the same raw
+# pointer (`mkInt(42)` called twice returns the same handle), so
+# Z3's per-AST hash is a true structural-identity hash.
+#
+# Design note: we deliberately do NOT provide a `hash[T: Z3Term]`
+# overload that std/tables would pick up. Z3 terms overload `==` to
+# return `Z3Bool` (SMT-level semantic equality) — the canonical
+# pattern `s.add(x == y)`. std/tables requires `==` to return `bool`
+# (Nim-level structural equality). The two contracts can't coexist
+# on the same type without breaking one of the two patterns. Users
+# who want a hash-table of Z3 ASTs should wrap with a distinct type
+# whose `==` borrows the structural form — see docs/GOTCHAS.md #16.
+
+proc astHash*[T: Z3Term](a: T): uint {.inline.} =
+  ## Z3-side structural-identity hash. Stable under Z3's hashcons:
+  ## two ASTs built from structurally-identical syntax trees share
+  ## the same hash because they share the same raw handle.
+  ## `astHash(a) == astHash(b)` iff `astEqual(a, b)`.
+  uint(Z3_get_ast_hash(a.ctx.raw, a.raw))
 
 proc bitVecWidth*(ctx: Z3Context, s: RawZ3Sort): int =
   ## Width of a `skBitVec` sort. Raises `Z3Error` if `s` isn't a BV.

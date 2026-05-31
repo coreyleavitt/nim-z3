@@ -187,3 +187,12 @@ suite "introspect — asZ3Char / asZ3Seq / asZ3Regex (medium C10)":
     let any = toAnyAst(r)
     let back = asZ3Regex[Z3String](any)
     check astEqual(back, r)
+
+suite "getSortKind ergonomic overload on any Z3Term":
+  test "ast-direct getSortKind dispatches without re-passing ctx":
+    let ctx = newContext()
+    check getSortKind(mkInt(0)) == skInt
+    check getSortKind(mkBool(true)) == skBool
+    check getSortKind(mkBitVec[8](0'u32)) == skBitVec
+    check getSortKind(mkChar('a')) == skChar
+    check getSortKind(mkFloat32(0.0'f32)) == skFp

@@ -36,7 +36,7 @@
 ## `Z3BoundVar`-style explicit boxing helpers — see the §7 Q2
 ## divergence above.
 
-import ./ffi, ./context, ./error, ./ast, ./array
+import ./ffi, ./context, ./error, ./ast, ./arrays
 
 # ============================================================================
 # Z3Pattern — refcount-managed quantifier trigger

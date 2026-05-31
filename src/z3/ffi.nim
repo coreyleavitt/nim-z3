@@ -1423,6 +1423,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_ast_vector_get(c: RawZ3Context, v: RawZ3AstVector, i: cuint): RawZ3Ast
     {.cdecl, header: "z3.h".}
 
+  # --- AST identity --------------------------------------------------------
+
+  proc Z3_get_ast_hash(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+    ## Per-AST hash. Z3 hashcons every AST so structurally-equal
+    ## ASTs share the same raw pointer and therefore the same hash.
+    ## Surfaced via `astHash` + `hash[T: Z3Term]` for std/tables.
+
   # --- Pretty printing -----------------------------------------------------
 
   proc Z3_ast_to_string(c: RawZ3Context, a: RawZ3Ast): cstring

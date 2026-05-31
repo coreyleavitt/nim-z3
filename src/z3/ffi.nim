@@ -632,6 +632,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                            param_value: pointer): bool
     {.cdecl, header: "z3.h".}
 
+  # --- Cross-thread interrupt (v1.0 audit round 2, item #1) ----------------
+  # Z3_interrupt is the documented exception to the
+  # "one-context-one-thread" discipline (see docs/THREADING.md): it is
+  # safe to call from a different thread than the one currently
+  # running `check()` / `optimize_check()` / `fixedpoint_query()`.
+  # The in-flight call returns Z3_L_UNDEF ("unknown") with
+  # reason_unknown = "interrupted".
+  proc Z3_interrupt(c: RawZ3Context)
+    {.cdecl, header: "z3.h".}
+
   proc Z3_tactic_apply(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal): RawZ3ApplyResult
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_apply_ex(c: RawZ3Context, t: RawZ3Tactic, g: RawZ3Goal,

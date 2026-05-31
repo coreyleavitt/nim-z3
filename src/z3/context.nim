@@ -232,6 +232,36 @@ template withContext*(ctx: Z3Context, body: untyped) =
 # Raw-handle accessors (for the FFI-facing layer)
 # ============================================================================
 
+proc interrupt*(ctx: Z3Context) {.raises: [], gcsafe.} =
+  ## Cancel any in-flight `check()` / `optimize.check()` /
+  ## `fixedpoint.query()` on `ctx`. The cancelled call returns
+  ## `zsUnknown` and `reasonUnknown()` reads `"interrupted"`.
+  ##
+  ## **Thread-safety exception.** Unlike the rest of the wrapper —
+  ## which follows Z3's one-context-one-thread discipline (see
+  ## docs/THREADING.md) — `interrupt` is the documented exception
+  ## designed to be called from a *different* thread than the one
+  ## running the long operation. Calling it from the same thread is
+  ## a no-op (there's no in-flight operation to cancel).
+  ##
+  ## Z3 honours the cancellation between decision-procedure phases,
+  ## not necessarily mid-instruction; the latency is typically
+  ## sub-millisecond on the standard tactics but can be longer for
+  ## bespoke tactic pipelines that don't poll the cancellation flag.
+  ##
+  ## No-op if `ctx` has already been finalized.
+  if ctx != nil and not ctx.raw.isNil:
+    {.cast(gcsafe).}:
+      try:
+        Z3_interrupt(ctx.raw)
+      except CatchableError:
+        # SoftlinkError can theoretically fire on Z3 symbol resolution;
+        # treat as a no-op (`interrupt` is a best-effort signal). The
+        # `gcsafe` cast is sound because Z3_interrupt does not touch
+        # Nim GC state — the softlink dispatch is a function-pointer
+        # call whose target was bound at module init.
+        discard
+
 proc raw*(ctx: Z3Context): RawZ3Context {.inline.} =
   ## Underlying `RawZ3Context` handle. Used by other idiomatic modules
   ## that pass the raw handle to FFI calls. Returns a nil handle if

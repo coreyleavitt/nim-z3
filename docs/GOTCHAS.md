@@ -411,3 +411,39 @@ proc workerBody(idx: int) {.thread, gcsafe.} =
 ```
 
 See `tests/tconcurrency.nim` for the canonical pattern.
+
+---
+
+## 15. `interrupt(ctx)` is a cross-thread signal — same-thread calls are no-ops
+
+**Symptom.** You call `ctx.interrupt()` from the same thread that is
+about to run `s.check()` and the check still runs to completion.
+
+**Cause.** `Z3_interrupt` sets a cancellation flag on the context
+that Z3's decision procedures poll at safe points. The flag is
+checked *inside* the running operation. If no operation is in
+flight on `ctx`, the flag is set, and then the next `check()` will
+return `zsUnknown` immediately the first time Z3 polls — but if
+you call `interrupt` *after* `check()` returns there is nothing
+for Z3 to interrupt; the flag has no effect on the next operation
+unless an operation is already running when the flag is set.
+
+(Some Z3 versions auto-clear the flag at the start of every
+operation; some preserve it until the next poll. The cleanest
+mental model is: `interrupt` is a signal from one thread to
+another, like `pthread_kill(thread, SIGUSR1)`.)
+
+**Wrapper behaviour.** `Z3Context.interrupt` is the documented
+exception to the one-context-one-thread discipline (see
+`docs/THREADING.md`). The proc is `gcsafe` and safe to call from
+any thread.
+
+**What you should do.** Use `interrupt` exactly as you would use
+cross-thread cancellation in Go or Rust: spawn a watchdog thread
+that calls `ctx.interrupt()` when a timeout elapses or the user
+hits Ctrl-C, while the main thread is in `s.check()`. See
+`tests/tinterrupt.nim` for the canonical pattern.
+
+If you need a single-thread timeout instead, set the `timeout`
+param on `Z3Params` and pass it to `s.setParams(p)`; Z3's internal
+timer polls the same cancellation hook.

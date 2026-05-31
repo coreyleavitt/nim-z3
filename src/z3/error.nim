@@ -5,6 +5,9 @@
 ## lives as a peer module rather than tangled with the context
 ## handle, threadvar, and library bootstrap.
 ##
+## See [docs/GOTCHAS.md §6](../docs/GOTCHAS.md#6-typed-error-hierarchy-catch-the-specific-subclass-not-just-z3error)
+## for the user-facing guide on which subclass to catch when.
+##
 ## ## Layering
 ##
 ## `z3/error` depends only on `z3/ffi` (for `Z3ErrorCode` + the raw

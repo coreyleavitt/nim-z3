@@ -1,5 +1,11 @@
 ## `z3/lifecycle` — refcount-discipline generators and unified wrap.
 ##
+## See [docs/PARITY.md](../docs/PARITY.md) for the cross-family contract
+## (what every new typed family must implement) and
+## [docs/INTERNAL_API.md](../docs/INTERNAL_API.md) for the seam policy
+## (when the `wrap*` / `emit*` helpers exported here are appropriate
+## cross-module surfaces vs. when they signal a missing public surface).
+##
 ## v0.3 step 1's architectural unification. v0.2 had 22 verbatim copies
 ## of `=destroy` / `=copy` / `=dup` across five value families (Z3Ast,
 ## Z3BitVec, Z3Array, Z3DatatypeValue, Z3Pattern), five separately-named

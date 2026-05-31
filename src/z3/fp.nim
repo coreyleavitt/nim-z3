@@ -13,6 +13,9 @@
 ##
 ## ## NaN semantics — read this before using `==`
 ##
+## See [docs/GOTCHAS.md §1](../docs/GOTCHAS.md#1-floating-point--uses-ieee-semantics--nan--nan)
+## for the user-facing summary.
+##
 ## **`==` and `!=` on `Z3Fp[E, S]` use IEEE equality, not structural
 ## equality.** This is a deliberate divergence from every other typed
 ## family (`Z3Int`, `Z3BitVec[W]`, …). In IEEE land:

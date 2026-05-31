@@ -31,7 +31,9 @@ That five-line example uses everything you need to be productive: a context, fre
 - **Width-typed bit-vectors.** `Z3BitVec[8]` and `Z3BitVec[16]` are distinct types. `extract(7, 0)`, `concat`, `zeroExtend(N)`, `signExtend(N)`, `repeat(N)` all compute the result width at the type level: `concat(BV[8], BV[8]): BV[16]` is what the compiler enforces.
 - **Sign-explicit BV operators.** No silent unsigned vs signed default for `<`, `div`, `mod`, `shr` — you write `bvult` / `bvslt`, `bvudiv` / `bvsdiv`, `lshr` / `ashr`. Sign-independent ops (`+`, `-`, `*`, `and`, `or`, `xor`, `shl`) overload normally.
 - **Idiomatic ergonomics.** Implicit current-context threadvar (Python z3 style) for short scripts; explicit `ctx.mkIntVar(…)` for library code. `withContext(ctx): body` for scoped use. `withFrame: body` for hypothetical solver scopes. Literal lifts (`x + 3`, `5 == y`) on every operator.
-- **Round-trip SMT-LIB.** `pretty(s)` for indented human view, `smt2Script(s)` to emit a runnable script, `parseSmt2(ctx, source)` to read constraints back.
+- **Round-trip SMT-LIB.** `pretty(s)` for indented human view, `smt2Script(s)` to emit a runnable script, `parseSmt2String(ctx, source)` (and `parseSmt2File` / `loadSmt2*` / `evalSmt2`) to read constraints back. The full SMT-LIB2 surface lives in `z3/io`.
+- **Typed error hierarchy.** Catch `Z3SortMismatchError`, `Z3ParseError`, `Z3InvalidUsageError`, `Z3MemoryError`, etc. — 13 specific subclasses of `Z3Error`. The base class still works as a catch-all.
+- **`Z3Term`-load-bearing surface.** `wrap[T]`, `eval[T]`, `smtEquiv[T]`, `astEqual[T]`, `pretty[T]`, `$[T]` are all generic over the typed value families — adding a new theory inherits the cross-cutting surface automatically.
 
 ## Install
 
@@ -52,18 +54,60 @@ You also need:
 
 `milpa` ([coreyleavitt/milpa](https://github.com/coreyleavitt/milpa)) is the project-wide Nim dep resolver — same convention used by every other library in the nimlibs family. nimble is not involved in the build path.
 
-## The five user-facing modules
+## Modules at a glance
+
+`import z3` re-exports everything below. Most users never reach for a submodule directly; the table is a map of where each capability lives.
+
+### Core
 
 | Module | Surface |
 |---|---|
-| `z3/context` | `Z3Context`, `newContext`, `withContext`, `Z3Error`, `Z3VersionInfo`, `z3Version`, `finalizeZ3Memory` |
-| `z3/sort` | `SortTag` enum (`stInt`, `stReal`, `stBool`, `stBitVec`), `Z3Sort[S]`, sort constructors |
-| `z3/ast` + `z3/builder` + `z3/boolean` + `z3/arith` | `Z3Ast[S]` value type with lifecycle hooks, `mkInt` / `mkReal` / `mkBool` / `mkIntVar` / …, all operators (`+`, `-`, `*`, `div`, `mod`, `<`, `<=`, `==`, `and`, `or`, `not`, `xor`, `implies`, `iff`, `ite`, `mkDistinct`) with literal lifts |
-| `z3/bitvec` | `Z3BitVec[W: static int]`, `mkBitVec` / `mkBitVecVar[W]`, modular arithmetic, sign-explicit `bvudiv`/`bvsdiv`/`bvult`/`bvslt`/…, width-typed `extract`/`concat`/`zeroExtend`/`signExtend`/`repeat`, `toUint` / `toInt` |
-| `z3/solver` + `z3/model` | `Z3Solver` (`add`/`check`/`push`/`pop`/`reset`/`withFrame`), `Z3Status`, `reasonUnknown`, `Z3Model` (`eval`/`[]`), scalar extractors (`toInt`/`toBool`/`toBigIntStr`/`toBigRealStr`), composers (`evalInt`/`evalBool`), validity oracles (`smtValid`/`smtEquiv`) |
-| `z3/pretty` | `pretty(…, indent, width)` for AST/sort/solver/model, `smt2Script`, `writeSmt2`, `parseSmt2` |
+| `z3/context` | `Z3Context`, `newContext`, `withContext`, current-context threadvar, `z3Version` |
+| `z3/error` | `Z3Error` + 12 typed subclasses (`Z3SortMismatchError`, `Z3ParseError`, `Z3InvalidUsageError`, …), `checkErr` discipline |
+| `z3/sort` | `SortTag` enum, `Z3Sort[S]`, sort constructors including `mkUninterpretedSort` / `declareSort` |
+| `z3/lifecycle` | `Z3Term` concept, lifecycle generators, `wrap[T]` unification, varargs-FFI macro family |
 
-Top-level `import z3` re-exports all of them — most users never reach for a submodule directly.
+### Typed value families
+
+| Module | Family | Headline ops |
+|---|---|---|
+| `z3/ast` + `z3/builder` + `z3/boolean` + `z3/arith` | `Z3Int`, `Z3Real`, `Z3Bool` | `+`, `-`, `*`, `div`, `mod`, `<`, `<=`, `==`, `and`, `or`, `not`, `xor`, `implies`, `iff`, `ite`, `mkDistinct`, literal lifts |
+| `z3/bitvec` | `Z3BitVec[W: static int]` | Modular arithmetic, `bvudiv`/`bvsdiv`/`bvult`/`bvslt`/…, width-typed `extract`/`concat`/`zeroExtend`/`signExtend`/`repeat` |
+| `z3/array` | `Z3Array[Key, Val]` | `store` / `select` / `[]`, equality |
+| `z3/datatypes` | `Z3DatatypeValue[T]` | `declareDatatype` / `declareDatatypes`, constructors / accessors / recognizers |
+| `z3/char` + `z3/string` + `z3/sequence` + `z3/regex` | `Z3Char`, `Z3String = Z3Seq[Z3Char]`, `Z3Seq[E]`, `Z3Regex[Basis]` | SMT-LIB string / regex theory; `range`, `star`, `plus`, `option`, `concat`, `union`; `mkChar(bv: Z3BitVec[18])` ↔ `toBitVec(c: Z3Char)` |
+| `z3/fp` | `Z3Fp[E, S]`, aliases `Z3Float32`/`64`/etc., `Z3RoundingMode` | IEEE 754 arithmetic with literal rounding-mode helpers (`rmRNE()` / `rmRTZ()` / …), predicates, conversions, `==` uses IEEE semantics |
+| `z3/funcdecl` | `Z3FuncDecl[Args, Ret]`, `Z3FuncInterp[Args, Ret]` | Phantom-typed function decls + tabular UF model extraction |
+| `z3/quantifier` | `forall` / `exists` / `lambda` with per-arity templates, `Z3Pattern` triggers, introspection |
+| `z3/introspect` | `Z3AstKind` / `Z3SortKind`, `Z3AnyAst` runtime-erased family + typed lifters |
+| `z3/proof` | `Z3Proof`, 42-entry `ProofRule` enum, `unpackProof` |
+
+### Decision procedures + analysis
+
+| Module | Surface |
+|---|---|
+| `z3/solver` | `Z3Solver` lifecycle, `add` / `check` / `push` / `pop`, `assertConstraintAndTrack` + `getUnsatCore`, `getStatistics`, `getConsequences`, `getProof`, `setParams` + schema introspection (`getParamDescrs`) |
+| `z3/model` | `Z3Model` lifecycle, `eval` / `[]`, scalar + composed extractors (`evalInt` / `evalUint` / `evalChar` / `evalSeqLen` / …) |
+| `z3/tactic` | `Z3Goal`, `Z3Tactic`, combinators (`andThen`, `orElse`, `repeat`, `tryFor`, `withParams`), `toSolver()` bridge, schema introspection |
+| `z3/probe` | `Z3Probe`, comparison + boolean combinators returning `Z3Probe`, `condTactic` adaptive dispatch |
+| `z3/optimize` | `Z3Optimize`, `maximize` / `minimize`, `Z3OptHandle[T]`, multi-objective modes |
+| `z3/fixedpoint` | `Z3Fixedpoint`, Horn-clause / CHC: `addRule` / `addFact` / `query` / `getAnswer` |
+
+### Manipulation + I/O
+
+| Module | Surface |
+|---|---|
+| `z3/rewrite` | `substitute` (by-term), `substituteVars` (de-Bruijn) |
+| `z3/translate` | Cross-context AST transfer (`translate[T: Z3Term]`, `compatibleWith`) |
+| `z3/simplify` | `simplify[T]` + params-customised overloads |
+| `z3/astvector` | `Z3AstVector` heterogeneous-AST collection |
+| `z3/pretty` | Generic `pretty[T: Z3Renderable]` over every typed family + ref handle |
+| `z3/io` | `smt2Script` / `writeSmt2` / `toSmt2Benchmark`; `parseSmt2String` / `parseSmt2File`; `loadSmt2String` / `loadSmt2File`; `evalSmt2`; `Z3ParserContext` streaming parser |
+| `z3/params` | `Z3Params` typed bag, `Z3ParamDescrs` schema introspection |
+| `z3/globalparams` | Process-wide `setGlobalParam` / `getGlobalParam` / `resetGlobalParams` |
+| `z3/stats` | `Z3Stats` runtime statistics |
+| `z3/semantics` | `smtValid` / `smtEquiv[T]` validity oracles |
+| `z3/sortdispatch` | `sortOf` mixin-based dispatch + `sortOfType[T]` |
 
 ## Examples
 
@@ -72,12 +116,27 @@ Top-level `import z3` re-exports all of them — most users never reach for a su
 | [`examples/basic_solve.nim`](examples/basic_solve.nim) | The headline `x + y == 10 ∧ x > 3`. Five minutes to first sat. |
 | [`examples/nqueens.nim`](examples/nqueens.nim) | N-queens via `mkDistinct` over three sequences (cols, diag, anti-diag). Default N=8; `-d:nQueens=12` to scale. |
 | [`examples/bitvec_solve.nim`](examples/bitvec_solve.nim) | Modular-arithmetic factoring on `BV[8]`, width-typed concat reconstruction, signed-vs-unsigned distinction. |
-| [`examples/pretty_and_smt2.nim`](examples/pretty_and_smt2.nim) | `pretty(s)` indented view, `smt2Script(s)` emission, `parseSmt2(ctx, …)` round-trip. The debugging loop. |
+| [`examples/pretty_and_smt2.nim`](examples/pretty_and_smt2.nim) | `pretty(s)` indented view, `smt2Script(s)` emission, `parseSmt2String(ctx, …)` round-trip. The debugging loop. |
 | [`examples/properties.nim`](examples/properties.nim) | Property-based testing with [proptest](https://github.com/coreyleavitt/proptest) — soundness round-trip and BV wraparound agreement with native uint8. |
+| [`examples/tactic_pipeline.nim`](examples/tactic_pipeline.nim) | `simplify.andThen(smt).toSolver()` driving a small constraint set — the solver-tactic bridge. |
+| [`examples/uninterpreted_axioms.nim`](examples/uninterpreted_axioms.nim) | Commutativity axiom over an uninterpreted `f: Int × Int → Int`; counter-claim is unsat. SMT solving with abstract functions. |
+| [`examples/float_verification.nim`](examples/float_verification.nim) | Proves the quadratic discriminant `b² - 4ac` is NaN-safe under bounded finite inputs. IEEE 754 reasoning with the wrapper's predicates. |
+| [`examples/string_constraints.nim`](examples/string_constraints.nim) | Finds a 5-char alphanumeric "username" containing at least one digit. Combines `Z3String` + `Z3Regex` + character classes. |
 
 Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble examples` to compile + run all of them on both backends.
 
 ## Design
+
+The wrapper ships **37 modules** organised around the typed-family + ref-handle pattern. v0.4 closed the C-API contract ("every Z3 capability is reachable"); v0.5 polishes that surface for 1.0 (typed errors, parity surfaces, examples, docs).
+
+### Reading guide
+
+- **New here?** Start with the [example list](#examples) and the [headline example](#nim-z3) at the top of this file. Then skim [`docs/PARITY.md`](docs/PARITY.md) to see how typed families compose.
+- **Hit a pitfall?** Check [`docs/GOTCHAS.md`](docs/GOTCHAS.md) — user-facing surprises with symptom / cause / wrapper-behaviour / what-to-do for each.
+- **Writing multi-threaded code?** [`docs/THREADING.md`](docs/THREADING.md) is the canonical contract (per-thread contexts work; sharing handles is UB).
+- **Contributing a new typed family or module?** [`docs/PARITY.md`](docs/PARITY.md) is the checklist; [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) lists the cross-module-internal seams that exist only because Nim has no `internal` visibility.
+
+### Archived plans (per-release rationale)
 
 - [`docs/V0.1_PLAN.md`](docs/V0.1_PLAN.md) — the archived v0.1 plan. Phantom sort types, refcount discipline, current-context threadvar, the lifetime story, and the §18 deferral ledger from v0.1.
 - [`docs/V0.2_PLAN.md`](docs/V0.2_PLAN.md) — the archived v0.2 plan. Arrays (typedesc phantoms), datatypes (marker-type phantoms, single + mutually recursive), quantifiers + patterns, optimisation, tactics + goals + params, and the §8 deferral ledger / "Pre-tag audit" from v0.2.

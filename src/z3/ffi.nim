@@ -940,6 +940,12 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Read `a[i]`. Result sort is the array's range sort.
 
+  proc Z3_mk_array_default(c: RawZ3Context, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Extract the background-default value of an array `a` — the
+    ## value at every index Z3 hasn't been forced to specialise. Dual
+    ## of `Z3_mk_const_array`. v1.0 audit round 2, item #3.
+
   # --- BitVec sort + numerals ----------------------------------------------
 
   proc Z3_mk_bv_sort(c: RawZ3Context, sz: cuint): RawZ3Sort

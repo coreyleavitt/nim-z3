@@ -128,3 +128,15 @@ suite "Z3Array — nested arrays (v0.3 step 9 closes v0.2 §8 deferral)":
     let s = newSolver()
     s.add outer1.select(mkInt(0)).select(mkInt(5)) == mkInt(42)
     check s.check() == zsSat
+
+suite "Z3Array — arrayDefault (v1.0 audit round 2, HIGH #3)":
+  test "arrayDefault on mkConstArray returns the constant value":
+    let ctx = newContext()
+    let arr = mkConstArray[Z3Int, Z3Int](mkInt(42))
+    check smtValid(arrayDefault(arr) == mkInt(42))
+
+  test "arrayDefault on store(constArr, k, v) is unchanged":
+    let ctx = newContext()
+    let arr = mkConstArray[Z3Int, Z3Int](mkInt(7))
+    let arr2 = arr.store(mkInt(0), mkInt(99))
+    check smtValid(arrayDefault(arr2) == mkInt(7))

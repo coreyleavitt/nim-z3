@@ -123,6 +123,18 @@ proc store*[Key, Val](
   wrap[Z3Array[Key, Val]](a.ctx,
     a.ctx.checkErr Z3_mk_store(a.ctx.raw, a.raw, i.raw, v.raw))
 
+proc arrayDefault*[Key, Val](a: Z3Array[Key, Val]): Val =
+  ## Background-default value of `a` — the value Z3 returns at every
+  ## index that no `store` or assertion has pinned. For
+  ## `mkConstArray[Key, Val](d)` this is `d`; for `store(c, k, v)` it
+  ## remains `d` (only point `k` was perturbed); for free arrays
+  ## (`mkArrayVar`), Z3 invents a witness when asked, since the
+  ## background value is unconstrained.
+  ##
+  ## v1.0 audit round 2, item #3 — dual of `mkConstArray`.
+  wrap[Val](a.ctx,
+    a.ctx.checkErr Z3_mk_array_default(a.ctx.raw, a.raw))
+
 proc select*[Key, Val](a: Z3Array[Key, Val], i: Key): Val =
   ## Read `a[i]`. Returns a `Val`-typed AST.
   ##

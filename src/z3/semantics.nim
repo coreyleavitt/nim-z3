@@ -32,6 +32,14 @@ proc smtValid*(p: Z3Bool): bool =
   ## requires Z3 prove unsat. If you need to distinguish "definitely
   ## not valid" from "couldn't decide", use a solver manually and case
   ## on `Z3Status`.
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    # x + 0 == x is a tautology for any integer x.
+    doAssert smtValid(x + mkInt(0) == x)
+    # x > 0 is not valid (false when x = 0).
+    doAssert not smtValid(x > mkInt(0))
   let s = newSolver(p.ctx)
   s.add wrap[Z3Bool](p.ctx,
     p.ctx.checkErr Z3_mk_not(p.ctx.raw, p.raw))

@@ -30,3 +30,6 @@ nimcache/
 # milpa.kdl and milpa.lock ARE committed.
 _deps/
 nim.cfg
+
+# Generated documentation tree.
+htmldocs/

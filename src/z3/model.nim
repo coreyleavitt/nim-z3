@@ -87,6 +87,19 @@ proc eval*[T: Z3Term](m: Z3Model, a: T, modelCompletion = true): T =
   ## v0.3 step 2 extended it to `Z3Array[K, V]` and
   ## `Z3DatatypeValue[T]` — works for any typed family without
   ## adding a new overload here.
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let s = newSolver()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")
+    s.add x + y == mkInt(10)
+    s.add x > mkInt(3)
+    doAssert s.check() == zsSat
+    let m = s.model()
+    let xv = m.eval(x).toInt
+    let yv = m.eval(y).toInt
+    doAssert xv + yv == 10 and xv > 3
   var outRaw: RawZ3Ast
   let ok = Z3_model_eval(m.ctx.raw, m.raw, a.raw, modelCompletion, addr outRaw)
   let errCode = Z3_get_error_code(m.ctx.raw)

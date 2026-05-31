@@ -100,6 +100,13 @@ proc newSolver*(ctx: Z3Context): Z3Solver =
 proc newSolver*(): Z3Solver =
   ## Fresh solver bound to `currentContext()`. Raises `Z3Error` with
   ## `Z3_INVALID_USAGE` if no current context is set.
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let s = newSolver()
+    let x = mkIntVar("x")
+    s.add x > mkInt(0)
+    doAssert s.check() == zsSat
   newSolver(requireCurrentContext())
 
 # ============================================================================
@@ -152,6 +159,14 @@ proc add*(s: Z3Solver, constraint: Z3Bool) =
   ## to detect or prevent this at runtime (the FFI is silent on
   ## cross-context AST usage). Stick to one context per solver, OR
   ## use `withContext` for scoping if you must.
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let s = newSolver()
+    let x = mkIntVar("x")
+    s.add x > mkInt(0)
+    s.add x < mkInt(10)
+    doAssert s.check() == zsSat
   s.ctx.checkErrVoid Z3_solver_assert(s.ctx.raw, s.raw, constraint.raw)
 
 # `assertConstraint` alias deleted in v0.5 step 2B (goal 11) —
@@ -271,6 +286,15 @@ proc check*(s: Z3Solver): Z3Status =
   ##   `model()` will raise `Z3Error`.
   ## - `zsUnknown`: Z3 couldn't decide (timeout, incomplete theory,
   ##   etc.). `reasonUnknown()` returns a human-readable explanation.
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let s = newSolver()
+    let x = mkIntVar("x")
+    s.add x * x == mkInt(4)
+    s.add x > mkInt(0)
+    doAssert s.check() == zsSat
+    doAssert s.model().evalInt(x) == 2
   decodeLBool(s.ctx.checkErr Z3_solver_check(s.ctx.raw, s.raw))
 
 proc checkWith*(s: Z3Solver, assumptions: openArray[Z3Bool]): Z3Status =

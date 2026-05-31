@@ -522,3 +522,58 @@ suite "property: shape — regex laws":
       tuples2(regexRecipes(maxDepth = 2), regexRecipes(maxDepth = 2)),
       prop, fewExamples())
     check report.outcome == otPassed
+
+# ============================================================================
+# property: shape — IEEE 754 laws over random Z3Float32 trees
+# ============================================================================
+#
+# All FP properties are universally quantified with an `isFinite`
+# precondition. IEEE 754 makes naïve algebraic laws (`x + 0 ≡ x`,
+# `abs(abs(x)) ≡ abs(x)`, …) **false** on NaN — `NaN + 0` is NaN, but
+# `NaN == NaN` is false under IEEE-`==`, so the equation evaluates to
+# false. Conditioning on `isFinite(x)` excludes NaN, ±Inf, and the
+# associated edge cases; the law then holds.
+
+suite "property: shape — FP laws (under isFinite precondition)":
+  test "abs is idempotent: isFinite(x) → abs(abs(x)) == abs(x)":
+    let ctx = newContext()
+    let prop =
+      proc(r: FpRecipe) =
+        let x = interpret(r, ctx)
+        let finite = (not isNaN(x)) and (not isInf(x))
+        ensure smtValid(finite.implies(abs(abs(x)) == abs(x)))
+    let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "additive identity: isFinite(x) → x + 0.0 == x":
+    let ctx = newContext()
+    let zero = mkFloat32(ctx, 0.0'f32)
+    let prop =
+      proc(r: FpRecipe) =
+        let x = interpret(r, ctx)
+        let finite = (not isNaN(x)) and (not isInf(x))
+        ensure smtValid(finite.implies(x + zero == x))
+    let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "multiplicative identity: isFinite(x) → x * 1.0 == x":
+    let ctx = newContext()
+    let one = mkFloat32(ctx, 1.0'f32)
+    let prop =
+      proc(r: FpRecipe) =
+        let x = interpret(r, ctx)
+        let finite = (not isNaN(x)) and (not isInf(x))
+        ensure smtValid(finite.implies(x * one == x))
+    let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed
+
+  test "abs of negation: isFinite(x) → abs(-x) == abs(x)":
+    let ctx = newContext()
+    let zero = mkFloat32(ctx, 0.0'f32)
+    let prop =
+      proc(r: FpRecipe) =
+        let x = interpret(r, ctx)
+        let finite = (not isNaN(x)) and (not isInf(x))
+        ensure smtValid(finite.implies(abs(zero - x) == abs(x)))
+    let report = forAll(fpRecipes(maxDepth = 2), prop, fewExamples())
+    check report.outcome == otPassed

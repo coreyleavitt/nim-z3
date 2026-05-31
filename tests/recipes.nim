@@ -334,6 +334,59 @@ proc regexRecipes*(maxDepth = 2): Strategy[RegexRecipe] =
   recursive(regexRecipeBase(), regexRecipeExtend, maxDepth)
 
 # ============================================================================
+# FpRecipe — Z3Float32 expression trees
+# ============================================================================
+#
+# IEEE 754 makes naïve algebraic laws fail on NaN / ±Inf. Properties
+# using FpRecipe are universally quantified with an `isFinite`-shaped
+# precondition: `forall x. isFinite(x) implies law(x)`. This isolates
+# the algebraic identities we actually want to assert from IEEE's
+# infinitary edge cases.
+#
+# Restricted to Z3Float32 to keep the BV bit-blasting cost bounded;
+# the same laws hold for any IEEE width.
+
+type
+  FpRecipeKind* = enum fprkLit, fprkVar, fprkNeg, fprkAbs,
+                       fprkAdd, fprkSub, fprkMul
+  FpRecipe* = ref object
+    case kind*: FpRecipeKind
+    of fprkLit:  lit*: float32
+    of fprkVar:  name*: string
+    of fprkNeg, fprkAbs: e*: FpRecipe
+    of fprkAdd, fprkSub, fprkMul: l*, r*: FpRecipe
+
+const fpVarNames* = @["fx", "fy", "fz"]
+const fpLitChoices* = @[0.0'f32, 1.0'f32, -1.0'f32, 2.5'f32, -3.75'f32]
+
+proc fpRecipeBase*(): Strategy[FpRecipe] =
+  oneOf(@[
+    sampledFrom(fpLitChoices).map(
+      proc(v: float32): FpRecipe = FpRecipe(kind: fprkLit, lit: v)),
+    sampledFrom(fpVarNames).map(
+      proc(n: string): FpRecipe = FpRecipe(kind: fprkVar, name: n)),
+  ])
+
+proc fpRecipeExtend*(child: Strategy[FpRecipe]): Strategy[FpRecipe] =
+  oneOf(@[
+    fpRecipeBase(),
+    child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkNeg, e: e)),
+    child.map(proc(e: FpRecipe): FpRecipe = FpRecipe(kind: fprkAbs, e: e)),
+    tuples2(child, child).map(
+      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
+        FpRecipe(kind: fprkAdd, l: p[0], r: p[1])),
+    tuples2(child, child).map(
+      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
+        FpRecipe(kind: fprkSub, l: p[0], r: p[1])),
+    tuples2(child, child).map(
+      proc(p: (FpRecipe, FpRecipe)): FpRecipe =
+        FpRecipe(kind: fprkMul, l: p[0], r: p[1])),
+  ])
+
+proc fpRecipes*(maxDepth = 3): Strategy[FpRecipe] =
+  recursive(fpRecipeBase(), fpRecipeExtend, maxDepth)
+
+# ============================================================================
 # Interpreters — recipe → AST under a given context
 # ============================================================================
 
@@ -362,6 +415,21 @@ proc interpret*(r: BvRecipe, ctx: Z3Context): Z3BitVec[8] =
   of bvrkAnd: interpret(r.l, ctx) and interpret(r.r, ctx)
   of bvrkOr:  interpret(r.l, ctx) or  interpret(r.r, ctx)
   of bvrkXor: interpret(r.l, ctx) xor interpret(r.r, ctx)
+
+proc interpret*(r: FpRecipe, ctx: Z3Context): Z3Float32 =
+  ## Build the Z3Float32 AST for `r` under `ctx`. Uses `Z3Float32`
+  ## (= `Z3Fp[8, 24]`) for all leaves and intermediate results.
+  case r.kind
+  of fprkLit:  mkFloat32(ctx, r.lit)
+  of fprkVar:  mkFloat32Var(ctx, r.name)
+  of fprkNeg:
+    # No `-` unary operator on Z3Fp at the public surface; use the
+    # canonical `0 - e` pattern (Z3 simplifies this if needed).
+    mkFloat32(ctx, 0.0'f32) - interpret(r.e, ctx)
+  of fprkAbs:  abs(interpret(r.e, ctx))
+  of fprkAdd:  interpret(r.l, ctx) + interpret(r.r, ctx)
+  of fprkSub:  interpret(r.l, ctx) - interpret(r.r, ctx)
+  of fprkMul:  interpret(r.l, ctx) * interpret(r.r, ctx)
 
 proc interpret*(r: RegexRecipe, ctx: Z3Context): Z3Regex[Z3String] =
   ## Build the Z3Regex[Z3String] AST for `r` under `ctx`.

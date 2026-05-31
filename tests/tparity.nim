@@ -122,6 +122,43 @@ suite "Z3RoundingMode — sortOf + equality (v0.5.0 audit #9, #22)":
     # rmRNE != rmRTZ at the SMT level (distinct enum values).
     check smtValid(rmRNE() != rmRTZ())
 
+suite "B1/B4/B5 — generic simplify / ite / mkDistinct across families":
+  test "simplify[T: Z3Term] works on Z3Fp, Z3Seq, Z3Char (medium B1)":
+    let ctx = newContext()
+    let f = mkFloat32(3.14'f32)
+    let s = mkSeqUnit(mkInt(7))
+    let c = mkChar('A')
+    # Generic dispatch — phantom type preserved.
+    let f2: Z3Fp[8, 24] = simplify(f)
+    let s2: Z3Seq[Z3Int] = simplify(s)
+    let c2: Z3Char       = simplify(c)
+    check ($f2).len > 0
+    check ($s2).len > 0
+    check ($c2).len > 0
+
+  test "ite[T: Z3Term] works for Z3Fp, Z3Seq, Z3Char (medium B4)":
+    let ctx = newContext()
+    let p = mkBoolVar("p")
+    let f = ite(p, mkFloat32(1.0'f32), mkFloat32(2.0'f32))
+    let s = ite(p, mkSeqUnit(mkInt(1)), mkSeqUnit(mkInt(2)))
+    let c = ite(p, mkChar('a'), mkChar('b'))
+    check compiles(f)
+    check compiles(s)
+    check compiles(c)
+
+  test "mkDistinct[T: Z3Term] enforces same-sort at compile time (medium B5)":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let y = mkIntVar("y")
+    let b = mkBoolVar("b")
+    let f1 = mkFloat32(1.0'f32)
+    let f2 = mkFloat32(2.0'f32)
+    # Same-family inputs compile.
+    check compiles(mkDistinct(x, y))
+    check compiles(mkDistinct(f1, f2))
+    # Cross-family is a compile error.
+    check not compiles(mkDistinct(x, b))
+
 suite "model.eval / m[] are constrained to Z3Term":
   test "m.eval(intAst) compiles (Z3Int is Z3Term)":
     let ctx = newContext()

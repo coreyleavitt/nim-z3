@@ -274,30 +274,8 @@ template emitVarargsMonoid*(name, ffi, identityProc: untyped) =
       raws[i] = a.raw
     wrap[Z3Bool](ctx, naryFFICall(ctx, raws, ffi))
 
-template emitVarargsDistinctS*(name, family: untyped) =
-  ## Define `name[S: static SortTag](xs: varargs[family]): Z3Bool`
-  ## with the "≤1 trivially-true, ≥2 builds (distinct ...)" policy.
-  ## Used for `Z3Bool.mkDistinct` over `Z3Ast[S]`.
-  proc name*[S: static SortTag](xs: varargs[family]): Z3Bool =
-    if xs.len <= 1:
-      let ctx = if xs.len == 1: xs[0].ctx else: requireCurrentContext()
-      return wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
-    let ctx = xs[0].ctx
-    var raws = newSeq[RawZ3Ast](xs.len)
-    for i, x in xs:
-      raws[i] = x.raw
-    wrap[Z3Bool](ctx, naryFFICall(ctx, raws, Z3_mk_distinct))
-
-template emitVarargsDistinctW*(name, family: untyped) =
-  ## Define `name[W: static int](xs: varargs[family]): Z3Bool` for
-  ## width-parameterised BV distinctness. Used for
-  ## `Z3BitVec.mkDistinct` over `Z3BitVec[W]`.
-  proc name*[W: static int](xs: varargs[family]): Z3Bool =
-    if xs.len <= 1:
-      let ctx = if xs.len == 1: xs[0].ctx else: requireCurrentContext()
-      return wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
-    let ctx = xs[0].ctx
-    var raws = newSeq[RawZ3Ast](xs.len)
-    for i, x in xs:
-      raws[i] = x.raw
-    wrap[Z3Bool](ctx, naryFFICall(ctx, raws, Z3_mk_distinct))
+# `mkDistinct[T: Z3Term]` lives in z3/boolean (cannot live here
+# because Z3Bool — the return type — is defined in z3/ast which
+# imports z3/lifecycle, not the other way around). v0.5.0
+# medium-audit B5 collapsed `emitVarargsDistinctS` +
+# `emitVarargsDistinctW` into the single boolean.nim definition.

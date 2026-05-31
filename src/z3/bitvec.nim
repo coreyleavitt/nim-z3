@@ -323,17 +323,15 @@ template extract*(a: Z3BitVec, hi, lo: static int): untyped =
 # type family.
 # ============================================================================
 
-proc ite*[W: static int](cond: Z3Bool, t, e: Z3BitVec[W]): Z3BitVec[W] =
-  ## If-then-else on bit-vectors. Same-width branches enforced at the
-  ## type level; cross-width is a compile error.
-  wrap[Z3BitVec[W]](cond.ctx,
-    cond.ctx.checkErr Z3_mk_ite(cond.ctx.raw, cond.raw, t.raw, e.raw))
+# `ite[T: Z3Term]` is defined in z3/boolean (v0.5.0 medium-audit B4
+# unified the per-family overloads); Z3BitVec[W] same-width matching
+# falls out from the generic. Cross-width `ite(p, bv8, bv16)` is a
+# compile error via the shared-`T` constraint.
 
-# `mkDistinct` — all-pairs-distinct constraint on a sequence of
-# same-width BVs. Returns a `Z3Bool`. Empty / singleton inputs are
-# trivially true. (The pre-v0.5 version indexed `xs[0]` on empty
-# input — a bug fixed by the unified `emitVarargsDistinctW` helper.)
-emitVarargsDistinctW(mkDistinct, Z3BitVec[W])
+# `mkDistinct` — defined as `[T: Z3Term]` generic in z3/lifecycle
+# (v0.5.0 medium-audit B5); the same-width constraint falls out from
+# `varargs[T]` shared-T unification. Cross-width
+# `mkDistinct(bv8, bv16)` is a compile error.
 
 # ============================================================================
 # Literal lifts — `bv + 3'u32`, `3'u32 + bv`, `bv == 5'u32`, etc.

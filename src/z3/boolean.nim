@@ -108,15 +108,22 @@ proc `!=`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) != b
 # If-then-else (generic over sort)
 # ----------------------------------------------------------------------------
 
-proc ite*[S: static SortTag](cond: Z3Bool, t, e: Z3Ast[S]): Z3Ast[S] =
-  ## `if cond then t else e`. Both branches must have the same sort
-  ## (enforced by the phantom-type parameter).
+proc ite*[T: Z3Term](cond: Z3Bool, t, e: T): T =
+  ## `if cond then t else e`. Both branches must have the same Z3
+  ## sort — enforced statically via the shared `T` typed-AST family
+  ## parameter (`Z3Int`, `Z3Real`, `Z3Bool`, `Z3BitVec[W]`,
+  ## `Z3Array[K, V]`, `Z3Seq[E]`, `Z3Char`, `Z3Fp[E, S]`,
+  ## `Z3DatatypeValue[T]`, etc.).
+  ##
+  ## v0.5.0 medium-audit B4 collapsed the per-family `ite` overloads
+  ## (originally `[Z3Ast[S]]` + `[Z3BitVec[W]]`) into one generic.
   ##
   ## ```nim
   ## let r = ite(p, mkInt(1), mkInt(0))          # Z3Int
   ## let q = ite(p, mkBool(true), mkBool(false)) # Z3Bool
+  ## let bv = ite(p, mkBitVec[8](1), mkBitVec[8](0))
   ## ```
-  wrap[Z3Ast[S]](cond.ctx, cond.ctx.checkErr Z3_mk_ite(
+  wrap[T](cond.ctx, cond.ctx.checkErr Z3_mk_ite(
     cond.ctx.raw, cond.raw, t.raw, e.raw))
 
 # ----------------------------------------------------------------------------
@@ -141,9 +148,25 @@ emitVarargsMonoid(mkOr, Z3_mk_or, mkFalse)
 # `distinct` — pairwise-distinct, generic over sort
 # ----------------------------------------------------------------------------
 
-# `mkDistinct` — pairwise-distinct constraint: `mkDistinct(a, b, c)`
-# is true iff `a != b && b != c && a != c`. Cheaper at the SMT level
-# than the equivalent quadratic conjunction of `!=` because Z3 has a
-# dedicated rewrite for this term. Generic over sort — works on
-# `Z3Int`, `Z3Real`, `Z3Bool`, etc.
-emitVarargsDistinctS(mkDistinct, Z3Ast[S])
+proc mkDistinct*[T: Z3Term](xs: varargs[T]): Z3Bool =
+  ## `(distinct x_1 ... x_n)` — true iff every pair `(x_i, x_j)` with
+  ## `i != j` is unequal. Generic across every typed-AST family
+  ## (`Z3Int`, `Z3Real`, `Z3Bool`, `Z3BitVec[W]`, `Z3Seq[E]`,
+  ## `Z3Array[K, V]`, `Z3Char`, `Z3Fp[E, S]`, …). `varargs[T]`
+  ## enforces same-T (hence same-sort) inputs; cross-sort
+  ## `mkDistinct(intAst, boolAst)` is a compile error.
+  ##
+  ## Empty / singleton inputs are trivially true (returns `mkTrue`).
+  ##
+  ## v0.5.0 medium-audit B5 collapsed the per-family
+  ## `emitVarargsDistinctS` + `emitVarargsDistinctW` templates into
+  ## this single generic; Z3Seq / Z3Array / Z3Fp / Z3Char / etc.
+  ## inherit `mkDistinct` automatically.
+  if xs.len <= 1:
+    let ctx = if xs.len == 1: xs[0].ctx else: requireCurrentContext()
+    return wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_true(ctx.raw))
+  let ctx = xs[0].ctx
+  var raws = newSeq[RawZ3Ast](xs.len)
+  for i, x in xs:
+    raws[i] = x.raw
+  wrap[Z3Bool](ctx, naryFFICall(ctx, raws, Z3_mk_distinct))

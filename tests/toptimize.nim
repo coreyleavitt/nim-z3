@@ -186,3 +186,36 @@ suite "Z3Optimize — priority modes (setParams)":
       if frontier > 100: break   # safety: never spin forever
     check frontier >= 1          # at least one Pareto-optimal point
     check frontier <= 100        # frontier eventually exhausted
+suite "Z3Optimize — withFrame + getParamDescrs (medium B2/B3)":
+  test "withFrame pops on normal exit":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let o = newOptimize()
+    o.add(x >= mkInt(0))
+    o.withFrame:
+      o.add(x == mkInt(5))
+      check o.check() == zsSat
+    # Frame popped — the x == 5 constraint is gone.
+    o.add(x == mkInt(7))
+    check o.check() == zsSat
+
+  test "withFrame pops on exception":
+    let ctx = newContext()
+    let x = mkIntVar("x")
+    let o = newOptimize()
+    o.add(x >= mkInt(0))
+    try:
+      o.withFrame:
+        o.add(x == mkInt(99))
+        raise newException(ValueError, "synthetic")
+    except ValueError:
+      discard
+    # Frame popped despite exception.
+    o.add(x == mkInt(7))
+    check o.check() == zsSat
+
+  test "getParamDescrs returns a non-empty schema":
+    let ctx = newContext()
+    let o = newOptimize()
+    let pd = o.getParamDescrs()
+    check pd.len > 0

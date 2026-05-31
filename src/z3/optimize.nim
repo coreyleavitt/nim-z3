@@ -198,6 +198,25 @@ proc pop*(o: Z3Optimize) =
   ## Discard the most-recent `push` frame.
   o.ctx.checkErrVoid Z3_optimize_pop(o.ctx.raw, o.raw)
 
+template withFrame*(o: Z3Optimize, body: untyped) =
+  ## Run `body` inside a freshly-pushed optimiser frame; the frame is
+  ## popped on every exit path (success, exception). Mirror of
+  ## `Z3Solver.withFrame`; added in the v0.5.0 medium audit (B2).
+  o.push()
+  try: body
+  finally: o.pop()
+
+# ============================================================================
+# Param-descrs introspection
+# ============================================================================
+
+proc getParamDescrs*(o: Z3Optimize): Z3ParamDescrs =
+  ## Schema of tunable params accepted by `setParams` for this
+  ## optimiser. Parity with `Z3Solver.getParamDescrs` /
+  ## `Z3Tactic.getParamDescrs`; v0.5.0 medium audit (B3).
+  wrapParamDescrs(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_param_descrs(o.ctx.raw, o.raw))
+
 # ============================================================================
 # Pretty
 # ============================================================================

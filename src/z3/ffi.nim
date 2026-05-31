@@ -727,6 +727,9 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
 
   proc Z3_optimize_set_params(c: RawZ3Context, o: RawZ3Optimize, p: RawZ3Params)
     {.cdecl, header: "z3.h".}
+  proc Z3_optimize_get_param_descrs(c: RawZ3Context, o: RawZ3Optimize):
+                                    RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
     ## Configure the optimiser. The most user-visible knob is the
     ## `priority` symbol value — `lex` (default), `box`, or `pareto`.
     ## See v0.2 plan §1 and `z3/optimize` docs for the semantic

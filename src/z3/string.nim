@@ -31,9 +31,11 @@
 ## `zsUnknown` or run for a long time.
 
 import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./char, ./sequence
-export seq
+export sequence
   # Re-export so `import z3/string` users get the generic Z3Seq surface
-  # for free — that's where `len`, `concat`, `nth`, etc. now live.
+  # for free — that's where `len`, `concat`, `nth`, etc. now live. The
+  # pre-v0.5 spelling `export seq` was renamed in v0.5 step 2A but
+  # the re-export line was left stale; v0.5.0 audit caught it.
 
 # ============================================================================
 # Z3String — alias for Z3Seq[Z3Char]

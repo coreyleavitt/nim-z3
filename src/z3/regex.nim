@@ -14,7 +14,7 @@
 ## cases (large counted repetitions, intersections that produce
 ## exponential DFAs). Treat `zsUnknown` as a possible solver outcome.
 
-import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./char, ./seq, ./string
+import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./char, ./sequence, ./string
 export char
 
 # ============================================================================

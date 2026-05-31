@@ -33,7 +33,7 @@
 
 import std/[macros]
 import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./array, ./bitvec, ./char,
-       ./seq, ./string, ./fp, ./model
+       ./sequence, ./string, ./fp, ./model
 # The leaf-family imports are intentional: funcdecl's domainSorts
 # iterates an arbitrary tuple at compile time, and `sortOfType[FieldT]`
 # resolves through `mixin sortOf` at the iteration site (which is
@@ -102,7 +102,7 @@ proc domainSorts[ArgsTup: tuple](ctx: Z3Context): system.seq[RawZ3Sort] =
   ## Walk the tuple's field types at compile time, collecting their
   ## Z3 sort handles. Uses `default(T)` zero-init + `fields()` macro
   ## for static iteration. Qualified `system.seq` to avoid shadowing
-  ## by the `z3/seq` module import.
+  ## by the `z3/sequence` module import.
   result = newSeq[RawZ3Sort]()
   var t: ArgsTup
   for field in fields(t):

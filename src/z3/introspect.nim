@@ -40,7 +40,7 @@
 ##   research-grade Relation / FiniteDomain / TypeVar — for
 ##   completeness with Z3's API.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./char, ./fp, ./seq, ./string, ./regex, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./char, ./fp, ./sequence, ./string, ./regex, ./sortdispatch
 
 # ============================================================================
 # Z3AstKind / Z3SortKind — Nim-side enums

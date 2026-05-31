@@ -30,7 +30,7 @@ task test, "Run the test suite":
              "tests/tdatatypes_mutual.nim", "tests/tquantifier.nim",
              "tests/toptimize.nim", "tests/ttactic.nim",
              "tests/tsemantics.nim", "tests/tchar.nim",
-             "tests/tseq.nim", "tests/tstring.nim", "tests/tregex.nim",
+             "tests/tsequence.nim", "tests/tstring.nim", "tests/tregex.nim",
              "tests/tfp.nim", "tests/tfuncdecl.nim",
              "tests/tastvector.nim", "tests/tintrospect.nim",
              "tests/tdatatype_sortof.nim", "tests/tproof.nim",

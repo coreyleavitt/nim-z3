@@ -10,7 +10,7 @@
 ##
 ## **All the generic sequence ops** (`len`, varargs `concat`, `&`,
 ## `nth`, `at`, `substr`, `contains`, `startsWith` / `endsWith`,
-## `indexOf`, `replace`, `==`, `!=`) live in `z3/seq` and apply to
+## `indexOf`, `replace`, `==`, `!=`) live in `z3/sequence` and apply to
 ## `Z3String` automatically through this alias. This module ships
 ## **only the string-specific** surface:
 ##
@@ -30,7 +30,7 @@
 ## arithmetic, regex membership, and free string variables may return
 ## `zsUnknown` or run for a long time.
 
-import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./char, ./seq
+import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./char, ./sequence
 export seq
   # Re-export so `import z3/string` users get the generic Z3Seq surface
   # for free — that's where `len`, `concat`, `nth`, etc. now live.
@@ -43,7 +43,7 @@ type
   Z3String* = Z3Seq[Z3Char]
     ## SMT-LIB string = sequence of Unicode codepoints. Every generic
     ## op on `Z3Seq[E]` is available here automatically — see
-    ## `z3/seq` for the full surface.
+    ## `z3/sequence` for the full surface.
 
 # ============================================================================
 # Literals + variables

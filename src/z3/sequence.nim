@@ -1,4 +1,4 @@
-## `z3/seq` — SMT-LIB Sequence theory.
+## `z3/sequence` — SMT-LIB Sequence theory.
 ##
 ## `Z3Seq[E]` is a finite sequence whose elements have AST family `E`.
 ## Z3 defines `String = (Seq Char)`, so `Z3String = Z3Seq[Z3Char]`

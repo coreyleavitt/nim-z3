@@ -116,7 +116,7 @@
 ## - `z3/char` — `Z3Char` Unicode-codepoint AST family. Construction
 ##   from int codepoint or ASCII `char` literal; ordering (`<=` / `<`),
 ##   `isDigit` predicate, `toInt` codepoint extractor. **v0.3 step 4.**
-## - `z3/seq` — `Z3Seq[E]` SMT-LIB sequence theory, phantom-typed
+## - `z3/sequence` — `Z3Seq[E]` SMT-LIB sequence theory, phantom-typed
 ##   over the element AST family. `mkSeqEmpty[E]` / `mkSeqUnit(e)` /
 ##   `mkSeqVar[E](name)`, `len`, varargs `concat` + `&`, `nth(s, i)` +
 ##   `[i]` operator, `at(s, i)` (1-element sub-sequence), `substr`,
@@ -130,7 +130,7 @@
 ##   / `intToStr` int interop, Nim-`string`-literal lifts on `==` /
 ##   `!=` / `&` / `contains` / `startsWith` / `endsWith`. All generic
 ##   sequence ops (len, concat, nth, at, substr, …) flow through the
-##   alias from `z3/seq`. **v0.3 steps 4 + 5.**
+##   alias from `z3/sequence`. **v0.3 steps 4 + 5.**
 ## - `z3/fp` — IEEE 754 / SMT-LIB FloatingPoint theory. `Z3Fp[Ebits,
 ##   Sbits]` phantom-typed over the encoding widths, with `Z3Float16`
 ##   / `Z3Float32` / `Z3Float64` / `Z3Float128` aliases. `mkFp` /
@@ -215,13 +215,13 @@
 import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/builder, z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec,
        z3/pretty, z3/simplify, z3/array, z3/datatypes, z3/quantifier,
-       z3/optimize, z3/params, z3/tactic, z3/semantics, z3/char, z3/seq,
+       z3/optimize, z3/params, z3/tactic, z3/semantics, z3/char, z3/sequence,
        z3/string, z3/regex, z3/fp, z3/funcdecl, z3/astvector, z3/stats,
        z3/introspect, z3/proof, z3/fixedpoint, z3/rewrite, z3/translate,
        z3/probe, z3/globalparams, z3/io
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
        solver, model, bitvec, pretty, simplify, array, datatypes, quantifier,
-       optimize, params, tactic, semantics, char, seq, string, regex, fp,
+       optimize, params, tactic, semantics, char, sequence, string, regex, fp,
        funcdecl, astvector, stats, introspect, proof, fixedpoint, rewrite,
        translate, probe, globalparams, io
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users

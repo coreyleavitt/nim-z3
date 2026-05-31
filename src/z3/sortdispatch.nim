@@ -5,7 +5,7 @@
 ## a typedesc into a `RawZ3Sort`:
 ##
 ## - `z3/array.sortOfType[T]` — Int / Real / Bool / BV[W]
-## - `z3/seq.sortOfTypeSeq[E]` — adds Char / Seq[E']
+## - `z3/sequence.sortOfTypeSeq[E]` — adds Char / Seq[E']
 ## - `z3/funcdecl.sortOfTypeFD[T]` — adds Fp[E, S]
 ##
 ## Each one had to grow whenever a new typed family landed, and the

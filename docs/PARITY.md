@@ -20,11 +20,27 @@ type Z3Term* = concept x
 ```
 
 Anything matching this gets a long list of cross-cutting surfaces
-automatically: `wrap[T]`, `eval[T]`, `smtEquiv[T]`, `astEqual[T]`,
-generic `$[T]` (v0.5 step 3D), and `pretty[T]` (v0.5 step 3A via the
-`Z3Renderable` super-concept). For the architectural concept to stay
-load-bearing, every typed value family **must** match `Z3Term` and
-follow the conventions below.
+automatically:
+
+- **Construction + lifecycle:** `wrap[T]` (the unified adopt-and-
+  refcount template).
+- **Rendering:** generic `$[T]` (v0.5 step 3D, via per-family
+  one-liners forwarding to `termToSmt2`) and `pretty[T]`
+  (v0.5 step 3A, via the `Z3Renderable` super-concept).
+- **Equality + introspection:** `astEqual[T]` (raw-pointer
+  identity), `astHash[T: Z3Term]: uint` (v1.0 round 2 — Z3-side
+  structural-identity hash via `Z3_get_ast_hash`), `getSort[T]`
+  (raw sort), `getSortKind[T: Z3Term]` (ergonomic overload that
+  pulls `.ctx` from the AST — v1.0 round 2).
+- **Model dispatch:** `eval[T]`, `smtEquiv[T]`.
+- **Cross-family generic operators:** `simplify[T: Z3Term]`,
+  `ite[T: Z3Term]`, `mkDistinct[T: Z3Term]` (v1.0 round 1 phase B —
+  collapsed from per-family overloads into a single generic each).
+
+For the architectural concept to stay load-bearing, every typed
+value family **must** match `Z3Term` and follow the conventions
+below — and any new family inherits every surface in the bullets
+above automatically, no per-family overloads required.
 
 ---
 
@@ -158,10 +174,11 @@ Both deferred per v0.4 §8b.
 ## 2. Ref handles (non-`Z3Term` families)
 
 Ref-handle families (`Z3Solver`, `Z3Model`, `Z3Goal`, `Z3Tactic`,
-`Z3Fixedpoint`, `Z3Optimize`, `Z3Params`, `Z3Stats`, `Z3AstVector`,
-`Z3Probe`, `Z3ParserContext`, `Z3FuncDecl[A, R]`) don't carry
-`RawZ3Ast` and so don't match `Z3Term`. They need explicit
-per-handle versions of:
+`Z3Fixedpoint`, `Z3Optimize`, `Z3Params`, `Z3ParamDescrs`,
+`Z3Stats`, `Z3AstVector`, `Z3Probe`, `Z3ParserContext`,
+`Z3FuncDecl[A, R]`, `Z3FuncInterp[A, R]`) don't carry `RawZ3Ast`
+and so don't match `Z3Term`. They need explicit per-handle
+versions of:
 
 - `$` (typically `$Z3_xxx_to_string(ctx.raw, h.raw)`)
 - `pretty` (falls through to the generic `Z3Renderable` if `$` is

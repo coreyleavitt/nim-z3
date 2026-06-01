@@ -54,6 +54,16 @@ You also need:
 
 `milpa` ([coreyleavitt/milpa](https://github.com/coreyleavitt/milpa)) is the project-wide Nim dep resolver — same convention used by every other library in the nimlibs family. nimble is not involved in the build path.
 
+### Test-only dep: `proptest`
+
+[`proptest`](https://github.com/coreyleavitt/proptest) is required to run the property-test suite (`nimble test` exercises `tests/tproperty.nim`, `tests/tsimplify.nim`, and a few shape-property suites). v1.0.0 pins it via `local=` in `milpa.kdl` (a local working-copy path) because nim-z3 consumes a proptest commit not yet on the proptest GitHub remote. To run the full test suite, either:
+
+1. Clone `proptest` to the path listed in `milpa.kdl` and run `milpa update proptest`, or
+2. Edit `milpa.kdl` to point `proptest` at your own checkout / fork, or
+3. Skip the property-test sites (everything in `tests/` whose name doesn't start with `tproperty`/`tsimplify` is property-test-free).
+
+`proptest` is not a runtime dep — `import z3` works fine without it. A future patch release will flip the `local=` line back to a `git=(url)` form once the upstream proptest commit ships.
+
 ## Modules at a glance
 
 `import z3` re-exports everything below. Most users never reach for a submodule directly; the table is a map of where each capability lives.
@@ -122,6 +132,10 @@ You also need:
 | [`examples/uninterpreted_axioms.nim`](examples/uninterpreted_axioms.nim) | Commutativity axiom over an uninterpreted `f: Int × Int → Int`; counter-claim is unsat. SMT solving with abstract functions. |
 | [`examples/float_verification.nim`](examples/float_verification.nim) | Proves the quadratic discriminant `b² - 4ac` is NaN-safe under bounded finite inputs. IEEE 754 reasoning with the wrapper's predicates. |
 | [`examples/string_constraints.nim`](examples/string_constraints.nim) | Finds a 5-char alphanumeric "username" containing at least one digit. Combines `Z3String` + `Z3Regex` + character classes. |
+| [`examples/optimize_scheduling.nim`](examples/optimize_scheduling.nim) | Resource-allocation under hard + soft constraints with a maximised objective. Exercises `Z3Optimize`, `withFrame`, `getParamDescrs`, and `mkDistinct`. |
+| [`examples/array_memory.nim`](examples/array_memory.nim) | 64-bit-addressed byte heap as `Z3Array[Z3BitVec[64], Z3BitVec[8]]`. Proves three array-theory facts including the `arrayDefault` invariant, plus a per-process nested-array memory map. |
+| [`examples/datatypes_list.nim`](examples/datatypes_list.nim) | Inductive `IntList` via `declareDatatype`. Build `cons(1, cons(2, cons(3, nil)))`, walk via `head`/`tail`, prove `cons` is injective. |
+| [`examples/smt2_roundtrip.nim`](examples/smt2_roundtrip.nim) | `toSmt2Benchmark` → `parseSmt2String` → re-solve in a fresh context, plus the same via `parseSmt2File` from disk. |
 
 Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble examples` to compile + run all of them on both backends.
 
@@ -145,7 +159,7 @@ The wrapper ships **37 user-facing modules** (plus the internal `z3/ffi` FFI blo
 - [`docs/V0.4_PLAN.md`](docs/V0.4_PLAN.md) — the archived v0.4 plan. The **contract-completion** release. Nine new modules (`z3/astvector`, `z3/introspect`, `z3/proof`, `z3/fixedpoint`, `z3/rewrite`, `z3/translate`, `z3/probe`, `z3/globalparams`, `z3/io`); five new solver extensions (`assertConstraintAndTrack` / `getUnsatCore` / `getStatistics` / `getConsequences` / `getProof`); the runtime-erased `Z3AnyAst` family + typed lifters; per-context `datatypeRegistry` so `Z3DatatypeValue[T]` participates in `sortdispatch`; quantifier introspection; uninterpreted sorts. Every §1 goal landed; the §8 deferral ledger + §8b "Pre-tag audit" archive the spec corrections logged mid-cycle.
 - [`docs/V0.5_PLAN.md`](docs/V0.5_PLAN.md) — the archived v0.5 plan. The **1.0-readiness polish** release. Two new typed families (`Z3FuncInterp`, `Z3ParamDescrs`); one new module (`z3/error` extracted from `z3/context`); typed error hierarchy (12 subclasses of the abstract `Z3Error` base); cross-family parity (generic `pretty[T: Z3Renderable]`, generic `astEqual[T: Z3Term]`, `evalXxx` shorthand audit, `$` parity); naming hygiene (`z3/seq` → `z3/sequence`, `RoundingMode` consolidation, `naryOp` macro family); memory + thread safety audit (`nimble valgrind`, `tests/tconcurrency.nim`, `docs/THREADING.md`); Z3 C-API micro-gap closure (`Z3FuncInterp`, `Z3ParamDescrs`, `Z3Char ↔ Z3BitVec[18]`); 21 new property-test shape recipes; four v0.3-family examples; five polish docs (`GOTCHAS.md`, `INTERNAL_API.md`, `PARITY.md`, `THREADING.md`, `MINIMAL_BUILD.md`); feature flags (`z3WithoutX` compile-time flags). Every §1 goal landed; the §8 deferral ledger + §8b "Pre-tag audit" archive the spec corrections logged mid-cycle.
 - [`docs/SPIKE_FINDINGS.md`](docs/SPIKE_FINDINGS.md) — the up-front validation log; every assumption in the v0.1 plan was checked against Z3 4.13.3 before the wrapper landed.
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — the **live** plan, currently the v0.6 = v1.0.0 stability tag (a version-only delta from v0.5.0 — no new code, no new tests, no new docs beyond the CHANGELOG entry + README "Stability" section + annotated tag).
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — the **live** plan, currently the v0.6 = v1.0.0 stability tag, **incorporating the v1.0-readiness audit (rounds 1 + 2)**: ~80 substantive items closed including 1 latent CRITICAL (the stdlib-name-shadowing bug that drove the `array`/`char`/`string` → `arrays`/`chars`/`strings` rename), 14 HIGH (7 new procs — `interrupt`, `lambda`, `arrayDefault`, `checkWith`, `getAssertions`, `solver.translate`, `astHash` — `runnableExamples` on the hot path, the `Z3Optimize` example, generic `simplify`/`ite`/`mkDistinct` collapses), plus medium and low cleanups across docs, tests, and ergonomics. The CHANGELOG `[Unreleased]` section is the full record.
 
 ## Versioning
 
@@ -153,7 +167,7 @@ Pre-1.0 the public surface may shift between minor versions. We track deferrals 
 
 ## Stability
 
-v0.6 = v1.0.0 is the stability commitment with a version-only delta from v0.5.0.
+v0.6 = v1.0.0 is the stability commitment, incorporating the v1.0-readiness audit cycle (rounds 1 + 2 — see CHANGELOG `[Unreleased]` for the cumulative list).
 
 Post-1.0 the wrapper enforces SemVer:
 
@@ -163,7 +177,7 @@ Post-1.0 the wrapper enforces SemVer:
 
 What "public surface" means: everything reachable from `import z3` (the umbrella) plus the documented submodule paths `z3/<name>` listed in [Modules at a glance](#modules-at-a-glance). `RawZ3*` C handles, `*Impl*` width-arithmetic helpers, and cross-module-internal seams catalogued in [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) are **not** part of the public surface; they may change at any time without a major bump.
 
-Feature-flag `-d:z3WithoutX` gates are part of the public surface and follow the same SemVer rules.
+Feature-flag `-d:z3WithoutX` gates are part of the public surface and follow the same SemVer rules. The companion `z3WithoutXEff*` compile-time constants (re-exported from the umbrella so user code can query the effective state — they cascade through dependent features) are also stable.
 
 ## License
 

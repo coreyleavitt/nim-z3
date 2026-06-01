@@ -59,6 +59,29 @@ type-name changes.
   `HashSet[T]` use (Z3 `==` returns `Z3Bool`, std/tables wants
   `bool`, so direct use is impossible without wrapping).
 - GOTCHAS #15 — `interrupt` cross-thread semantics.
+- `Z3Fp.isFinite[E, S](x): Z3Bool` — convenience predicate
+  equivalent to `not isNaN(x) and not isInf(x)`. IEEE 754 ships no
+  primitive `is_finite`, neither does Z3's C API; the wrapper
+  synthesises it once. Closes a v0.5-era gap that the FP property
+  tests had been hand-rolling.
+
+### Deferred to v1.x
+
+The round-3 completeness audit surfaced three Z3 C-API areas where
+the wrapper is silent. None block v1.0 — each has a usable
+workaround — but they're the obvious next-cycle additions:
+
+- **`Z3Set[E]`** typed family — Z3 set theory is pure sugar over
+  `Z3Array[E, Z3Bool]`; the wrapper would be ~60 LoC with zero new
+  FFI declarations. Common-enough use case (protocol verification,
+  proptest-z3 SMT-guided generation) to warrant addition.
+- **`Z3_model_get_const_decls` / `Z3_model_get_func_decls`** —
+  model-decl enumeration. Lets a user inspect *all* assignments in
+  an arbitrary model, not just declarations they built themselves.
+  Required by model-inspector tools.
+- **`Z3_mk_seq_replace_all`**, `_replace_re`, `_split_re` — the
+  existing `replace` is first-occurrence only; string-normalisation
+  workloads need replace-all.
 
 ### Fixed (correctness)
 

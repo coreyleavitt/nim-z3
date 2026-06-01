@@ -31,6 +31,8 @@
 12. [`(char.to_bv (_ Char N))` doesn't fold to a BV numeral](#12-charto_bv-_-char-n-doesnt-fold-to-a-bv-numeral)
 13. [Solver param `model = false` is silently ignored by Z3 4.13](#13-solver-param-model--false-is-silently-ignored-by-z3-413)
 14. [`--threads:on` requires `{.gcsafe.}` on thread procs that call wrapper FFI](#14---threadson-requires-gcsafe-on-thread-procs-that-call-wrapper-ffi)
+15. [`interrupt(ctx)` is a cross-thread signal — same-thread calls are no-ops](#15-interruptctx-is-a-cross-thread-signal--same-thread-calls-are-no-ops)
+16. [Z3 ASTs don't drop into `Table[K, V]` / `HashSet[T]` directly](#16-z3-asts-dont-drop-into-tablek-v--hashsett-directly)
 
 ---
 
@@ -420,18 +422,23 @@ See `tests/tconcurrency.nim` for the canonical pattern.
 about to run `s.check()` and the check still runs to completion.
 
 **Cause.** `Z3_interrupt` sets a cancellation flag on the context
-that Z3's decision procedures poll at safe points. The flag is
-checked *inside* the running operation. If no operation is in
-flight on `ctx`, the flag is set, and then the next `check()` will
-return `zsUnknown` immediately the first time Z3 polls — but if
-you call `interrupt` *after* `check()` returns there is nothing
-for Z3 to interrupt; the flag has no effect on the next operation
-unless an operation is already running when the flag is set.
+that Z3's decision procedures poll at safe points *inside* the
+running operation. The behaviour depends on when you set it:
 
-(Some Z3 versions auto-clear the flag at the start of every
-operation; some preserve it until the next poll. The cleanest
-mental model is: `interrupt` is a signal from one thread to
-another, like `pthread_kill(thread, SIGUSR1)`.)
+- **During an in-flight operation (the intended use case).** A
+  watchdog thread sets the flag; the running `check()` polls it
+  at the next safe point and returns `zsUnknown`. This is the
+  cross-thread cancellation guarantee the wrapper exposes.
+- **Between operations.** Z3 auto-clears the flag at the start of
+  most operations (the exact rule varies by Z3 version), so
+  pre-setting it before a future `check()` is unreliable. Treat
+  `interrupt` strictly as a *signal during* a running call, not
+  as a latched "next call should fail" mode.
+
+The cleanest mental model is: `interrupt` is a signal from one
+thread to another, like `pthread_kill(thread, SIGUSR1)`. It only
+has an addressee — the in-flight operation — when something is
+actually running.
 
 **Wrapper behaviour.** `Z3Context.interrupt` is the documented
 exception to the one-context-one-thread discipline (see

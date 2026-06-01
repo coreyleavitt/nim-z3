@@ -102,12 +102,17 @@
 ## - `z3/introspect` — structural introspection. `Z3AstKind` enum
 ##   + `getAstKind[T: Z3Term]`, `getSort`, `getAppNumArgs`,
 ##   `getAppArg`, `getAppDecl`, `unpackApp`, `getNumeralString`.
-##   `Z3SortKind` enum + `getSortKind`, `bitVecWidth`, `arrayKey` /
-##   `arrayRange`, `seqElement`, `regexBasis`, `fpEbits` / `fpSbits`,
-##   `datatypeName`. The erased `Z3AnyAst` family + `toAnyAst` up-cast
-##   + typed lifters `asZ3Int` / `asZ3Real` / `asZ3Bool` / `asZ3Char` /
-##   `asZ3BitVec[W]` / `asZ3Fp[E, S]` / `asZ3Seq[E]` / `asZ3Regex[B]`
-##   with runtime sort + parameter verification. **v0.4 step 2.**
+##   `Z3SortKind` enum + `getSortKind` (with the v1.0 ergonomic
+##   `getSortKind[T: Z3Term](a: T)` overload that pulls `.ctx` from
+##   the AST), `bitVecWidth`, `arrayKey` / `arrayRange`, `seqElement`,
+##   `regexBasis`, `fpEbits` / `fpSbits`, `datatypeName`. The erased
+##   `Z3AnyAst` family + `toAnyAst` up-cast + typed lifters `asZ3Int`
+##   / `asZ3Real` / `asZ3Bool` / `asZ3Char` / `asZ3BitVec[W]` /
+##   `asZ3Fp[E, S]` / `asZ3Seq[E]` / `asZ3Regex[B]` with runtime sort
+##   + parameter verification. `astHash[T: Z3Term](a): uint` —
+##   Z3-side structural-identity hash (`Z3_get_ast_hash`); see
+##   GOTCHAS #16 for the distinct-wrapper pattern for `Table`/
+##   `HashSet` keys. **v0.4 step 2 + v1.0 round 2.**
 ## - `z3/astvector` — `Z3AstVector` typed ref-handle for Z3's
 ##   heterogeneous-sort AST-vector C type. Constructor `newAstVector`,
 ##   `len`, `[i]` (raw access), `[]=`/`add[T: Z3Term]`/`resize`
@@ -157,7 +162,8 @@
 ##   over rounding modes). **`==` / `!=` use IEEE semantics
 ##   (NaN ≠ NaN, +0 = -0) — deliberate divergence from every other
 ##   typed family.** Predicates `isNaN` / `isInf` / `isZero` /
-##   `isNormal` / `isSubnormal` / `isPositive` / `isNegative`. Ops
+##   `isNormal` / `isSubnormal` / `isPositive` / `isNegative` /
+##   `isFinite` (v1.0 — `not isNaN and not isInf`). Ops
 ##   `abs` / unary `-` / `rem` / `min` / `max` / `sqrt` / `fma` /
 ##   `roundToIntegral`. Conversions `toIeeeBv` / `toFp` (from BV,
 ##   another FP, Real) / `toFpFromSigned` / `toFpFromUnsigned` /

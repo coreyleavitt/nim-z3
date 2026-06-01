@@ -58,6 +58,37 @@ let translated = translate(workerAst, mainCtx)
 `translate[T: Z3Term]` is type-preserving and validated by Z3
 internally — it's the only supported cross-context route.
 
+## The one documented exception — `interrupt`
+
+`Z3Context.interrupt()` is safe to call from **any** thread, even
+while the owning thread is mid-`check()` / `optimize.check()` /
+`fixedpoint.query()`. It sets Z3's internal cancellation flag,
+which the decision procedures poll at safe points; the in-flight
+call then returns `zsUnknown` (and `reasonUnknown()` reads
+`"interrupted"`).
+
+This is the only cross-thread operation on a `Z3Context` the
+wrapper explicitly supports. Every other rule in this document
+still applies — `interrupt` does not let you share solvers, models,
+or ASTs; it just lets a watchdog thread cancel a long-running
+operation owned by another thread.
+
+```nim
+# Watchdog pattern: spawn a thread that cancels after a deadline.
+proc workerProc(ctx: Z3Context) {.thread, gcsafe.} =
+  sleep(5_000)             # 5-second budget
+  ctx.interrupt()           # signal the owner thread
+
+var watchdog: Thread[Z3Context]
+createThread(watchdog, workerProc, ctx)
+let res = s.check()         # returns zsUnknown if the watchdog fired
+joinThread(watchdog)
+```
+
+See [GOTCHAS.md §15](GOTCHAS.md#15-interruptctx-is-a-cross-thread-signal--same-thread-calls-are-no-ops)
+for the full cross-thread semantics, the same-thread no-op caveat,
+and the contrast with the in-thread `timeout` param.
+
 ## Pattern: parallel solving
 
 The canonical "many independent SMT goals on a thread pool" shape

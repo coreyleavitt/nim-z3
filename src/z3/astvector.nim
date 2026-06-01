@@ -5,12 +5,12 @@
 ## value from solver / parser operations that produce multiple ASTs
 ## without knowing their typed family up front:
 ##
-## - `Z3Solver.getUnsatCore` (v0.4 step 6) — returns a vector of
-##   `Z3Bool` tracker propositions
-## - `Z3Solver.getConsequences` (v0.4 step 8) — returns a vector of
-##   implied `Z3Bool` literals
-## - `Z3ParserContext.parseFromString` (v0.4 step 14) — returns a
-##   vector of parsed assertions
+## - `Z3Solver.getUnsatCore` — returns a vector of `Z3Bool` tracker
+##   propositions
+## - `Z3Solver.getConsequences` — returns a vector of implied
+##   `Z3Bool` literals
+## - `Z3ParserContext.parseFromString` — returns a vector of parsed
+##   assertions
 ##
 ## The vector itself is sort-agnostic: you can put a `Z3Int` next to a
 ## `Z3Bool` and Z3 won't complain. The wrapper preserves that — `add`
@@ -20,10 +20,10 @@
 ## ## Typed extraction
 ##
 ## `toSeq[T: Z3Term](v): seq[T]` converts to a typed sequence using
-## the v0.3 step-1 unified `wrap[T]` template. The user is responsible
-## for asserting the right element type — there's no runtime sort
-## check in v0.4 step 1. The v0.4 step 2 `getSortKind` capability
-## enables runtime verification for paranoid callers:
+## the unified `wrap[T]` template. The user is responsible for
+## asserting the right element type — the conversion does no runtime
+## sort check. For paranoid callers, `getSortKind` verifies each
+## element before extraction:
 ##
 ## ```nim
 ## for raw in v:
@@ -94,8 +94,8 @@ proc `[]`*(v: Z3AstVector, i: int): RawZ3Ast =
   ## Raw AST handle at index `i`. The wrapper returns the raw because
   ## the vector is heterogeneous — typed family isn't compile-time
   ## known. For typed access, use `toSeq[T]` for whole-vector
-  ## conversion, or pair this with `getSortKind` (v0.4 step 2) for
-  ## per-element runtime dispatch.
+  ## conversion, or pair this with `getSortKind` for per-element
+  ## runtime dispatch.
   doAssert i >= 0 and i < v.len,
     "Z3AstVector[]: index " & $i & " out of bounds [0, " & $v.len & ")"
   v.ctx.checkErr Z3_ast_vector_get(v.ctx.raw, v.raw, cuint(i))
@@ -145,11 +145,11 @@ iterator pairs*(v: Z3AstVector): (int, RawZ3Ast) =
 # ============================================================================
 
 proc toSeq*[T: Z3Term](v: Z3AstVector, _: typedesc[T]): seq[T] =
-  ## Materialise the vector as a typed sequence using the v0.3 step-1
-  ## unified `wrap[T]` template. The caller asserts the right element
-  ## type — there's no runtime sort check in v0.4 step 1; use the
-  ## v0.4 step-2 `getSortKind` capability for paranoid per-element
-  ## verification.
+  ## Materialise the vector as a typed sequence via the unified
+  ## `wrap[T]` template. The caller asserts the right element type —
+  ## the conversion does no runtime sort check. Use `getSortKind` per
+  ## element for paranoid verification when the element sort isn't
+  ## compile-time known.
   ##
   ## Each output element holds an independent inc_ref, so the seq
   ## survives the vector's destruction.

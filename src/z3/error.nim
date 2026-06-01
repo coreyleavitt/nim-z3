@@ -30,10 +30,10 @@
 ##   site.
 ## - `checkErrVoid(ctx, callExpr)` — void-returning peer.
 ##
-## In v0.5 step 4 this module gains the typed-subclass tree
-## (`Z3SortError`, `Z3InvalidUsageError`, `Z3ParserError`, …);
-## `raiseZ3Error` dispatches on `code` to the right subclass at
-## that point.
+## The typed-subclass tree (12 subclasses of the abstract `Z3Error`
+## base: `Z3SortMismatchError`, `Z3InvalidUsageError`, `Z3ParseError`,
+## …) lives below; `raiseZ3Error` dispatches on `code` to the right
+## subclass. See GOTCHAS #6 for the catching-pattern guidance.
 
 import ./ffi
 

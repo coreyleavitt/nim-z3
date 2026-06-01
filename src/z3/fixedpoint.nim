@@ -241,8 +241,7 @@ proc getHelp*(fp: Z3Fixedpoint): string =
 # ============================================================================
 
 proc getStatistics*(fp: Z3Fixedpoint): Z3Stats =
-  ## Snapshot of the fixedpoint solver's runtime statistics. Closes
-  ## the v0.4 step-5 §8 deferral.
+  ## Snapshot of the fixedpoint solver's runtime statistics.
   wrapStats(fp.ctx,
     fp.ctx.checkErr Z3_fixedpoint_get_statistics(fp.ctx.raw, fp.raw))
 

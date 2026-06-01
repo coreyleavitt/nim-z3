@@ -121,19 +121,6 @@ proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
   simplify(m.eval(a, modelCompletion).toInt).toInt
 
 # ============================================================================
-# BV interop — deferred to a focused follow-up
-# ============================================================================
-#
-# Z3 ships `Z3_mk_char_to_bv` / `Z3_mk_char_from_bv`. The encoded BV
-# width matches Z3's runtime `:char-width` param (default 18 bits).
-# Surfacing them well needs:
-#   - deciding whether to lock to `Z3BitVec[18]` (the default and what
-#     ~everyone uses) or surface a `--char-width` setting too, and
-#   - resolving the bidirectional import between `z3/chars` and
-#     `z3/bitvec` (currently bitvec doesn't import char).
-# Logged for v0.3 step 5+ work or a follow-up; not blocking step 4.
-
-# ============================================================================
 # Z3Char <-> Z3BitVec interop (v0.5 step 6C)
 # ============================================================================
 #

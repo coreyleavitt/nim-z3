@@ -1,11 +1,10 @@
 ## `z3/regex` — SMT-LIB regular expressions.
 ##
 ## A `Z3Regex[Basis]` is a regular language over the basis sequence
-## sort. For v0.3 step 4 the only `Basis` we know how to construct
-## sorts for is `Z3String`; step 5 (sequences) will generalise this to
-## `Z3Regex[Z3Seq[E]]` by widening `regexSort[Basis]`. The phantom
-## parameter exists today so that generalisation costs nothing at the
-## call site.
+## sort. `Basis` is any sequence-shaped Z3 type with a `sortOf`
+## overload — both `Z3String` (= `Z3Seq[Z3Char]`) and arbitrary
+## `Z3Seq[E]` qualify, since `regexSort[Basis]` routes through
+## `sortOfType[Basis]`.
 ##
 ## ## Decidability caveat
 ##
@@ -23,9 +22,8 @@ export chars
 
 type
   Z3Regex*[Basis] = object
-    ## Regular language over `Basis`. `Basis` is a typedesc of a
-    ## sequence-shaped Z3 type (today: `Z3String`; v0.3 step 5:
-    ## `Z3Seq[E]`).
+    ## Regular language over `Basis`. `Basis` is any sequence-shaped
+    ## Z3 type: `Z3String`, or any `Z3Seq[E]`.
     raw*: RawZ3Ast
     ctx*: Z3Context
 

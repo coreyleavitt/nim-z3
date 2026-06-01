@@ -19,9 +19,11 @@
 ##
 ## For "what value does f take at this specific argument?" use
 ## `evalAt(m, f, args)` — it composes `f.apply(args)` and
-## `m.eval(...)`. The full `Z3_func_interp` surface (tabular
-## interpretation: explicit entries + else value) is a richer
-## feature; deferred from v0.3 (see plan §8).
+## `m.eval(...)`. The full tabular-interpretation surface
+## (`Z3FuncInterp[ArgsTup, Ret]` with explicit `(args, value)`
+## entries plus an `elseValue`) lives in the same module — see
+## `getFuncInterp(m, f)` below and `tests/tfuncinterp.nim` for
+## the working pattern. v0.5 step 6A.
 ##
 ## ## Arity
 ##

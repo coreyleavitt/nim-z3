@@ -51,9 +51,27 @@ proc main() =
   doAssert s.check() == zsSat
   let m = s.model()
   echo "Round-trip solve found a model in context B."
-  # We can't `m.evalInt(x)` directly — x was constructed in ctx (not ctxB).
-  # Instead extract via SMT2 model rendering.
-  echo "Model:\n", $m
+
+  # --- Step 3a: Extract typed values via `translate` -----------------------
+  # `x` was constructed in ctx (the original context), not ctxB. We can't
+  # `m.evalInt(x)` directly — m belongs to ctxB and the eval would fail
+  # with a cross-context AST error. Two options:
+  #
+  #   (1) `translate(x, ctxB)` — migrate the AST handle into ctxB, then
+  #       evaluate. Round-trips cleanly because Z3 hashcons identical
+  #       sorts and `translate` is the documented cross-context route
+  #       (see z3/translate).
+  #   (2) Render the model with `$m` and parse the textual binding for
+  #       `x` yourself. Cheaper for one-off introspection.
+  #
+  # We demonstrate (1): translate `x` into ctxB, then evaluate.
+  let xInB = translate(x, ctxB)
+  let yInB = translate(y, ctxB)
+  let xVal = m.evalInt(xInB)
+  let yVal = m.evalInt(yInB)
+  echo &"x = {xVal}, y = {yVal}  (via translate(x, ctxB) + evalInt)"
+  doAssert xVal + yVal == 10
+  doAssert xVal > 3
 
   # --- Step 4: Write to a file and parse it back ---------------------------
   let path = getTempDir() / "nim_z3_demo.smt2"

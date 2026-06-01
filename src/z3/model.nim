@@ -108,8 +108,13 @@ proc eval*[T: Z3Term](m: Z3Model, a: T, modelCompletion = true): T =
   if not ok:
     var e = newException(Z3InvalidUsageError,
       "Z3_model_eval returned false; the model couldn't evaluate the AST. " &
-      "Most likely cause: the AST references a function the model doesn't " &
-      "constrain.")
+      "Common causes (in order of frequency): " &
+      "(a) the AST was constructed in a different context than the model — " &
+      "use `translate(ast, m.ctx)` first; " &
+      "(b) `modelCompletion = false` was passed and the AST references an " &
+      "unconstrained variable or function the model doesn't pin; " &
+      "(c) the AST references a function whose interpretation Z3 didn't " &
+      "synthesise (rare).")
     e.code = Z3_INVALID_USAGE
     raise e
   wrap[T](m.ctx, outRaw)

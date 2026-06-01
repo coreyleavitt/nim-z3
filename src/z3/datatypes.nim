@@ -1,10 +1,11 @@
 ## `Z3DatatypeDecl[T] / Z3DatatypeValue[T]` — inductive sums.
 ##
-## Single (non-mutually-recursive) datatypes. Mutually recursive
-## (e.g. `List ↔ Tree`) is v0.2 step 5; it will go through
-## `Z3_mk_datatypes` (plural) instead of `Z3_mk_datatype`, but the
-## user-facing surface and lifecycle discipline established here
-## extends naturally.
+## Single (non-mutually-recursive) datatypes go via
+## `declareDatatype[T]`; mutually recursive groups (e.g.
+## `List ↔ Tree`) via `declareDatatypes[T1, T2]` /
+## `declareDatatypes[T1, T2, T3]` (both shipped in v0.2). The user-
+## facing surface (`con` / `recognizer` / `accessor` / `apply` /
+## `test` / `read`) is uniform across both paths.
 ##
 ## ## Phantom design — marker type as the phantom
 ##
@@ -225,8 +226,8 @@ proc sortOf*[T](_: typedesc[Z3DatatypeValue[T]],
       "Z3DatatypeValue[" & name & "] is not registered in this context " &
       "— call `declareDatatype[" & name & "](...)` first (or " &
       "`declareDatatypes(...)` if mutually-recursive). " &
-      "v0.4 step 3 looks up datatype sorts by marker-type name; the " &
-      "table is per-context and is populated only by the declare* APIs.")
+      "Datatype sorts are tracked per-context, keyed by marker-type " &
+      "name; only the `declare*` APIs populate the table.")
     e.code = Z3_INVALID_USAGE
     raise e
   ctx.datatypeRegistry[name]

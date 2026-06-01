@@ -129,16 +129,18 @@ proc setParams*(s: Z3Solver, p: Z3Params) =
   ##
   ## - `timeout` (`uint`, milliseconds) — return `zsUnknown` if the
   ##   solver hasn't decided within the budget.
-  ## - `model` (`bool`, default `true`) — enable / disable model
-  ##   generation. With `model = false`, `s.model()` after a sat
-  ##   `check()` raises `Z3Error` because Z3 didn't produce one.
+  ## - `model` (`bool`, default `true`) — *nominally* enable/disable
+  ##   model generation. **Z3 4.13 silently ignores `model = false`
+  ##   and always produces a model** — see GOTCHAS #13 for the
+  ##   workaround (just don't call `s.model()` if you don't want it).
   ## - `random_seed` (`uint`) — seeds the solver's nondeterminism.
-  ## - `unsat_core` (`bool`) — enable unsat-core extraction (the
-  ##   `Z3_solver_get_unsat_core` surface isn't wrapped yet).
+  ## - `unsat_core` (`bool`) — enable unsat-core extraction. Surface
+  ##   the result via `assertConstraintAndTrack` + `getUnsatCore` —
+  ##   both shipped in v0.4 step 6.
   ##
-  ## Z3 silently ignores keys the solver doesn't recognise; for the
-  ## per-solver list of valid keys see `Z3_solver_get_param_descrs`
-  ## (not surfaced — needs its own design pass).
+  ## Z3 silently ignores keys the solver doesn't recognise. The
+  ## per-solver schema of valid keys + types + defaults is reachable
+  ## via `s.getParamDescrs()` (v0.5 step 6B).
   ##
   ## ```nim
   ## let p = newParams()

@@ -22,15 +22,25 @@
 ## template is the centralised entry point for "freshly-returned raw
 ## handle → managed `Z3Array`".
 ##
-## ## Not yet supported (deferred to v0.2 §8)
+## ## Nested arrays
 ##
-## - **Nested arrays** (`Z3Array[Z3Int, Z3Array[Z3Int, Z3Int]]`).
-##   Nim 2.2's typedesc-generic-param reflection doesn't compose
-##   cleanly across nesting — extracting `T.Key` and `T.Val` from a
-##   `T: Z3Array` to recursively build the sort needs macro-level
-##   introspection. Revisit if a user needs it before datatypes land.
-## - **`Z3_mk_array_ext`** (extensionality witness). Niche; defer
-##   until tactics or v0.3.
+## `Z3Array[K1, Z3Array[K2, V]]` round-trips cleanly through
+## `store`/`select` — v0.3 step 9's mixin-based `sortOf` dispatch
+## closed the v0.2 §8 nested-typedesc-reflection deferral.
+## `examples/array_memory.nim` demonstrates a per-process two-level
+## memory map.
+##
+## ## Background-default values
+##
+## `arrayDefault[K, V](a): V` (v1.0 round 2) extracts the background
+## value — dual of `mkConstArray[K, V](d)`. For `mkConstArray(d)` it
+## returns `d`; `store` preserves it; free arrays let Z3 invent a
+## witness.
+##
+## ## Still deferred
+##
+## - **`Z3_mk_array_ext`** (extensionality witness). Niche; not on
+##   the v1.x roadmap unless a user needs it.
 
 import ./ffi, ./context, ./error, ./ast, ./sortdispatch
 export sortdispatch
@@ -141,9 +151,9 @@ proc select*[Key, Val](a: Z3Array[Key, Val], i: Key): Val =
   ## v0.3 step 1: the previous four-branch `when Val is X` dispatch
   ## collapsed to a single call to the unified `wrap[T]` template from
   ## `z3/lifecycle`. Works for any `Val` that's one of the typed AST
-  ## families (Z3Int, Z3Real, Z3Bool, Z3BitVec[W], Z3DatatypeValue[T],
-  ## or another Z3Array — though nested arrays remain blocked on
-  ## `sortOfType`'s typedesc-reflection limit; see plan §1 goal 1.6).
+  ## families (Z3Int, Z3Real, Z3Bool, Z3BitVec[W], Z3DatatypeValue[T])
+  ## including nested `Z3Array[K2, V2]` — v0.3 step 9's mixin-based
+  ## `sortOf` dispatch handles the recursion.
   wrap[Val](a.ctx, a.ctx.checkErr Z3_mk_select(a.ctx.raw, a.raw, i.raw))
 
 proc `[]`*[Key, Val](a: Z3Array[Key, Val], i: Key): Val {.inline.} =

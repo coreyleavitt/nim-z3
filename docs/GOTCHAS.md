@@ -33,6 +33,9 @@
 14. [`--threads:on` requires `{.gcsafe.}` on thread procs that call wrapper FFI](#14---threadson-requires-gcsafe-on-thread-procs-that-call-wrapper-ffi)
 15. [`interrupt(ctx)` is a cross-thread signal — same-thread calls are no-ops](#15-interruptctx-is-a-cross-thread-signal--same-thread-calls-are-no-ops)
 16. [Z3 ASTs don't drop into `Table[K, V]` / `HashSet[T]` directly](#16-z3-asts-dont-drop-into-tablek-v--hashsett-directly)
+17. [`getProof` returns nil unless the context was built with proofs enabled](#17-getproof-returns-nil-unless-the-context-was-built-with-proofs-enabled)
+18. [`modelCompletion = false` evaluates unconstrained variables to themselves](#18-modelcompletion--false-evaluates-unconstrained-variables-to-themselves)
+19. [`Z3Seq.replace` is first-occurrence only — not replace-all](#19-z3seqreplace-is-first-occurrence-only--not-replace-all)
 
 ---
 
@@ -497,3 +500,100 @@ t[Z3IntKey(mkInt(1))] = "one"
 See `tests/thash.nim` for the canonical pattern. The same shape
 works for `HashSet[Z3IntKey]` and for any other typed family
 (`distinct Z3BitVec[8]`, `distinct Z3Char`, …).
+
+---
+
+## 17. `getProof` returns nil unless the context was built with proofs enabled
+
+**Symptom.** `s.getProof()` after a sat `check()` raises
+`Z3InvalidUsageError: nil proof returned. Most likely cause: proof
+generation wasn't enabled on the context.`
+
+**Cause.** Z3 only assembles proof objects when the context was
+built with the `proof` global param set to `true`. By default it
+isn't — proof construction is expensive, so Z3 elides it unless you
+opt in. `newContext()` with no params makes a proof-disabled
+context, so the otherwise-correct `solver.add(...); s.check(); s.getProof()`
+path returns nil at the last step.
+
+**Wrapper behaviour.** The wrapper checks for nil at the FFI
+boundary and raises the typed error. The error message names the
+likely cause but doesn't spell out the fix.
+
+**What you should do.** Pass `("proof", "true")` to `newContext`:
+
+```nim
+let ctx = newContext(("proof", "true"))
+let s = newSolver()
+s.add (x + y == mkInt(10)) and not (y == mkInt(10) - x)
+doAssert s.check() == zsUnsat
+let p = s.getProof()        # now returns a real Z3Proof
+```
+
+For the full proof-rule surface (42-entry `ProofRule` enum,
+`unpackProof`), see `z3/proof`. Proofs are only meaningful after a
+`zsUnsat` outcome; on `zsSat` Z3 has no proof to construct.
+
+---
+
+## 18. `modelCompletion = false` evaluates unconstrained variables to themselves
+
+**Symptom.** `m.eval(x, modelCompletion = false).toInt` raises
+`Z3InvalidUsageError: not a literal int` for a variable `x` the
+solver didn't constrain.
+
+**Cause.** With `modelCompletion = true` (the default), Z3 invents
+a witness for every unconstrained variable so `eval` always returns
+a literal. With `false`, the model **does not** complete: an
+unconstrained variable evaluates *back to itself* (as an AST), and
+downstream extractors like `toInt` / `toBool` fail because there's
+no literal value to extract.
+
+**Wrapper behaviour.** `eval[T]` returns whatever Z3 hands back —
+typed correctly, but possibly still symbolic. The downstream
+`toInt` raises because it expects a numeric literal.
+
+**What you should do.** Pick your model-completion mode
+deliberately:
+
+- **Default (`modelCompletion = true`).** Use for "give me a
+  concrete witness for every variable" workflows. Every `toInt` /
+  `toBool` etc. will succeed.
+- **`modelCompletion = false`.** Use when you specifically want to
+  detect which variables the solver left free. After `eval`,
+  call `astEqual(result, originalVar)` to test "did the model not
+  pin this?" or `toIntOpt` to get a `none(int)` instead of an
+  exception.
+
+```nim
+let yEval = m.eval(y, modelCompletion = false)
+if astEqual(yEval, y):
+  echo "y is unconstrained — model didn't pin a value"
+else:
+  echo "y = ", yEval.toInt
+```
+
+---
+
+## 19. `Z3Seq.replace` is first-occurrence only — not replace-all
+
+**Symptom.** `seq.replace(needle, repl)` modifies only the *first*
+occurrence of `needle`, leaving subsequent matches untouched.
+Surprising if you're coming from Nim's stdlib `strutils.replace`
+(which is replace-all).
+
+**Cause.** `Z3_mk_seq_replace` in Z3's C API replaces the first
+match; Z3's replace-all surface (`Z3_mk_seq_replace_all`) is a
+separate FFI entry point that the wrapper hasn't surfaced yet (see
+CHANGELOG `[Unreleased]` "Deferred to v1.x").
+
+**Wrapper behaviour.** `replace` faithfully wraps the
+first-occurrence FFI. The contract matches Z3 / SMT-LIB, not Nim's
+stdlib.
+
+**What you should do.** For replace-all today, encode it as a
+fixed-point loop using `indexOf` + `substr`, or use
+`parseSmt2String` with an SMT-LIB script that calls the underlying
+Z3 4.12+ replace-all directly. The v1.x release will surface
+`replaceAll`, `replaceRegex`, and `splitRegex` as first-class
+wrappers (tracked in the CHANGELOG deferral list).

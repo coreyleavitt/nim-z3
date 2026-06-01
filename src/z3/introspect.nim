@@ -283,9 +283,9 @@ proc datatypeName*(ctx: Z3Context, s: RawZ3Sort): string =
 # ============================================================================
 #
 # Each lifter runtime-checks the AST's sort against the target type
-# parameters; raises `Z3Error` (Z3_INVALID_USAGE) on mismatch with an
-# informative message. v0.5 step 3 will refine to a typed
-# `Z3SortError` subclass.
+# parameters; raises `Z3SortMismatchError` (Z3_INVALID_USAGE) on
+# mismatch with an informative message. The typed subclass is part
+# of the v0.5 12-error hierarchy.
 
 template raiseSortMismatch(expected: string, gotKind: Z3SortKind,
                            ctx: Z3Context) =

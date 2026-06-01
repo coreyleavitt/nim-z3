@@ -37,7 +37,16 @@ That five-line example uses everything you need to be productive: a context, fre
 
 ## Install
 
-Add to your `milpa.kdl`:
+Two prerequisites are non-negotiable:
+
+- Nim 2.0+.
+- A system `libz3.so` at runtime — `apt install libz3-dev` (Debian/Ubuntu), `brew install z3` (macOS), or unpack a [Z3 release tarball](https://github.com/Z3Prover/z3/releases) into the loader path. nim-z3 supports Z3 4.10 → 4.13.x.
+
+You then have two ways to wire nim-z3 into your project.
+
+### Option 1 — via milpa (recommended for project-wide consistency)
+
+[`milpa`](https://github.com/coreyleavitt/milpa) is the project-wide Nim dep resolver used by every library in the nimlibs family. Add to your `milpa.kdl`:
 
 ```kdl
 deps {
@@ -45,14 +54,32 @@ deps {
 }
 ```
 
-`milpa fetch` resolves softlink (the dynamic-loading dep), emits the right `nim.cfg`, and you're set.
+`milpa fetch` resolves softlink (nim-z3's only runtime dep, used for the dynamic `libz3.so` load), writes `nim.cfg` with the right `--path:` lines, and you're set. nimble is not involved in the build path.
 
-You also need:
+### Option 2 — milpa-less, manual `--path:`
 
-- Nim 2.0+.
-- A system `libz3.so` at runtime — `apt install libz3-dev` (Debian/Ubuntu), `brew install z3` (macOS), or unpack a [Z3 release tarball](https://github.com/Z3Prover/z3/releases) into the loader path. nim-z3 supports Z3 4.10 → 4.13.x.
+If you don't want milpa, the one runtime dep nim-z3 needs at compile time is [`softlink`](https://github.com/coreyleavitt/softlink). Clone it next to nim-z3 and point Nim at both:
 
-`milpa` ([coreyleavitt/milpa](https://github.com/coreyleavitt/milpa)) is the project-wide Nim dep resolver — same convention used by every other library in the nimlibs family. nimble is not involved in the build path.
+```bash
+git clone https://github.com/coreyleavitt/nim-z3.git
+git clone https://github.com/coreyleavitt/softlink.git
+nim c --path:nim-z3/src --path:softlink/src your_program.nim
+```
+
+Or add the two paths to a `nim.cfg` / `config.nims` in your project root. The library itself has no nimble dep tree to resolve — only Nim ≥ 2.0 (which `nim --version` confirms).
+
+### Evaluating without installing anything
+
+If you just want to see whether nim-z3 fits your needs, the fastest path is:
+
+```bash
+git clone https://github.com/coreyleavitt/nim-z3.git
+cd nim-z3
+git clone https://github.com/coreyleavitt/softlink.git _deps/softlink   # or milpa fetch
+nim c -r --path:_deps/softlink/src --threads:on examples/basic_solve.nim
+```
+
+That prints `x = 4, y = 6` on success and confirms libz3.so is reachable.
 
 ### Test-only dep: `proptest`
 
@@ -88,7 +115,7 @@ You also need:
 | `z3/chars` + `z3/strings` + `z3/sequence` + `z3/regex` | `Z3Char`, `Z3String = Z3Seq[Z3Char]`, `Z3Seq[E]`, `Z3Regex[Basis]` | SMT-LIB string / regex theory; `range`, `star`, `plus`, `option`, `concat`, `union`; `mkChar(bv: Z3BitVec[18])` ↔ `toBitVec(c: Z3Char)` |
 | `z3/fp` | `Z3Fp[E, S]`, aliases `Z3Float32`/`64`/etc., `Z3RoundingMode` | IEEE 754 arithmetic with literal rounding-mode helpers (`rmRNE()` / `rmRTZ()` / …), predicates, conversions, `==` uses IEEE semantics |
 | `z3/funcdecl` | `Z3FuncDecl[Args, Ret]`, `Z3FuncInterp[Args, Ret]` | Phantom-typed function decls + tabular UF model extraction |
-| `z3/quantifier` | `forall` / `exists` with per-arity templates, `Z3Pattern` triggers, introspection (`isForall` / `isExists` / `isLambda`, `getQuantifierBody`, bound-var names + sorts, patterns) |
+| `z3/quantifier` | `forall` / `exists` with per-arity templates, `lambda(bound, body): Z3Array[K, V]` (lambdas as first-class typed arrays), `Z3Pattern` triggers, introspection (`isForall` / `isExists` / `isLambda`, `getQuantifierBody`, bound-var names + sorts, patterns) |
 | `z3/introspect` | `Z3AstKind` / `Z3SortKind`, `Z3AnyAst` runtime-erased family + typed lifters |
 | `z3/proof` | `Z3Proof`, 42-entry `ProofRule` enum, `unpackProof` |
 

@@ -20,12 +20,20 @@
 ##
 ## ## Multi-objective behaviour
 ##
-## By default, multiple objectives are optimised independently in
-## *box* mode — each gets its own optimum, the solver returns a
-## single model whose objective bounds are reported. *Lex* (priority
-## lexicographic) and *Pareto* (Pareto front) modes are deferred
-## (see plan §8) — they require setting `Z3_optimize_set_params` with
-## a typed `Z3Params` object, which is the v0.2 step-1 deferral.
+## Z3's default for multiple objectives is **lex** (lexicographic):
+## maximise the first objective, then maximise the second subject to
+## the first's optimum, and so on. Pass `priority` via `Z3Params` to
+## change mode:
+##
+## - `"lex"` (default) — lexicographic priority chain.
+## - `"box"` — each objective independently; a single model whose
+##   bounds report each per-objective optimum.
+## - `"pareto"` — Pareto-front enumeration; repeated `check()` calls
+##   yield successive frontier points until `zsUnsat`.
+##
+## See `setParams`'s docstring for the full param surface (v0.5 step
+## 6B's `getParamDescrs` returns the schema at runtime), and
+## `tests/toptimize.nim` for working examples of each mode.
 
 import ./ffi, ./context, ./error, ./ast, ./bitvec, ./model, ./solver, ./params
 

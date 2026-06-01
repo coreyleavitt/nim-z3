@@ -67,9 +67,10 @@ type-name changes.
 
 ### Deferred to v1.x
 
-The round-3 completeness audit surfaced three Z3 C-API areas where
+The v1.0-readiness audit cycle surfaced three Z3 C-API areas where
 the wrapper is silent. None block v1.0 — each has a usable
-workaround — but they're the obvious next-cycle additions:
+workaround (see GOTCHAS for the replace-all case) — but they're
+the obvious next-cycle additions:
 
 - **`Z3Set[E]`** typed family — Z3 set theory is pure sugar over
   `Z3Array[E, Z3Bool]`; the wrapper would be ~60 LoC with zero new
@@ -712,8 +713,6 @@ helpers × 5, per-arity templates × 24) that fold into v0.3 plan §1
 goal 1 as the step-1 work.
 
 652 tests pass on both Nim backends (c + cpp); zero failures.
-
-## [0.1.0] — 2026-05-29
 
 ## [0.1.0] — 2026-05-29
 

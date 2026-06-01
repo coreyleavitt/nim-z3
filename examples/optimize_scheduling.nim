@@ -14,8 +14,8 @@
 ##     * `t_3 == 8` weight 1 — task 3 in slot 8 is a faint preference.
 ##
 ##   Maximise: `sum(value_i × scheduled_i)` where each task has a value,
-##   and `scheduled_i` is a 0/1 indicator. Demonstrates the Spacer-style
-##   utility-maximisation pattern alongside soft constraints.
+##   and `scheduled_i` is a 0/1 indicator. Demonstrates a value-
+##   maximisation objective alongside MaxSAT-style soft constraints.
 ##
 ## What this example demonstrates:
 ##   * `Z3Optimize` (`newOptimize`) — distinct from `Z3Solver` for

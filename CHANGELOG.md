@@ -6,9 +6,39 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
-**v1.0-readiness audit cycle (rounds 1 + 2).** Post-v0.5.0 review
-turned up 1 critical, 14 high, ~24 medium, and ~12 low-priority
-items. Rounds 1 + 2 closed all critical + high.
+## [1.0.0] — 2026-05-31
+
+The **stability commitment.** v0.5 was the 1.0-readiness polish
+release; this is the tag. Post-1.0 the wrapper enforces SemVer —
+patch releases (1.0.x) are bug fixes / internal refactors / docs
+only, minor releases (1.x.0) are additive, major releases (2.0.0)
+batch breaking changes with a migration guide. See README
+"## Stability" for the precise public-surface definition.
+
+The five-round v1.0-readiness audit cycle closed in this release:
+
+- **Rounds 1 + 2**: 1 latent CRITICAL (the umbrella's `export string`
+  / `char` / `array` shadowing Nim built-in type identifiers, fixed
+  by renaming the three modules to plural forms), 14 HIGH (7 new
+  procs — `interrupt`, `lambda`, `arrayDefault`, `checkWith`,
+  `getAssertions`, `solver.translate`, `astHash` — plus
+  `runnableExamples` on the hot-path procs, the `Z3Optimize`
+  worked example, and the generic `simplify` / `ite` / `mkDistinct`
+  collapses), plus ~36 medium and low items across correctness,
+  parity, and tests.
+- **Round 3**: doc-only HIGHs (README examples table, GOTCHAS index,
+  THREADING.md `interrupt` section) plus PARITY / framing cleanups.
+- **Round 4**: doc-rot HIGHs in solver/optimize/arrays/datatypes
+  module docstrings (stale "deferred" claims sitting above the
+  shipped code), plus error-message UX improvements, milpa-less
+  install path, and new GOTCHAS #17 (proof param) / #18
+  (modelCompletion=false) / #19 (replace first-occurrence).
+- **Round 5**: doc-rot sweep across the remaining 30 modules — 4
+  HIGH (regex/funcdecl/chars module docs claiming shipped
+  features as deferred), 3 MEDIUM, 2 LOW.
+
+Round-by-round audit detail is in the preceding commits
+(`8e0d513`..`5a4cd6c`); the round 1 + 2 summary follows below.
 
 ### BREAKING — module renames
 

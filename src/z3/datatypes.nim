@@ -1253,3 +1253,39 @@ proc mkDatatypeVar*[T](
   ## Free variable of the datatype sort.
   let sym = dt.ctx.checkErr Z3_mk_string_symbol(dt.ctx.raw, name.cstring)
   wrap[Z3DatatypeValue[T]](dt.ctx, dt.ctx.checkErr Z3_mk_const(dt.ctx.raw, sym, dt.sort))
+
+proc mkDatatypeVar*[T](name: string): Z3DatatypeValue[T] =
+  ## Registry-based overload (N7.5). Mirrors `mkUninterpretedVar[T](name)` from
+  ## N1.3. Uses `requireCurrentContext()` and looks up the sort via
+  ## `ctx.datatypeRegistry[$T]`. The datatype must have been declared in the
+  ## current context before calling this.
+  let ctx = requireCurrentContext()
+  let sort = sortOf(Z3DatatypeValue[T], ctx)
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  wrap[Z3DatatypeValue[T]](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, sort))
+
+proc readRaw*[T](
+    dt: Z3DatatypeDecl[T], cname, fname: string,
+    v: Z3DatatypeValue[T]): RawZ3Ast =
+  ## Raw-handle escape hatch (N7.5). Applies the accessor for field `fname`
+  ## of constructor `cname` to `v`, returning the result as a `RawZ3Ast`.
+  ##
+  ## Useful when the `Ret` type cannot be inferred statically (e.g. in
+  ## generic dispatch or dynamic tooling). The caller is responsible for
+  ## wrapping the result with the appropriate typed wrapper (`wrap[Z3Int]`,
+  ## etc.).
+  ##
+  ## Raises `Z3InvalidUsageError` if `cname` or `fname` is not found.
+  let inner = findCon(dt, cname)
+  var fd: RawZ3FuncDecl
+  for (fname2, decl) in inner.accessorsFD:
+    if fname2 == fname:
+      fd = decl
+      break
+  if fd.isNil:
+    raise newException(Z3InvalidUsageError,
+      "readRaw: datatype " & $T & ": constructor '" & cname &
+      "' has no field '" & fname & "'")
+  var arg = v.raw
+  dt.ctx.checkErr Z3_mk_app(dt.ctx.raw, fd, 1,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr arg))

@@ -308,3 +308,54 @@ proc getParamDescrs*(t: Z3Tactic): Z3ParamDescrs =
   ## the surface.
   let raw = t.ctx.checkErr Z3_tactic_get_param_descrs(t.ctx.raw, t.raw)
   wrapParamDescrs(t.ctx, raw)
+
+# ============================================================================
+# Tactic / probe / simplifier enumeration (N8.5)
+# ============================================================================
+
+proc numTactics*(ctx: Z3Context): int =
+  ## Number of built-in tactics registered in this context's Z3 build.
+  int(Z3_get_num_tactics(ctx.raw))
+
+proc tacticName*(ctx: Z3Context, i: int): string =
+  ## Name of the `i`-th built-in tactic (0-based). The returned string
+  ## is owned by Z3 and valid for the lifetime of the context.
+  $Z3_get_tactic_name(ctx.raw, cuint(i))
+
+proc allTacticNames*(ctx: Z3Context): seq[string] =
+  ## All built-in tactic names in registration order.
+  let n = numTactics(ctx)
+  result = newSeq[string](n)
+  for i in 0 ..< n:
+    result[i] = tacticName(ctx, i)
+
+proc numProbes*(ctx: Z3Context): int =
+  ## Number of built-in probes registered in this context's Z3 build.
+  int(Z3_get_num_probes(ctx.raw))
+
+proc probeName*(ctx: Z3Context, i: int): string =
+  ## Name of the `i`-th built-in probe (0-based).
+  $Z3_get_probe_name(ctx.raw, cuint(i))
+
+proc allProbeNames*(ctx: Z3Context): seq[string] =
+  ## All built-in probe names in registration order.
+  let n = numProbes(ctx)
+  result = newSeq[string](n)
+  for i in 0 ..< n:
+    result[i] = probeName(ctx, i)
+
+proc numSimplifiers*(ctx: Z3Context): int =
+  ## Number of built-in simplifiers registered in this context's Z3 build.
+  ## Simplifiers were added in Z3 4.12+; returns 0 on older builds.
+  int(Z3_get_num_simplifiers(ctx.raw))
+
+proc simplifierName*(ctx: Z3Context, i: int): string =
+  ## Name of the `i`-th built-in simplifier (0-based).
+  $Z3_get_simplifier_name(ctx.raw, cuint(i))
+
+proc allSimplifierNames*(ctx: Z3Context): seq[string] =
+  ## All built-in simplifier names in registration order.
+  let n = numSimplifiers(ctx)
+  result = newSeq[string](n)
+  for i in 0 ..< n:
+    result[i] = simplifierName(ctx, i)

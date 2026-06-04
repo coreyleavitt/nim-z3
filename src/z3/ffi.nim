@@ -874,6 +874,10 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_skip(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
   proc Z3_tactic_fail(c: RawZ3Context): RawZ3Tactic {.cdecl, header: "z3.h".}
+  # --- Tactic enumeration (N8.5) -------------------------------------------
+  proc Z3_get_num_tactics(c: RawZ3Context): cuint {.cdecl, header: "z3.h".}
+  proc Z3_get_tactic_name(c: RawZ3Context, i: cuint): cstring
+    {.cdecl, header: "z3.h".}
 
   # --- Probes + condTactic (v0.4 step 12) ----------------------------------
 
@@ -905,6 +909,15 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_cond(c: RawZ3Context, p: RawZ3Probe,
                       t1, t2: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  # --- Probe enumeration (N8.5) --------------------------------------------
+  proc Z3_get_num_probes(c: RawZ3Context): cuint {.cdecl, header: "z3.h".}
+  proc Z3_get_probe_name(c: RawZ3Context, i: cuint): cstring
+    {.cdecl, header: "z3.h".}
+
+  # --- Simplifier enumeration (N8.5) ---------------------------------------
+  proc Z3_get_num_simplifiers(c: RawZ3Context): cuint {.cdecl, header: "z3.h".}
+  proc Z3_get_simplifier_name(c: RawZ3Context, i: cuint): cstring
     {.cdecl, header: "z3.h".}
 
   # --- Global parameters (v0.4 step 13) ------------------------------------

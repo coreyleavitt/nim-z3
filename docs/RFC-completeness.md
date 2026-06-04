@@ -1049,13 +1049,17 @@ proc registerOnClause*(s: Z3Solver,
 
 Uses the same `PropagatorCtxBox`-style marshalling shim.
 
+**v5.1 implementer note (N8.4d):** `Z3_solver_register_on_clause` requires a context created with `proof=true` config (`newContext(("proof", "true"))`) — without that, Z3 never fires the callback regardless of problem complexity or solver type. Document this prerequisite in the proc's doc comment and `tests/tonclause.nim`.
+
 **FFI prelude (v5.1 from N0.1 implementer escalation):** `Z3_on_clause_eh` is a function-pointer typedef in `z3_api.h`, not an opaque handle. The Nim FFI alias goes here, not in N0.1:
 
 ```nim
 type
   Z3OnClauseEh* = proc(ctx: pointer, proof_hint: RawZ3Ast,
-                       deps: ptr UncheckedArray[cuint],
-                       num_deps: cuint, lits: RawZ3AstVector) {.cdecl.}
+                       num_deps: cuint, deps: ptr UncheckedArray[cuint],
+                       lits: RawZ3AstVector) {.cdecl.}
+  # v5.1 implementer correction (N8.4d): C ABI is `count, then pointer`
+  # per z3_api.h:1443. Earlier draft had pointer before count — wrong order.
   RawZ3OnClauseBox = ref object   # Nim-side closure storage, NOT a Z3 opaque
     cb: proc(proofHint: Z3AnyAst, deps: seq[uint],
              lits: Z3AstVector) {.closure.}

@@ -1340,6 +1340,32 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## (sign-bit-fill) right shift.
   proc Z3_mk_bvashr(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
 
+  # --- BitVec ops: reduction (N3.2) ----------------------------------------
+
+  proc Z3_mk_bvredand(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Bit-vector AND-reduction: BV[W] → BV[1], result is 1 iff all bits of
+    ## `t` are 1.
+
+  proc Z3_mk_bvredor(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Bit-vector OR-reduction: BV[W] → BV[1], result is 1 iff any bit of
+    ## `t` is 1.
+
+  # --- BitVec ops: extended rotations (N3.2) --------------------------------
+
+  proc Z3_mk_ext_rotate_left(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Rotate `l` left by the amount given by BV `r` (symbolic shift amount,
+    ## same width as `l`). Contrast with `Z3_mk_rotate_left` which takes a
+    ## static integer shift.
+
+  proc Z3_mk_ext_rotate_right(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Rotate `l` right by the amount given by BV `r` (symbolic shift amount,
+    ## same width as `l`). Contrast with `Z3_mk_rotate_right` which takes a
+    ## static integer shift.
+
   # --- BitVec ops: overflow/underflow predicates ---------------------------
 
   proc Z3_mk_bvadd_no_overflow(c: RawZ3Context, t1, t2: RawZ3Ast,

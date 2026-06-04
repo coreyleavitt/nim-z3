@@ -589,3 +589,46 @@ proc sdivNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
   ## The only overflowing case is `INT_MIN / -1`. Signed-only.
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvsdiv_no_overflow(a.ctx.raw, a.raw, b.raw))
+
+# ============================================================================
+# Reduction ops (N3.2)
+#
+# `redAnd` and `redOr` reduce a BV[W] to BV[1] by folding AND / OR across
+# all W bits. The result width is *always* 1 regardless of input width.
+#
+# SMT-LIB equivalent: `(_ bvredand ...)` / `(_ bvredor ...)`.
+# ============================================================================
+
+proc redAnd*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] =
+  ## AND-reduction: BV[W] → BV[1]. Result is `1` iff every bit of `a` is `1`.
+  ## Equivalent to SMT-LIB `(bvredand a)`.
+  wrap[Z3BitVec[1]](a.ctx,
+    a.ctx.checkErr Z3_mk_bvredand(a.ctx.raw, a.raw))
+
+proc redOr*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] =
+  ## OR-reduction: BV[W] → BV[1]. Result is `1` iff at least one bit of `a`
+  ## is `1`. Equivalent to SMT-LIB `(bvredor a)`.
+  wrap[Z3BitVec[1]](a.ctx,
+    a.ctx.checkErr Z3_mk_bvredor(a.ctx.raw, a.raw))
+
+# ============================================================================
+# Extended rotations (N3.2)
+#
+# `extRotateLeft` and `extRotateRight` rotate by a *symbolic* BV shift amount
+# (same width as the input), unlike the static-int `rotateLeft`/`rotateRight`
+# variants in SMT-LIB `(_ rotate_left N)` / `(_ rotate_right N)`.
+#
+# SMT-LIB equivalent: `(ext_rotate_left a b)` / `(ext_rotate_right a b)`.
+# ============================================================================
+
+proc extRotateLeft*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
+  ## Rotate `a` left by the (symbolic) amount `b` — both are BV[W].
+  ## Bits shifted out of the MSB wrap around to the LSB.
+  wrap[Z3BitVec[W]](a.ctx,
+    a.ctx.checkErr Z3_mk_ext_rotate_left(a.ctx.raw, a.raw, b.raw))
+
+proc extRotateRight*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
+  ## Rotate `a` right by the (symbolic) amount `b` — both are BV[W].
+  ## Bits shifted out of the LSB wrap around to the MSB.
+  wrap[Z3BitVec[W]](a.ctx,
+    a.ctx.checkErr Z3_mk_ext_rotate_right(a.ctx.raw, a.raw, b.raw))

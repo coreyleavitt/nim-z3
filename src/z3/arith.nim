@@ -59,8 +59,13 @@ template binaryVararg[S: static SortTag](
     a, b: Z3Ast[S]): Z3Ast[S] =
   ## Build a 2-arg call to a Z3 N-ary builder (Z3_mk_add, Z3_mk_sub,
   ## Z3_mk_mul). Returns Z3Ast[S] — same sort as the inputs.
+  ##
+  ## Uses a heap-allocated seq for the args array: Z3 4.15 has a bug
+  ## where Z3_mk_add/sub/mul with num_args≥2 crashes when the args
+  ## array is stack-allocated and the context has any rec_func_decls
+  ## registered (SIGSEGV inside Z3_mk_add). Heap allocation sidesteps it.
   block:
-    var args = [a.raw, b.raw]
+    var args = @[a.raw, b.raw]
     wrap[Z3Ast[S]](a.ctx, a.ctx.checkErr zfn(
       a.ctx.raw, 2.cuint,
       cast[ptr UncheckedArray[RawZ3Ast]](addr args[0])))

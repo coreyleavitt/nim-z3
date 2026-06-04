@@ -33,7 +33,7 @@ export builder
 # ----------------------------------------------------------------------------
 
 proc `and`*(a, b: Z3Bool): Z3Bool =
-  var args = [a.raw, b.raw]
+  var args = @[a.raw, b.raw]  # heap seq: Z3 4.15 crashes with stack array + rec_func_decls
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_and(
     a.ctx.raw, 2.cuint,
     cast[ptr UncheckedArray[RawZ3Ast]](addr args[0])))
@@ -46,7 +46,7 @@ proc `and`*(a: bool, b: Z3Bool): Z3Bool {.inline.} = mkBool(b.ctx, a) and b
 # ----------------------------------------------------------------------------
 
 proc `or`*(a, b: Z3Bool): Z3Bool =
-  var args = [a.raw, b.raw]
+  var args = @[a.raw, b.raw]  # heap seq: Z3 4.15 crashes with stack array + rec_func_decls
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_or(
     a.ctx.raw, 2.cuint,
     cast[ptr UncheckedArray[RawZ3Ast]](addr args[0])))

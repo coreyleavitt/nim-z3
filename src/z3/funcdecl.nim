@@ -460,10 +460,13 @@ proc `[]`*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret],
 # ============================================================================
 #
 # Z3's seq HOF API (`Z3_mk_seq_map` etc.) takes the function as a `Z3_ast`
-# obtained from `Z3_func_decl_to_ast`. The typed Nim surface accepts a
-# `Z3FuncDecl` and converts it internally. Lives here (rather than in
-# `z3/sequence`) because `sequence.nim` is imported by this module — the
-# reverse import would create a cycle.
+# that must be a LAMBDA EXPRESSION — NOT a bare func_decl AST (which Z3
+# rejects as "not an expression"). Each HOF proc builds the lambda via
+# `Z3_mk_lambda_const` from fresh constant args and the func application
+# body, then passes the lambda to the underlying Z3 HOF call.
+#
+# Lives here (rather than in `z3/sequence`) because `sequence.nim` is
+# imported by this module — the reverse import would create a cycle.
 #
 # Phantom-type constraints encode the expected arities:
 #

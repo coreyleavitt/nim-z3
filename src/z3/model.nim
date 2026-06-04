@@ -268,14 +268,14 @@ proc toRealOpt*(a: Z3Real): Option[float] =
   let v = Z3_get_numeral_double(a.ctx.raw, folded)
   let errCode = Z3_get_error_code(a.ctx.raw)
   if errCode != Z3_OK:
-    # Clear the error so the context stays usable.
-    discard Z3_get_error_code(a.ctx.raw)
     none(float)
   else:
     some(float(v))
 
-proc evalReal*(m: Z3Model, a: Z3Real, modelCompletion = true): float {.inline.} =
+proc evalRealApprox*(m: Z3Model, a: Z3Real, modelCompletion = true): float {.inline.} =
   ## `m.eval(a, modelCompletion).toRealApprox` in one call.
+  ## **ADR-N0005 hard break**: renamed from `evalReal` in N4.4+; the old name
+  ## was misleading because the result is a lossy float64 approximation.
   m.eval(a, modelCompletion).toRealApprox
 
 # ============================================================================
@@ -327,10 +327,14 @@ proc sort*(m: Z3Model, i: int): RawZ3Sort =
 proc sortUniverse*(m: Z3Model, s: RawZ3Sort): Z3AstVector =
   ## Finite set of AST nodes assigned to uninterpreted sort `s` in this model.
   ##
-  ## Z3 returns the vector with an extra ref-count; `wrapAstVector` adds
-  ## another and registers the dec_ref finalizer — we immediately release
-  ## the Z3-given surplus so the net delta relative to the pre-call count
-  ## is exactly +1 (the one held by the returned `Z3AstVector`).
+  ## Refcount accounting: `Z3_model_get_sort_universe` returns a vector
+  ## whose refcount is already +1 (caller is responsible for releasing it,
+  ## per Z3 API contract — the header comment on this function reads
+  ## "The vector v is reference counted. It must be released using
+  ## Z3_ast_vector_dec_ref"). `wrapAstVector` issues another inc_ref to
+  ## initialise the `Z3AstVector` finalizer. We immediately cancel the
+  ## Z3-given +1 so the net refcount delta is exactly +1 owned by the
+  ## returned `Z3AstVector`.
   let raw = m.ctx.checkErr Z3_model_get_sort_universe(m.ctx.raw, m.raw, s)
   let v = wrapAstVector(m.ctx, raw)
   Z3_ast_vector_dec_ref(m.ctx.raw, raw)
@@ -367,46 +371,43 @@ type Z3FuncInterpMut* = object
   ctx*: Z3Context
   raw*: RawZ3FuncInterp
 
-# Concept for any type with a `.raw: RawZ3Ast` field — matches both
-# Z3Ast[S] (typed families) and Z3AnyAst (erased) without importing
-# z3/introspect (which would create a cycle via bitvec -> model).
-type Z3AstLike* = concept x
-  x.raw is RawZ3Ast
-
 proc newModel*(ctx: Z3Context): Z3Model =
   ## Construct a fresh empty `Z3Model` in context `ctx`.
   ## The model has no constant or function interpretations initially.
+  ## Routes through `wrapModel` for consistent nil-guard + inc_ref.
   let raw = ctx.checkErr Z3_mk_model(ctx.raw)
-  Z3_model_inc_ref(ctx.raw, raw)
-  Z3Model(raw: raw, ctx: ctx)
+  wrapModel(ctx, raw)
 
-proc addConstInterp*(m: Z3Model, f: RawZ3FuncDecl, value: Z3AstLike) =
+proc addConstInterp*[V: Z3Term](m: Z3Model, f: RawZ3FuncDecl, value: V) =
   ## Pin constant declaration `f` to `value` in model `m`.
   ## `f` must be a nullary (0-arity) function declaration. After this
   ## call `m.hasInterp(f)` returns `true` and `m.eval` returns `value`.
+  ## `value` accepts any `Z3Term` (typed AST or `Z3AnyAst`).
   m.ctx.checkErrVoid Z3_add_const_interp(m.ctx.raw, m.raw, f, value.raw)
 
-proc addFuncInterp*(m: Z3Model, f: RawZ3FuncDecl,
-                    defaultVal: Z3AstLike): Z3FuncInterpMut =
+proc addFuncInterp*[D: Z3Term](m: Z3Model, f: RawZ3FuncDecl,
+                                defaultVal: D): Z3FuncInterpMut =
   ## Begin a function interpretation for declaration `f` in model `m`.
   ## `defaultVal` is the else-value (returned for any argument combination
   ## not explicitly covered by `addEntry`). Returns a `Z3FuncInterpMut`
   ## handle for adding entries and updating the else-value.
+  ## `defaultVal` accepts any `Z3Term` (typed AST or `Z3AnyAst`).
   let raw = m.ctx.checkErr Z3_add_func_interp(m.ctx.raw, m.raw, f,
                                                defaultVal.raw)
   Z3FuncInterpMut(ctx: m.ctx, raw: raw)
 
-proc setElse*(fi: Z3FuncInterpMut, elseVal: Z3AstLike) =
+proc setElse*[E: Z3Term](fi: Z3FuncInterpMut, elseVal: E) =
   ## Replace the else-value of function interpretation `fi` with `elseVal`.
   ## Useful to update the default after `addFuncInterp` was called, or to
   ## change the default after adding explicit entries.
   fi.ctx.checkErrVoid Z3_func_interp_set_else(fi.ctx.raw, fi.raw, elseVal.raw)
 
-proc addEntry*(fi: Z3FuncInterpMut,
-               args: openArray[Z3AstLike], value: Z3AstLike) =
+proc addEntry*[A: Z3Term, V: Z3Term](fi: Z3FuncInterpMut,
+                                      args: openArray[A], value: V) =
   ## Add a `(args -> value)` row to function interpretation `fi`.
   ## `args` must have the same length as the declared arity of the
   ## function. After this call `m.eval(f(args))` returns `value`.
+  ## All arguments accept any `Z3Term` (typed AST or `Z3AnyAst`).
   ##
   ## Internally this wraps the arg array into a `Z3AstVector` because
   ## `Z3_func_interp_add_entry` takes a `Z3_ast_vector`.

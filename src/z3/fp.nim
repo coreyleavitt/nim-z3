@@ -293,6 +293,22 @@ proc evalFloat32*(m: Z3Model, a: Z3Float32,
 # Special-value literals + predicates
 # ============================================================================
 
+proc mkFpFromParts*[E, S: static int](sgn: Z3BitVec[1],
+                                      exp: Z3BitVec[E],
+                                      sig: Z3BitVec[S - 1]): Z3Fp[E, S] =
+  ## Assembles an FP value from sign/exponent/significand bit vectors.
+  ##
+  ## Wraps `Z3_mk_fpa_fp`. The resulting sort is inferred by Z3 from the
+  ## BV widths: `E`-bit exponent and `(S-1)`-bit explicit significand
+  ## (the hidden bit is implicit, per IEEE 754). No rounding mode — this
+  ## is bit-exact assembly. For lossy float-to-FP, use `toFp(rm, fp, _)`.
+  ##
+  ## Width relationships for common precisions:
+  ##   `Z3Float32 = Z3Fp[8, 24]` → exp is `Z3BitVec[8]`, sig is `Z3BitVec[23]`
+  ##   `Z3Float64 = Z3Fp[11, 53]` → exp is `Z3BitVec[11]`, sig is `Z3BitVec[52]`
+  wrap[Z3Fp[E, S]](sgn.ctx,
+    sgn.ctx.checkErr Z3_mk_fpa_fp(sgn.ctx.raw, sgn.raw, exp.raw, sig.raw))
+
 proc mkNaN*[E, S: static int](ctx: Z3Context): Z3Fp[E, S] =
   ## Not-a-number literal. Note: there's an entire space of NaN bit
   ## patterns in IEEE 754; this builds *a* NaN, not a specific one.

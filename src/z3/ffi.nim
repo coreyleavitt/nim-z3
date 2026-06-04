@@ -2031,6 +2031,10 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_mk_fpa_zero(c: RawZ3Context, s: RawZ3Sort, negative: bool): RawZ3Ast
     {.cdecl, header: "z3.h".}
 
+  # Bit-exact assembly from sign/exponent/significand BVs (N6.3)
+  proc Z3_mk_fpa_fp(c: RawZ3Context, sgn, exp, sig: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
   # Numeric literals
   proc Z3_mk_fpa_numeral_float(c: RawZ3Context, v: cfloat, ty: RawZ3Sort): RawZ3Ast
     {.cdecl, header: "z3.h".}

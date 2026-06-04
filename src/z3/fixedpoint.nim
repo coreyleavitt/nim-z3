@@ -230,6 +230,45 @@ proc getHelp*(fp: Z3Fixedpoint): string =
   ## multiline string with each parameter + its meaning.
   $Z3_fixedpoint_get_help(fp.ctx.raw, fp.raw)
 
+proc getParamDescrs*(fp: Z3Fixedpoint): Z3ParamDescrs =
+  ## Parameter schema for the fixedpoint solver. Parity with
+  ## `Z3Solver.getParamDescrs` / `Z3Optimize.getParamDescrs`; N7.7.
+  wrapParamDescrs(fp.ctx,
+    fp.ctx.checkErr Z3_fixedpoint_get_param_descrs(fp.ctx.raw, fp.raw))
+
+proc fromString*(fp: Z3Fixedpoint, s: string): Z3AstVector =
+  ## Parse SMT-LIB2 fixedpoint declarations from `s`. Adds rules and
+  ## facts to `fp` in place; returns the set of query formulas found
+  ## in the string (may be empty). N7.7.
+  wrapAstVector(fp.ctx,
+    fp.ctx.checkErr Z3_fixedpoint_from_string(fp.ctx.raw, fp.raw, s.cstring))
+
+proc fromFile*(fp: Z3Fixedpoint, path: string): Z3AstVector =
+  ## Parse an SMT-LIB2 fixedpoint file at `path`. Adds rules and facts
+  ## to `fp` in place; returns the set of query formulas found in the
+  ## file. File-input twin of `fromString`. N7.7.
+  wrapAstVector(fp.ctx,
+    fp.ctx.checkErr Z3_fixedpoint_from_file(fp.ctx.raw, fp.raw, path.cstring))
+
+proc addFact*[ArgsTup: tuple](
+    fp: Z3Fixedpoint,
+    pred: Z3FuncDecl[ArgsTup, Z3Bool],
+    args: openArray[uint]) =
+  ## Assert a positive ground fact for `pred` in the datalog engine.
+  ## Each element of `args` is the integer encoding of one column
+  ## argument (the sort must be a finite-domain / bit-vector / Boolean
+  ## sort as required by the datalog engine). N7.7.
+  ##
+  ## Equivalent to `addRule(pred(mkInt(args[0]), mkInt(args[1]), ...))`
+  ## but avoids constructing AST nodes and is the idiomatic datalog
+  ## interface for ground-fact bulk loading.
+  var buf = newSeq[cuint](args.len)
+  for i, v in args: buf[i] = cuint(v)
+  fp.ctx.checkErrVoid Z3_fixedpoint_add_fact(
+    fp.ctx.raw, fp.raw, pred.raw, cuint(buf.len),
+    if buf.len == 0: nil
+    else: cast[ptr UncheckedArray[cuint]](addr buf[0]))
+
 # Note: `Z3_fixedpoint_push` / `_pop` don't exist in z3_fixedpoint.h
 # (spec correction — see §8). The fixedpoint engine doesn't have
 # user-controlled scoping; rules + facts accumulate for the lifetime

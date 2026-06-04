@@ -1086,6 +1086,20 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                                num_queries: cuint,
                                queries: ptr UncheckedArray[RawZ3Ast]): cstring
     {.cdecl, header: "z3.h".}
+  proc Z3_fixedpoint_get_param_descrs(c: RawZ3Context,
+                                      f: RawZ3Fixedpoint): RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
+    ## **N7.7.** Return the parameter schema for the fixedpoint solver.
+    ## Parity with `Z3_solver_get_param_descrs` / `Z3_optimize_get_param_descrs`.
+  proc Z3_fixedpoint_from_string(c: RawZ3Context, f: RawZ3Fixedpoint,
+                                 s: cstring): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## **N7.7.** Parse SMT-LIB2 fixedpoint declarations from a string.
+    ## Adds rules/facts to `f` and returns the set of query formulas found.
+  proc Z3_fixedpoint_from_file(c: RawZ3Context, f: RawZ3Fixedpoint,
+                               s: cstring): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## **N7.7.** File-input twin of `Z3_fixedpoint_from_string`.
 
   # --- Spacer / IC3-PDR extensions (z3_spacer.h) -------------------------
 

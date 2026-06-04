@@ -1283,6 +1283,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_get_quantifier_weight(c: RawZ3Context, a: RawZ3Ast): cuint
     {.cdecl, header: "z3.h".}
+  proc Z3_get_quantifier_id(c: RawZ3Context, a: RawZ3Ast): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+    ## **N2.5.** Returns the quantifier ID symbol. Used to retrieve a
+    ## user-supplied or Z3-assigned name for the quantifier.
+  proc Z3_get_quantifier_skolem_id(c: RawZ3Context, a: RawZ3Ast): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+    ## **N2.5.** Returns the Skolem ID symbol used for fresh names during
+    ## Skolemization. Stable across calls on the same quantifier AST.
     ## **v0.4 step 10.** Transfer an AST from `srcCtx` to `targetCtx`.
     ## The returned AST is owned by `targetCtx`; the source AST is
     ## independent. Z3 validates that the target context can accept

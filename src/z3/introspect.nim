@@ -557,3 +557,32 @@ proc mkTypeVariable*(ctx: Z3Context, name: string): RawZ3Sort =
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   ctx.checkErr Z3_mk_type_variable(ctx.raw, sym)
 
+# ============================================================================
+# N2.5 — Quantifier symbol introspection
+# ============================================================================
+#
+# Z3_get_quantifier_id / Z3_get_quantifier_skolem_id both return a
+# Z3_symbol which may be int-kind or string-kind. Z3_get_symbol_string
+# works on both: it converts an int-symbol to its decimal string
+# representation and returns a string-symbol as-is.  We surface both
+# as Nim strings so callers can compare with `==` without knowing the
+# symbol kind.  An unnamed quantifier (produced by mk_forall_const
+# with no explicit id) gets an int-symbol "0" — the empty-string
+# check in the spec is therefore satisfied by treating "0" as a valid
+# non-nil string.
+
+proc quantifierId*[T: Z3Term](q: T): string =
+  ## Returns the quantifier ID symbol as a Nim string.
+  ## Z3's `mk_forall_const` assigns an int-symbol "0" for unnamed
+  ## quantifiers; the result is always a non-nil string.
+  ## Stable: two calls on the same quantifier AST return `==` strings.
+  $Z3_get_symbol_string(q.ctx.raw,
+                        Z3_get_quantifier_id(q.ctx.raw, q.raw))
+
+proc quantifierSkolemId*[T: Z3Term](q: T): string =
+  ## Returns the Skolem ID symbol used for fresh names during
+  ## skolemization, as a Nim string.  Stable across calls on the same
+  ## quantifier AST.
+  $Z3_get_symbol_string(q.ctx.raw,
+                        Z3_get_quantifier_skolem_id(q.ctx.raw, q.raw))
+

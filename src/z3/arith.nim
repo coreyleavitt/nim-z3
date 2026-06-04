@@ -192,3 +192,55 @@ proc `!=`*(a: Z3Int, b: int): Z3Bool {.inline.} = a != mkInt(a.ctx, b)
 proc `!=`*(a: int, b: Z3Int): Z3Bool {.inline.} = mkInt(b.ctx, a) != b
 proc `!=`*(a: Z3Real, b: int): Z3Bool {.inline.} = a != mkReal(a.ctx, b)
 proc `!=`*(a: int, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) != b
+
+# ============================================================================
+# abs — absolute value
+# ============================================================================
+
+proc abs*(a: Z3Int): Z3Int =
+  ## Absolute value of an integer term: `|a|`.
+  wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_abs(a.ctx.raw, a.raw))
+
+proc abs*(a: Z3Real): Z3Real =
+  ## Absolute value of a real term: `|a|`.
+  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_abs(a.ctx.raw, a.raw))
+
+# ============================================================================
+# power — exponentiation
+# ============================================================================
+
+proc power*(a, b: Z3Real): Z3Real =
+  ## Real exponentiation: `a ^ b`. Both arguments must be `Z3Real`.
+  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_power(a.ctx.raw, a.raw, b.raw))
+
+proc `^`*(a, b: Z3Real): Z3Real {.inline.} =
+  ## Operator alias for `power(a, b)`.
+  power(a, b)
+
+# ============================================================================
+# divides — integer divisibility predicate
+# ============================================================================
+
+proc divides*(d, n: Z3Int): Z3Bool =
+  ## Boolean predicate: true iff integer `d` divides integer `n`.
+  ## Maps to Z3's `divisible` constraint: `n mod d == 0`.
+  wrap[Z3Bool](d.ctx, d.ctx.checkErr Z3_mk_divides(d.ctx.raw, d.raw, n.raw))
+
+# ============================================================================
+# isInt — real-is-integer predicate
+# ============================================================================
+
+proc isInt*(r: Z3Real): Z3Bool =
+  ## Boolean predicate: true iff real `r` has an integer value.
+  wrap[Z3Bool](r.ctx, r.ctx.checkErr Z3_mk_is_int(r.ctx.raw, r.raw))
+
+# ============================================================================
+# mkRealInt64 — exact rational from int64 numerator / denominator
+# ============================================================================
+
+proc mkRealInt64*(ctx: Z3Context, num, den: int64): Z3Real =
+  ## Exact rational `num / den` in Z3's `Real` sort, using 64-bit precision.
+  ## Prefer over `mkReal(num, den)` when values exceed `cint` (32-bit) range.
+  ##
+  ## `den == 0` is a sort error surfaced as `Z3Error`.
+  wrap[Z3Real](ctx, ctx.checkErr Z3_mk_real_int64(ctx.raw, num, den))

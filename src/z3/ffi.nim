@@ -506,6 +506,27 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Truncated remainder (differs from Z3_mk_mod for negative operands).
 
+  proc Z3_mk_abs(c: RawZ3Context, arg: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Absolute value of an integer or real term.
+
+  proc Z3_mk_power(c: RawZ3Context, arg1, arg2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## `arg1 ^ arg2` — both arguments must be of the same numeric sort.
+
+  proc Z3_mk_divides(c: RawZ3Context, t1, t2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Boolean predicate `t1 divides t2` (integer divisibility).
+
+  proc Z3_mk_is_int(c: RawZ3Context, t1: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Boolean predicate: true iff the real `t1` is an integer value.
+
+  proc Z3_mk_real_int64(c: RawZ3Context, num, den: int64): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Rational literal `num / den` using int64 precision.
+    ## Analogue of `Z3_mk_real` but accepts 64-bit numerator / denominator.
+
   proc Z3_mk_eq(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_lt(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast

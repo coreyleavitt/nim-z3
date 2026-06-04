@@ -1708,6 +1708,12 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   # --- Solver --------------------------------------------------------------
 
   proc Z3_mk_solver(c: RawZ3Context): RawZ3Solver {.cdecl, header: "z3.h".}
+  proc Z3_mk_simple_solver(c: RawZ3Context): RawZ3Solver
+    {.cdecl, header: "z3.h".}
+    ## A CDCL-style solver without the tactic wrapper. Supports
+    ## `Z3_solver_get_trail` / `Z3_solver_get_units` / `Z3_solver_get_non_units`
+    ## / `Z3_solver_get_levels`. Weaker on non-linear arithmetic but
+    ## exposes the SAT-engine introspection surface. N8.1.
   proc Z3_mk_solver_from_tactic(c: RawZ3Context, t: RawZ3Tactic): RawZ3Solver
     {.cdecl, header: "z3.h".}
     ## **v0.3 step 8.** Wrap a tactic pipeline as a solver. The
@@ -1810,6 +1816,34 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Diagnostic for `Z3_L_UNDEF` outcomes; surfaces "incomplete theory",
     ## timeout, etc.
+
+  proc Z3_solver_get_trail(c: RawZ3Context, s: RawZ3Solver): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Return the current trail of the solver (literals decided / propagated
+    ## since the last `check()`). N8.1.
+
+  proc Z3_solver_get_units(c: RawZ3Context, s: RawZ3Solver): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Return the unit literals from the last check(). N8.1.
+
+  proc Z3_solver_get_non_units(c: RawZ3Context, s: RawZ3Solver): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Return the non-unit literals from the last check(). N8.1.
+
+  proc Z3_solver_get_levels(c: RawZ3Context, s: RawZ3Solver,
+                            literals: RawZ3AstVector,
+                            sz: cuint,
+                            levels: ptr cuint)
+    {.cdecl, header: "z3.h".}
+    ## Fill `levels[0..sz-1]` with the decision level of each literal in
+    ## `literals`. Caller pre-allocates the output array sized to `sz`.
+    ## N8.1.
+
+  proc Z3_solver_set_initial_value(c: RawZ3Context, s: RawZ3Solver,
+                                   v: RawZ3Ast, value: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Hint: suggest `v` starts at `value`. No guarantee solver respects it.
+    ## N8.1.
 
   # --- Model ----------------------------------------------------------------
 

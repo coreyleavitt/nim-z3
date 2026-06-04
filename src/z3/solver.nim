@@ -113,6 +113,25 @@ proc newSolver*(): Z3Solver =
     doAssert s.check() == zsSat
   newSolver(requireCurrentContext())
 
+proc newSimpleSolver*(ctx: Z3Context): Z3Solver =
+  ## Fresh *simple* (CDCL/DPLL) solver bound to `ctx`. Unlike
+  ## `newSolver`, this solver is **not** wrapped in a tactic layer, which
+  ## makes it weaker on non-linear arithmetic but gives access to the
+  ## SAT-engine introspection surface:
+  ##
+  ## - `trail()` — literals on the current trail
+  ## - `units()` / `nonUnits()` — unit vs decided literals
+  ## - `levels()` — decision level per literal
+  ##
+  ## Use `newSolver` for general SMT; use `newSimpleSolver` when you
+  ## need trail/units/levels introspection. N8.1.
+  wrapSolver(ctx, ctx.checkErr Z3_mk_simple_solver(ctx.raw))
+
+proc newSimpleSolver*(): Z3Solver =
+  ## Fresh simple solver bound to `currentContext()`. Raises `Z3Error`
+  ## with `Z3_INVALID_USAGE` if no current context is set. N8.1.
+  newSimpleSolver(requireCurrentContext())
+
 # ============================================================================
 # Raw-handle accessor (for model.nim which needs it)
 # ============================================================================
@@ -438,3 +457,58 @@ proc getParamDescrs*(s: Z3Solver): Z3ParamDescrs =
   ## human-readable `(help-solver)`-style output via `$pd`.
   let raw = s.ctx.checkErr Z3_solver_get_param_descrs(s.ctx.raw, s.raw)
   wrapParamDescrs(s.ctx, raw)
+
+# ============================================================================
+# SAT-engine introspection — trail / units / nonUnits / levels /
+# setInitialValue (N8.1)
+# ============================================================================
+
+proc trail*(s: Z3Solver): Z3AstVector =
+  ## Return the current SAT-engine trail (the sequence of Boolean
+  ## literals decided or unit-propagated since the last `check()`).
+  ## Meaningful only after a `check()` call on a solver backed by
+  ## CDCL/DPLL internals (the default Z3 solver). Returns a non-nil
+  ## `Z3AstVector`; may be empty if no propagation occurred.
+  wrapAstVector(s.ctx, s.ctx.checkErr Z3_solver_get_trail(s.ctx.raw, s.raw))
+
+proc units*(s: Z3Solver): Z3AstVector =
+  ## Return the unit literals from the most recent `check()`.
+  ## Unit literals are those whose value was forced by unit propagation
+  ## (i.e. they appear in clauses with all other literals false).
+  wrapAstVector(s.ctx, s.ctx.checkErr Z3_solver_get_units(s.ctx.raw, s.raw))
+
+proc nonUnits*(s: Z3Solver): Z3AstVector =
+  ## Return the non-unit literals from the most recent `check()`.
+  ## These are literals that were decided (not forced) by the solver.
+  wrapAstVector(s.ctx,
+    s.ctx.checkErr Z3_solver_get_non_units(s.ctx.raw, s.raw))
+
+proc levels*(s: Z3Solver, lits: Z3AstVector): seq[uint] =
+  ## Return the decision level at which each literal in `lits` was
+  ## assigned. The result is a `seq[uint]` of the same length as `lits`;
+  ## `result[i]` is the decision level of `lits[i]`.
+  ##
+  ## The output buffer is heap-allocated (Z3 4.15 disallows VLAs on the
+  ## stack for this call). If `lits` is empty, returns an empty sequence.
+  let sz = lits.len
+  if sz == 0:
+    return @[]
+  # Allocate a seq of cuint (Z3 fills it with unsigned values).
+  var buf = newSeq[cuint](sz)
+  Z3_solver_get_levels(s.ctx.raw, s.raw, lits.raw, cuint(sz), addr buf[0])
+  # Copy to seq[uint] (cuint is C's `unsigned int`; uint is Nim's native
+  # unsigned — same width on all platforms z3 targets).
+  result = newSeq[uint](sz)
+  for i in 0 ..< sz:
+    result[i] = uint(buf[i])
+
+proc setInitialValue*[V: Z3Term, Val: Z3Term](s: Z3Solver, v: V, value: Val) =
+  ## Suggest a warm-start assignment: hint that variable `v` should begin
+  ## the search at `value`. Z3 treats this as a non-binding hint and may
+  ## ignore it. Useful for guiding CDCL toward a known-good region.
+  ##
+  ## Generic over any `Z3Term` pair; no import of `z3/introspect` required
+  ## (avoids the `solver → introspect → bitvec → model → solver` cycle).
+  ## Both `v` and `value` must belong to the solver's context.
+  s.ctx.checkErrVoid Z3_solver_set_initial_value(
+    s.ctx.raw, s.raw, v.raw, value.raw)

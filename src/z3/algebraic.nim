@@ -35,250 +35,289 @@
 ## `subresultants(p, q, x)` exposes `Z3_polynomial_subresultants`, returning
 ## a `Z3AstVector` of the nonzero subresultant polynomial coefficients. The
 ## vector is ref-managed via `wrapAstVector`.
+##
+## ## Build gate
+##
+## Gated on `-d:z3WithoutAlgebraic`. When built with that flag, this file
+## imports cleanly but exports nothing. Match the existing pattern from
+## `spacer.nim`, `simplifier.nim`, `order.nim`, `onclause.nim`.
 
-import ./ffi, ./context, ./error, ./ast, ./builder, ./astvector
+when not defined(z3WithoutAlgebraic):
 
-# ============================================================================
-# Bound-variable constructor for polynomial arguments
-# ============================================================================
+  import ./ffi, ./context, ./error, ./ast, ./builder, ./astvector
 
-proc mkBoundReal*(ctx: Z3Context, index: int): Z3Real =
-  ## Construct a de-Bruijn-indexed bound variable of the Real sort.
-  ##
-  ## Used to build polynomial expressions for `algebraicRoots` and
-  ## `algebraicEval`. Z3's algebraic API requires polynomials to be
-  ## expressed with *bound variables* (de-Bruijn indices), not free
-  ## constants (which `mkRealVar` produces).
-  ##
-  ## For a univariate polynomial p(x), pass `index = 0` — Z3 treats
-  ## the index-0 bound variable as the last / only variable in `p`.
-  ##
-  ## Example:
-  ## ```nim
-  ## let x = mkBoundReal(ctx, 0)
-  ## let p = x * x - mkReal(ctx, 2)   # p(x) = x^2 - 2
-  ## let roots = algebraicRoots(p, [])  # returns [sqrt(2), -sqrt(2)]
-  ## ```
-  let realSort = ctx.checkErr Z3_mk_real_sort(ctx.raw)
-  wrap[Z3Real](ctx, ctx.checkErr Z3_mk_bound(ctx.raw, cuint(index), realSort))
+  # ==========================================================================
+  # Bound-variable constructor for polynomial arguments
+  # ==========================================================================
 
-# ============================================================================
-# Predicates — return Nim bool (concrete algebraic evaluations, not Z3Bool)
-# ============================================================================
+  proc mkBoundReal*(ctx: Z3Context, index: int): Z3Real =
+    ## Construct a de-Bruijn-indexed bound variable of the Real sort.
+    ##
+    ## Used to build polynomial expressions for `algebraicRoots` and
+    ## `algebraicEval`. Z3's algebraic API requires polynomials to be
+    ## expressed with *bound variables* (de-Bruijn indices), not free
+    ## constants (which `mkRealVar` produces).
+    ##
+    ## For a univariate polynomial p(x), pass `index = 0` — Z3 treats
+    ## the index-0 bound variable as the last / only variable in `p`.
+    ##
+    ## Example:
+    ## ```nim
+    ## let x = mkBoundReal(ctx, 0)
+    ## let p = x * x - mkReal(ctx, 2)   # p(x) = x^2 - 2
+    ## let roots = algebraicRoots(p, [])  # returns [sqrt(2), -sqrt(2)]
+    ## ```
+    let realSort = ctx.checkErr Z3_mk_real_sort(ctx.raw)
+    wrap[Z3Real](ctx, ctx.checkErr Z3_mk_bound(ctx.raw, cuint(index), realSort))
 
-proc algebraicIsValue*(a: Z3Real): bool {.inline.} =
-  ## True if `a` was produced by the algebraic number package
-  ## (e.g. `algebraicRoot`, `algebraicPower`, arithmetic on algebraic values).
-  ## Plain rational constants from `mkReal` return false.
-  Z3_algebraic_is_value(a.ctx.raw, a.raw)
+  # ==========================================================================
+  # Predicates — return Nim bool (concrete algebraic evaluations, not Z3Bool)
+  # ==========================================================================
 
-proc algebraicIsPos*(a: Z3Real): bool {.inline.} =
-  ## True if algebraic numeral `a` is positive.
-  ## Precondition: `algebraicIsValue(a)`.
-  Z3_algebraic_is_pos(a.ctx.raw, a.raw)
+  proc algebraicIsValue*(a: Z3Real): bool {.inline.} =
+    ## True if `a` was produced by the algebraic number package
+    ## (e.g. `algebraicRoot`, `algebraicPower`, arithmetic on algebraic values).
+    ## Plain rational constants from `mkReal` return false.
+    Z3_algebraic_is_value(a.ctx.raw, a.raw)
 
-proc algebraicIsNeg*(a: Z3Real): bool {.inline.} =
-  ## True if algebraic numeral `a` is negative.
-  Z3_algebraic_is_neg(a.ctx.raw, a.raw)
+  proc algebraicIsPos*(a: Z3Real): bool {.inline.} =
+    ## True if algebraic numeral `a` is positive.
+    ## Precondition: `algebraicIsValue(a)`.
+    Z3_algebraic_is_pos(a.ctx.raw, a.raw)
 
-proc algebraicIsZero*(a: Z3Real): bool {.inline.} =
-  ## True if algebraic numeral `a` is zero.
-  Z3_algebraic_is_zero(a.ctx.raw, a.raw)
+  proc algebraicIsNeg*(a: Z3Real): bool {.inline.} =
+    ## True if algebraic numeral `a` is negative.
+    Z3_algebraic_is_neg(a.ctx.raw, a.raw)
 
-proc algebraicSign*(a: Z3Real): int {.inline.} =
-  ## Returns 1 (positive), 0 (zero), or -1 (negative) for algebraic numeral `a`.
-  int(Z3_algebraic_sign(a.ctx.raw, a.raw))
+  proc algebraicIsZero*(a: Z3Real): bool {.inline.} =
+    ## True if algebraic numeral `a` is zero.
+    Z3_algebraic_is_zero(a.ctx.raw, a.raw)
 
-# ============================================================================
-# Arithmetic — return Z3Real (fresh algebraic numeral ASTs)
-# ============================================================================
+  proc algebraicSign*(a: Z3Real): int {.inline.} =
+    ## Returns 1 (positive), 0 (zero), or -1 (negative) for algebraic numeral `a`.
+    int(Z3_algebraic_sign(a.ctx.raw, a.raw))
 
-proc algebraicAdd*(a, b: Z3Real): Z3Real =
-  ## Return the algebraic numeral a + b.
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_add(a.ctx.raw, a.raw, b.raw))
+  # ==========================================================================
+  # Arithmetic — return Z3Real (fresh algebraic numeral ASTs)
+  # ==========================================================================
 
-proc algebraicSub*(a, b: Z3Real): Z3Real =
-  ## Return the algebraic numeral a - b.
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_sub(a.ctx.raw, a.raw, b.raw))
+  proc algebraicAdd*(a, b: Z3Real): Z3Real =
+    ## Return the algebraic numeral a + b.
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_add(a.ctx.raw, a.raw, b.raw))
 
-proc algebraicMul*(a, b: Z3Real): Z3Real =
-  ## Return the algebraic numeral a * b.
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_mul(a.ctx.raw, a.raw, b.raw))
+  proc algebraicSub*(a, b: Z3Real): Z3Real =
+    ## Return the algebraic numeral a - b.
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_sub(a.ctx.raw, a.raw, b.raw))
 
-proc algebraicDiv*(a, b: Z3Real): Z3Real =
-  ## Return the algebraic numeral a / b. Precondition: b ≠ 0.
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_div(a.ctx.raw, a.raw, b.raw))
+  proc algebraicMul*(a, b: Z3Real): Z3Real =
+    ## Return the algebraic numeral a * b.
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_mul(a.ctx.raw, a.raw, b.raw))
 
-proc algebraicNeg*(a: Z3Real): Z3Real =
-  ## Return the algebraic numeral -a.
-  ## Implemented as 0 - a so we don't need a dedicated FFI entry
-  ## (Z3 has no Z3_algebraic_neg C proc — negation is unary minus via
-  ## Z3_algebraic_sub(0, a) using the zero rational).
-  let zero = mkReal(a.ctx, 0)
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_sub(a.ctx.raw, zero.raw, a.raw))
+  proc algebraicDiv*(a, b: Z3Real): Z3Real =
+    ## Return the algebraic numeral a / b. Precondition: b ≠ 0.
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_div(a.ctx.raw, a.raw, b.raw))
 
-proc algebraicRoot*(a: Z3Real, k: int): Z3Real =
-  ## Return a^(1/k), the k-th root of algebraic numeral `a`.
-  ## Precondition: k is odd OR a ≥ 0.
-  ##
-  runnableExamples:
-    import z3
-    let ctx = newContext()
-    let two   = mkReal(ctx, 2)
-    let sqrt2 = algebraicRoot(two, 2)   # √2
-    let one   = mkReal(ctx, 1)
-    let three = mkReal(ctx, 3)
-    # √2 is between 1 and 3.
-    doAssert algebraicGt(sqrt2, one)
-    doAssert algebraicLt(sqrt2, three)
-    doAssert algebraicIsValue(sqrt2)
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_root(a.ctx.raw, a.raw, cuint(k)))
+  proc algebraicNeg*(a: Z3Real): Z3Real =
+    ## Return the algebraic numeral -a.
+    ## `Z3_algebraic_neg` is absent from `z3_algebraic.h` (checked against
+    ## the bundled `_audit_headers/z3_algebraic.h`). Implemented as
+    ## `0 - a` via `Z3_algebraic_sub` with the zero rational.
+    let zero = mkReal(a.ctx, 0)
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_sub(a.ctx.raw, zero.raw, a.raw))
 
-proc algebraicPower*(a: Z3Real, k: int): Z3Real =
-  ## Return a^k for non-negative integer k.
-  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_power(a.ctx.raw, a.raw, cuint(k)))
+  proc algebraicRoot*(a: Z3Real, k: int): Z3Real =
+    ## Return a^(1/k), the k-th root of algebraic numeral `a`.
+    ## Precondition: k is odd OR a ≥ 0.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let two   = mkReal(ctx, 2)
+      let sqrt2 = algebraicRoot(two, 2)   # √2
+      let one   = mkReal(ctx, 1)
+      let three = mkReal(ctx, 3)
+      # √2 is between 1 and 3.
+      doAssert algebraicGt(sqrt2, one)
+      doAssert algebraicLt(sqrt2, three)
+      doAssert algebraicIsValue(sqrt2)
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_root(a.ctx.raw, a.raw, cuint(k)))
 
-proc `^`*(a: Z3Real, k: int): Z3Real =
-  ## Operator alias for `algebraicPower(a, k)` — integer power.
-  ## Note: this operator is defined only when the operand is a Z3Real and k is
-  ## a Nim int; it shadows no existing operator in arith.nim (which has no `^`).
-  algebraicPower(a, k)
+  proc algebraicPower*(a: Z3Real, k: int): Z3Real =
+    ## Return a^k for non-negative integer k.
+    wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_power(a.ctx.raw, a.raw, cuint(k)))
 
-# ============================================================================
-# Comparisons — return Nim bool (concrete algebraic comparisons)
-# ============================================================================
+  proc `^`*(a: Z3Real, k: int): Z3Real =
+    ## Operator alias for `algebraicPower(a, k)` — integer power.
+    ## Note: this operator is defined only when the operand is a Z3Real and k is
+    ## a Nim int; it shadows no existing operator in arith.nim (which has no `^`).
+    algebraicPower(a, k)
 
-proc algebraicLt*(a, b: Z3Real): bool {.inline.} =
-  ## True if a < b (concrete algebraic comparison).
-  Z3_algebraic_lt(a.ctx.raw, a.raw, b.raw)
+  # ==========================================================================
+  # Comparisons — return Nim bool (concrete algebraic comparisons)
+  # ==========================================================================
 
-proc algebraicGt*(a, b: Z3Real): bool {.inline.} =
-  ## True if a > b.
-  Z3_algebraic_gt(a.ctx.raw, a.raw, b.raw)
+  proc algebraicLt*(a, b: Z3Real): bool {.inline.} =
+    ## True if a < b (concrete algebraic comparison).
+    Z3_algebraic_lt(a.ctx.raw, a.raw, b.raw)
 
-proc algebraicLe*(a, b: Z3Real): bool {.inline.} =
-  ## True if a ≤ b.
-  Z3_algebraic_le(a.ctx.raw, a.raw, b.raw)
+  proc algebraicGt*(a, b: Z3Real): bool {.inline.} =
+    ## True if a > b.
+    Z3_algebraic_gt(a.ctx.raw, a.raw, b.raw)
 
-proc algebraicGe*(a, b: Z3Real): bool {.inline.} =
-  ## True if a ≥ b.
-  Z3_algebraic_ge(a.ctx.raw, a.raw, b.raw)
+  proc algebraicLe*(a, b: Z3Real): bool {.inline.} =
+    ## True if a ≤ b.
+    Z3_algebraic_le(a.ctx.raw, a.raw, b.raw)
 
-proc algebraicEq*(a, b: Z3Real): bool {.inline.} =
-  ## True if a = b exactly (concrete algebraic equality).
-  ## Note: this is a concrete numeric comparison, NOT the symbolic Z3Bool
-  ## equality that `==` produces for Z3Real in ast.nim.
-  Z3_algebraic_eq(a.ctx.raw, a.raw, b.raw)
+  proc algebraicGe*(a, b: Z3Real): bool {.inline.} =
+    ## True if a ≥ b.
+    Z3_algebraic_ge(a.ctx.raw, a.raw, b.raw)
 
-proc algebraicNeq*(a, b: Z3Real): bool {.inline.} =
-  ## True if a ≠ b.
-  Z3_algebraic_neq(a.ctx.raw, a.raw, b.raw)
+  proc algebraicEq*(a, b: Z3Real): bool {.inline.} =
+    ## True if a = b exactly (concrete algebraic equality).
+    ## Note: this is a concrete numeric comparison, NOT the symbolic Z3Bool
+    ## equality that `==` produces for Z3Real in ast.nim.
+    Z3_algebraic_eq(a.ctx.raw, a.raw, b.raw)
 
-# ============================================================================
-# Root enumeration — returns seq[Z3Real]
-# ============================================================================
+  proc algebraicNeq*(a, b: Z3Real): bool {.inline.} =
+    ## True if a ≠ b.
+    Z3_algebraic_neq(a.ctx.raw, a.raw, b.raw)
 
-proc algebraicRoots*(p: Z3Real, vals: openArray[Z3Real]): seq[Z3Real] =
-  ## Given a multivariate polynomial `p(x_0, ..., x_{n-1}, x_n)`, return the
-  ## real roots of the univariate polynomial `p(vals[0], ..., vals[n-1], x_n)`.
-  ##
-  ## For a univariate polynomial (e.g. `x^2 - 2`) pass `vals = []`: Z3 treats
-  ## the free variable in `p` as the last variable.
-  ##
-  ## All elements of `vals` must satisfy `algebraicIsValue`. Plain rational
-  ## constants (`mkReal`) are also accepted (Z3 coerces them).
-  ##
-  runnableExamples:
-    import z3
-    let ctx = newContext()
-    # Build the polynomial p(x) = x^2 - 2 using a bound variable.
-    let x  = mkBoundReal(ctx, 0)
-    let p  = x * x - mkReal(ctx, 2)
-    let roots = algebraicRoots(p, [])
-    # x^2 - 2 has exactly two real roots: √2 and -√2.
-    doAssert roots.len == 2
-  let ctx = p.ctx
-  var rawVals = newSeq[RawZ3Ast](vals.len)
-  for i, v in vals:
-    rawVals[i] = v.raw
-  let rawVec =
-    if vals.len == 0:
-      ctx.checkErr Z3_algebraic_roots(ctx.raw, p.raw, 0,
-                                      cast[ptr UncheckedArray[RawZ3Ast]](nil))
-    else:
-      ctx.checkErr Z3_algebraic_roots(ctx.raw, p.raw, cuint(vals.len),
-                                      cast[ptr UncheckedArray[RawZ3Ast]](
-                                        addr rawVals[0]))
-  let vec = wrapAstVector(ctx, rawVec)
-  result = newSeq[Z3Real](vec.len)
-  for i in 0 ..< vec.len:
-    result[i] = wrap[Z3Real](ctx, ctx.checkErr vec[i])
+  # ==========================================================================
+  # Standard comparison operators — thin aliases over algebraicXxx procs.
+  # These return concrete Nim `bool`, NOT symbolic `Z3Bool`. Arithmetic
+  # operators (+, -, *, /) are NOT defined here because they would shadow
+  # arith.nim's symbolic operators (which also operate on Z3Real) and cause
+  # ambiguous call errors when both modules are in scope via `import z3`.
+  # Use `algebraicAdd` / `algebraicSub` / `algebraicMul` / `algebraicDiv`
+  # for the explicit concrete forms.
+  #
+  # The comparison operators are safe to expose as operators because their
+  # return type (bool) differs from arith.nim's comparison operators (Z3Bool),
+  # making the two families non-ambiguous for callers who only need concrete
+  # ordering checks.
+  # ==========================================================================
 
-# ============================================================================
-# Sign evaluation at an algebraic point
-# ============================================================================
+  proc `<`*(a, b: Z3Real): bool {.inline.} =
+    ## Algebraic less-than (concrete bool). Alias for `algebraicLt`.
+    algebraicLt(a, b)
 
-proc algebraicEval*(p: Z3Real, vals: openArray[Z3Real]): int =
-  ## Evaluate the sign of polynomial `p(vals[0], ..., vals[n-1])`.
-  ## Returns 1 (positive), 0 (zero), or -1 (negative).
-  ##
-  ## `p` is a Z3 expression in free variables; `vals` substitutes each
-  ## variable (in the order Z3 sees them). All `vals` elements must satisfy
-  ## `algebraicIsValue` or be rational constants.
-  let ctx = p.ctx
-  var rawVals = newSeq[RawZ3Ast](vals.len)
-  for i, v in vals:
-    rawVals[i] = v.raw
-  let sign =
-    if vals.len == 0:
-      ctx.checkErr Z3_algebraic_eval(ctx.raw, p.raw, 0,
-                                     cast[ptr UncheckedArray[RawZ3Ast]](nil))
-    else:
-      ctx.checkErr Z3_algebraic_eval(ctx.raw, p.raw, cuint(vals.len),
-                                     cast[ptr UncheckedArray[RawZ3Ast]](
-                                       addr rawVals[0]))
-  int(sign)
+  proc `<=`*(a, b: Z3Real): bool {.inline.} =
+    ## Algebraic less-or-equal (concrete bool). Alias for `algebraicLe`.
+    algebraicLe(a, b)
 
-# ============================================================================
-# Polynomial subresultants (merged from N1.5)
-# ============================================================================
+  proc `>`*(a, b: Z3Real): bool {.inline.} =
+    ## Algebraic greater-than (concrete bool). Alias for `algebraicGt`.
+    algebraicGt(a, b)
 
-# ============================================================================
-# Polynomial introspection — defining polynomial and root index
-# ============================================================================
+  proc `>=`*(a, b: Z3Real): bool {.inline.} =
+    ## Algebraic greater-or-equal (concrete bool). Alias for `algebraicGe`.
+    algebraicGe(a, b)
 
-proc algebraicGetPoly*(a: Z3Real): Z3AstVector =
-  ## Return the defining polynomial of algebraic numeral `a` as a
-  ## `Z3AstVector` of coefficient ASTs ordered from lowest to highest degree.
-  ##
-  ## For example, √2 (root of x² − 2) returns a vector of length 3 with
-  ## coefficients [−2, 0, 1] at indices 0, 1, 2 respectively.
-  ##
-  ## Precondition: `algebraicIsValue(a)`.
-  let ctx = a.ctx
-  wrapAstVector(ctx, ctx.checkErr Z3_algebraic_get_poly(ctx.raw, a.raw))
+  # ==========================================================================
+  # Root enumeration — returns seq[Z3Real]
+  # ==========================================================================
 
-proc algebraicGetI*(a: Z3Real): int =
-  ## Return the 1-based index of algebraic numeral `a` among the real roots of
-  ## its defining polynomial, ordered from smallest to largest value.
-  ##
-  ## For example, √2 is the positive root of x² − 2 and returns 2; −√2 is the
-  ## negative root and returns 1.
-  ##
-  ## Precondition: `algebraicIsValue(a)`.
-  int(Z3_algebraic_get_i(a.ctx.raw, a.raw))
+  proc algebraicRoots*(p: Z3Real, vals: openArray[Z3Real]): seq[Z3Real] =
+    ## Given a multivariate polynomial `p(x_0, ..., x_{n-1}, x_n)`, return the
+    ## real roots of the univariate polynomial `p(vals[0], ..., vals[n-1], x_n)`.
+    ##
+    ## For a univariate polynomial (e.g. `x^2 - 2`) pass `vals = []`: Z3 treats
+    ## the free variable in `p` as the last variable.
+    ##
+    ## All elements of `vals` must satisfy `algebraicIsValue`. Plain rational
+    ## constants (`mkReal`) are also accepted (Z3 coerces them).
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      # Build the polynomial p(x) = x^2 - 2 using a bound variable.
+      let x  = mkBoundReal(ctx, 0)
+      let p  = x * x - mkReal(ctx, 2)
+      let roots = algebraicRoots(p, [])
+      # x^2 - 2 has exactly two real roots: √2 and -√2.
+      doAssert roots.len == 2
+    let ctx = p.ctx
+    var rawVals = newSeq[RawZ3Ast](vals.len)
+    for i, v in vals:
+      rawVals[i] = v.raw
+    let rawVec =
+      if vals.len == 0:
+        ctx.checkErr Z3_algebraic_roots(ctx.raw, p.raw, 0,
+                                        cast[ptr UncheckedArray[RawZ3Ast]](nil))
+      else:
+        ctx.checkErr Z3_algebraic_roots(ctx.raw, p.raw, cuint(vals.len),
+                                        cast[ptr UncheckedArray[RawZ3Ast]](
+                                          addr rawVals[0]))
+    let vec = wrapAstVector(ctx, rawVec)
+    result = newSeq[Z3Real](vec.len)
+    for i in 0 ..< vec.len:
+      result[i] = wrap[Z3Real](ctx, ctx.checkErr vec[i])
 
-proc subresultants*(p, q, x: Z3Real): Z3AstVector =
-  ## Return the nonzero subresultant polynomial chain of `p` and `q` with
-  ## respect to variable `x`. The result is a `Z3AstVector` of ASTs
-  ## representing the subresultant polynomials.
-  ##
-  ## This is the complete merged N1.5 surface (formerly proposed as a
-  ## separate `z3/polynomial.nim` module). Subresultants are useful for:
-  ##
-  ##   - Computing polynomial GCDs over algebraic extensions
-  ##   - Cylindrical Algebraic Decomposition preprocessing
-  ##   - Detecting common roots of two polynomials
-  let ctx = p.ctx
-  wrapAstVector(ctx,
-    ctx.checkErr Z3_polynomial_subresultants(ctx.raw, p.raw, q.raw, x.raw))
+  # ==========================================================================
+  # Sign evaluation at an algebraic point
+  # ==========================================================================
+
+  proc algebraicEval*(p: Z3Real, vals: openArray[Z3Real]): int =
+    ## Evaluate the sign of polynomial `p(vals[0], ..., vals[n-1])`.
+    ## Returns 1 (positive), 0 (zero), or -1 (negative).
+    ##
+    ## `p` is a Z3 expression in free variables; `vals` substitutes each
+    ## variable (in the order Z3 sees them). All `vals` elements must satisfy
+    ## `algebraicIsValue` or be rational constants.
+    let ctx = p.ctx
+    var rawVals = newSeq[RawZ3Ast](vals.len)
+    for i, v in vals:
+      rawVals[i] = v.raw
+    let sign =
+      if vals.len == 0:
+        ctx.checkErr Z3_algebraic_eval(ctx.raw, p.raw, 0,
+                                       cast[ptr UncheckedArray[RawZ3Ast]](nil))
+      else:
+        ctx.checkErr Z3_algebraic_eval(ctx.raw, p.raw, cuint(vals.len),
+                                       cast[ptr UncheckedArray[RawZ3Ast]](
+                                         addr rawVals[0]))
+    int(sign)
+
+  # ==========================================================================
+  # Polynomial subresultants (merged from N1.5)
+  # ==========================================================================
+
+  # ==========================================================================
+  # Polynomial introspection — defining polynomial and root index
+  # ==========================================================================
+
+  proc algebraicGetPoly*(a: Z3Real): Z3AstVector =
+    ## Return the defining polynomial of algebraic numeral `a` as a
+    ## `Z3AstVector` of coefficient ASTs ordered from lowest to highest degree.
+    ##
+    ## For example, √2 (root of x² − 2) returns a vector of length 3 with
+    ## coefficients [−2, 0, 1] at indices 0, 1, 2 respectively.
+    ##
+    ## Precondition: `algebraicIsValue(a)`.
+    let ctx = a.ctx
+    wrapAstVector(ctx, ctx.checkErr Z3_algebraic_get_poly(ctx.raw, a.raw))
+
+  proc algebraicGetI*(a: Z3Real): int =
+    ## Return the 1-based index of algebraic numeral `a` among the real roots of
+    ## its defining polynomial, ordered from smallest to largest value.
+    ##
+    ## For example, √2 is the positive root of x² − 2 and returns 2; −√2 is the
+    ## negative root and returns 1.
+    ##
+    ## Precondition: `algebraicIsValue(a)`.
+    int(Z3_algebraic_get_i(a.ctx.raw, a.raw))
+
+  proc subresultants*(p, q, x: Z3Real): Z3AstVector =
+    ## Return the nonzero subresultant polynomial chain of `p` and `q` with
+    ## respect to variable `x`. The result is a `Z3AstVector` of ASTs
+    ## representing the subresultant polynomials.
+    ##
+    ## This is the complete merged N1.5 surface (formerly proposed as a
+    ## separate `z3/polynomial.nim` module). Subresultants are useful for:
+    ##
+    ##   - Computing polynomial GCDs over algebraic extensions
+    ##   - Cylindrical Algebraic Decomposition preprocessing
+    ##   - Detecting common roots of two polynomials
+    let ctx = p.ctx
+    wrapAstVector(ctx,
+      ctx.checkErr Z3_polynomial_subresultants(ctx.raw, p.raw, q.raw, x.raw))

@@ -271,27 +271,41 @@ const
 
 import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/builder, z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec,
-       z3/pretty, z3/simplify, z3/arrays, z3/sets, z3/quantifier,
+       z3/pretty, z3/simplify, z3/arrays, z3/quantifier,
        z3/params, z3/semantics, z3/chars,
-       z3/astvector, z3/astmap, z3/stats,
+       z3/astvector, z3/stats,
        z3/introspect, z3/proof, z3/fixedpoint, z3/rewrite, z3/translate,
        z3/globalparams, z3/io, z3/logging,
        z3/uninterpretedval,
-       z3/rcf,
-       z3/algebraic,
-       z3/propagator,
        z3/onclause
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
-       solver, model, bitvec, pretty, simplify, arrays, sets, quantifier,
+       solver, model, bitvec, pretty, simplify, arrays, quantifier,
        params, semantics, chars,
-       astvector, astmap, stats,
+       astvector, stats,
        introspect, proof, fixedpoint, rewrite,
        translate, globalparams, io, logging,
        uninterpretedval,
-       rcf,
-       algebraic,
-       propagator,
        onclause
+
+when not defined(z3WithoutSets):
+  import z3/sets
+  export sets
+
+when not defined(z3WithoutAstMap):
+  import z3/astmap
+  export astmap
+
+when not defined(z3WithoutAlgebraic):
+  import z3/algebraic
+  export algebraic
+
+when not defined(z3WithoutRcf):
+  import z3/rcf
+  export rcf
+
+when not defined(z3WithoutPropagator):
+  import z3/propagator
+  export propagator
 
 # ============================================================================
 # Gateable theories (re-exported only when the corresponding flag is off)

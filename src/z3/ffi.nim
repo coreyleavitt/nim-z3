@@ -1569,6 +1569,29 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## value at every index Z3 hasn't been forced to specialise. Dual
     ## of `Z3_mk_const_array`. v1.0 audit round 2, item #3.
 
+  proc Z3_mk_array_sort_n(c: RawZ3Context, n: cuint,
+      domain: ptr UncheckedArray[RawZ3Sort], range: RawZ3Sort): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## N-ary array sort `(Array domain[0] … domain[n-1] range)`.
+    ## N9.3: multi-index arrays.
+
+  proc Z3_mk_map(c: RawZ3Context, f: RawZ3FuncDecl, n: cuint,
+      args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Map `f` pointwise over `n` arrays. Each `args[i]` must have sort
+    ## `Array(domain, range_i)`; `f : range_0 × … × range_{n-1} → range`.
+    ## Result sort is `Array(domain, range)`. N9.3.
+
+  proc Z3_mk_array_ext(c: RawZ3Context, a1, a2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Extensionality witness: returns a term `k` such that `a1[k] ≠ a2[k]`
+    ## whenever `a1 ≠ a2`. N9.3.
+
+  proc Z3_mk_as_array(c: RawZ3Context, f: RawZ3FuncDecl): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Lift unary function `f : K → V` to an array `Array(K, V)` such
+    ## that `select(asArray(f), k) = f(k)` for all `k`. N9.3.
+
   # --- BitVec sort + numerals ----------------------------------------------
 
   proc Z3_mk_bv_sort(c: RawZ3Context, sz: cuint): RawZ3Sort

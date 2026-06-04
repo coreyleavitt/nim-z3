@@ -683,3 +683,42 @@ proc seqFoldli*[E, A](f: Z3FuncDecl[(Z3Int, A, E), A],
   wrap[A](ctx,
     ctx.checkErr Z3_mk_seq_foldli(ctx.raw, lambdaRaw, startIdx.raw,
       init.raw, s.raw))
+
+# ============================================================================
+# Array higher-order operations — N9.3
+# ============================================================================
+#
+# `mapArray`  : `Z3_mk_map(c, f, 1, [a])` — pointwise application of a
+#               unary func_decl `f : V → W` over every index of array `a`.
+# `arrayExt`  : `Z3_mk_array_ext(c, a1, a2)` — extensionality witness.
+# `asArray`   : `Z3_mk_as_array(c, f)` — lift unary `f : K → V` to an array.
+#
+# All three live here (not in z3/arrays) because `z3/funcdecl` already
+# imports `z3/arrays` — putting the procs here avoids a circular import.
+
+proc mapArray*[K, V, W](f: Z3FuncDecl[(V,), W],
+                        a: Z3Array[K, V]): Z3Array[K, W] =
+  ## Apply `f` pointwise across array `a`. Result array `r` satisfies
+  ## `r[i] = f(a[i])` for every index `i`.
+  ##
+  ## Wraps `Z3_mk_map(c, f, 1, [a])`. N9.3.
+  let ctx = f.ctx
+  var argsArr = [a.raw]
+  wrap[Z3Array[K, W]](ctx, ctx.checkErr Z3_mk_map(ctx.raw, f.raw, 1'u32,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0])))
+
+proc arrayExt*[K, V](a, b: Z3Array[K, V]): K =
+  ## Extensionality witness: returns a term `k` of sort `K` such that
+  ## `a[k] ≠ b[k]` is asserted whenever `a ≠ b`. When `a = b`, the
+  ## witness is still a valid `K`-sort term (its value is unconstrained).
+  ##
+  ## Wraps `Z3_mk_array_ext`. N9.3.
+  wrap[K](a.ctx, a.ctx.checkErr Z3_mk_array_ext(a.ctx.raw, a.raw, b.raw))
+
+proc asArray*[K, V](f: Z3FuncDecl[(K,), V]): Z3Array[K, V] =
+  ## Lift unary function `f : K → V` to a `Z3Array[K, V]`. The resulting
+  ## array satisfies `select(asArray(f), k) = f(k)` for all `k`.
+  ##
+  ## Wraps `Z3_mk_as_array`. N9.3.
+  let ctx = f.ctx
+  wrap[Z3Array[K, V]](ctx, ctx.checkErr Z3_mk_as_array(ctx.raw, f.raw))

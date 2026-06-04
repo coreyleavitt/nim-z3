@@ -136,7 +136,9 @@ task test, "Run the test suite":
       "tests/trunnable_audit.nim",
       "tests/torphan_audit.nim",
       "tests/tmodule_coverage_audit.nim",
-      "tests/tdocs_sweep_audit.nim"]:
+      "tests/tdocs_sweep_audit.nim",
+      "tests/tmigration_audit.nim",
+      "tests/tio_roundtrip.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf
 

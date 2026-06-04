@@ -993,7 +993,7 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   # --- Parallel tactic combinators (N8.6) ----------------------------------
   proc Z3_tactic_par_or(c: RawZ3Context, num: cuint,
-                         ts: ptr RawZ3Tactic): RawZ3Tactic
+                         ts: ptr UncheckedArray[RawZ3Tactic]): RawZ3Tactic
     {.cdecl, header: "z3.h".}
   proc Z3_tactic_par_and_then(c: RawZ3Context,
                                t1, t2: RawZ3Tactic): RawZ3Tactic
@@ -2847,6 +2847,10 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_rcf_num_to_decimal_string(c: RawZ3Context, a: RawZ3RcfNum,
                                     prec: cuint): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_roots(c: RawZ3Context, n: cuint,
+                        a: ptr UncheckedArray[RawZ3RcfNum],
+                        roots: ptr UncheckedArray[RawZ3RcfNum]): cuint
     {.cdecl, header: "z3.h".}
 
   # --- Algebraic numbers (z3_algebraic.h) — N1.7a --------------------------

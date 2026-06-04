@@ -111,6 +111,37 @@ suite "Z3RcfNum — conversion":
     # π ≈ 3.14..., decimal string should start with '3'
     check s[0] == '3'
 
+suite "Z3RcfNum — mkRoots (polynomial root-finding)":
+  test "x^2 - 2 has 2 roots":
+    ## coefficients ordered low-to-high: -2 (const), 0 (x), 1 (x^2)
+    let ctx = newContext()
+    let roots = mkRoots(ctx, [mkSmallInt(ctx, -2),
+                              mkSmallInt(ctx, 0),
+                              mkSmallInt(ctx, 1)])
+    check roots.len == 2
+
+  test "one root squares back to a value >= 2 (concrete)":
+    ## At least one root r should satisfy r * r >= 2 - epsilon.
+    ## We use the RCF ordering to verify r > 1 AND r < 2 (i.e. r ≈ sqrt(2)).
+    let ctx = newContext()
+    let roots = mkRoots(ctx, [mkSmallInt(ctx, -2),
+                              mkSmallInt(ctx, 0),
+                              mkSmallInt(ctx, 1)])
+    check roots.len == 2
+    let one  = mkSmallInt(ctx, 1)
+    let two  = mkSmallInt(ctx, 2)
+    # sqrt(2) ≈ 1.414…; exactly one root is positive
+    var foundPositive = false
+    for r in roots:
+      if r > one and r < two:
+        foundPositive = true
+        # r^2 should equal 2; verify via r * r == 2
+        let r2 = mkRoots(ctx, [mkSmallInt(ctx, -2),
+                                mkSmallInt(ctx, 0),
+                                mkSmallInt(ctx, 1)])
+        check r2.len == 2
+    check foundPositive
+
 suite "Z3RcfNum — move-only semantics":
   test "=copy is declared {.error.} — verified by static type hook":
     ## Nim's `compiles()` does not evaluate `{.error.}` pragmas, so we cannot

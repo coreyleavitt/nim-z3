@@ -278,10 +278,11 @@ when not defined(z3WithoutRcf):
     if coeffs.len < 2:
       return @[]
     let maxRoots = coeffs.len - 1
-    # Build a raw array of input coefficients.
+    # Build a raw array of input coefficients (index loop avoids =copy on
+    # the move-only Z3RcfNum; we only read the .raw field).
     var rawCoeffs = newSeq[RawZ3RcfNum](coeffs.len)
-    for i, c in coeffs:
-      rawCoeffs[i] = c.raw
+    for i in 0 ..< coeffs.len:
+      rawCoeffs[i] = coeffs[i].raw
     # Allocate the output buffer (maxRoots slots).
     var rawRoots = newSeq[RawZ3RcfNum](maxRoots)
     let count = Z3_rcf_mk_roots(ctx.raw,

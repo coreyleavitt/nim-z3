@@ -586,3 +586,32 @@ proc quantifierSkolemId*[T: Z3Term](q: T): string =
   $Z3_get_symbol_string(q.ctx.raw,
                         Z3_get_quantifier_skolem_id(q.ctx.raw, q.raw))
 
+# ============================================================================
+# N9.5 — Relation sort introspection
+# ============================================================================
+#
+# Z3_RELATION_SORT is an internal sort kind produced by the datalog
+# engine inside `Z3Fixedpoint` when it materialises registered
+# relations. There is no public `Z3_mk_relation_sort` constructor —
+# the C API only exposes the accessors below.
+#
+# Usage: after the fixedpoint datalog engine processes a registered
+# relation, the relation's domain encoding may carry a
+# Z3_RELATION_SORT. Call `getSortKind(ctx, rawSort)` to check before
+# calling either accessor.
+
+proc getRelationArity*(ctx: Z3Context, s: RawZ3Sort): int =
+  ## Return the number of columns of relation sort `s`.
+  ##
+  ## Pre: `Z3_get_sort_kind(ctx.raw, s) == Z3_RELATION_SORT`.
+  ## Calling on a non-relation sort is undefined behaviour per Z3's C API.
+  int(Z3_get_relation_arity(ctx.raw, s))
+
+proc getRelationColumn*(ctx: Z3Context, s: RawZ3Sort, col: int): RawZ3Sort =
+  ## Return the sort at column `col` of relation sort `s`.
+  ##
+  ## Pre: `Z3_get_sort_kind(ctx.raw, s) == Z3_RELATION_SORT` and
+  ##      `col >= 0 and col < getRelationArity(ctx, s)`.
+  doAssert col >= 0
+  Z3_get_relation_column(ctx.raw, s, cuint(col))
+

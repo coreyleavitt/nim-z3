@@ -293,6 +293,21 @@ proc wrapContextBorrowed*(rawCtx: RawZ3Context): Z3Context =
   ## N8.4b.
   Z3Context(raw: rawCtx, borrowed: true)
 
+proc enableConcurrentDecRef*(ctx: Z3Context) =
+  ## Notify Z3 that `Z3_dec_ref` may be called from threads other than
+  ## the one that owns `ctx`. After this call Z3 protects its internal
+  ## reference-count updates with a lock, making cross-thread dec_ref
+  ## safe.
+  ##
+  ## **Call before spawning any thread that will release (dec_ref) AST
+  ## objects belonging to `ctx`.** Calling multiple times is a no-op.
+  ##
+  ## This is the typed surface for `Z3_enable_concurrent_dec_ref` (N9.5).
+  ## The default mode (single-thread dec_ref) has zero locking overhead;
+  ## enable this only when you know multiple threads will share ownership
+  ## of ASTs from the same context.
+  Z3_enable_concurrent_dec_ref(ctx.raw)
+
 # Error handling (`Z3Error`, `raiseZ3Error`, `checkErr`, `checkErrVoid`)
 # moved to `z3/error` in v0.5 step 1. Cross-cutting modules import
 # `./error` directly; this module no longer owns the error surface.

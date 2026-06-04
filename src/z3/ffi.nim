@@ -517,6 +517,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_del_context(c: RawZ3Context) {.cdecl, header: "z3.h".}
 
+  proc Z3_enable_concurrent_dec_ref(c: RawZ3Context) {.cdecl, header: "z3.h".}
+    ## Notify Z3 that `Z3_dec_ref` may be called from threads other than
+    ## the one that owns the context. After this call Z3 protects its
+    ## internal reference-count updates with a lock, making cross-thread
+    ## dec_ref safe. Calling it more than once on the same context is a
+    ## no-op. Must be called before spawning any thread that will dec_ref
+    ## objects belonging to this context.
+
   # --- Refcounting ---------------------------------------------------------
 
   proc Z3_inc_ref(c: RawZ3Context, a: RawZ3Ast) {.cdecl, header: "z3.h".}
@@ -1663,6 +1671,25 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_get_sort_kind(c: RawZ3Context, s: RawZ3Sort): Z3SortKindFFI
     {.cdecl, header: "z3.h".}
+
+  # --- Relation sort introspection (N9.5) ----------------------------------
+  # Z3_RELATION_SORT is an internal sort kind produced by the datalog engine;
+  # there is no Z3_mk_relation_sort public constructor. These accessors are
+  # provided for completeness — they apply to sorts returned from the
+  # datalog engine's internal machinery.
+
+  proc Z3_get_relation_arity(c: RawZ3Context, s: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+    ## Return the arity (number of columns) of a relation sort.
+    ## Pre: `Z3_get_sort_kind(c, s) == Z3_RELATION_SORT`.
+
+  proc Z3_get_relation_column(c: RawZ3Context, s: RawZ3Sort,
+                               col: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Return the sort at column `col` of a relation sort.
+    ## Pre: `Z3_get_sort_kind(c, s) == Z3_RELATION_SORT` and
+    ##      `col < Z3_get_relation_arity(c, s)`.
+
   proc Z3_get_app_decl(c: RawZ3Context, a: RawZ3App): RawZ3FuncDecl
     {.cdecl, header: "z3.h".}
   proc Z3_get_app_num_args(c: RawZ3Context, a: RawZ3App): cuint
@@ -3031,6 +3058,31 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                                  f: RawZ3FuncDecl): RawZ3FuncDecl
     {.cdecl, header: "z3.h".}
     ## Return the transitive closure of binary relation `f`.
+
+  # --- Process-global logging API (N9.5) ------------------------------------
+  # These functions have no `Z3_context` parameter; they affect process-wide
+  # Z3 state. Matching the "extra_API" category in z3_api.h.
+
+  proc Z3_open_log(filename: cstring): bool {.cdecl, header: "z3.h".}
+    ## Open a log file at `filename`. Z3 will append every API call to it
+    ## until `Z3_close_log` is called. Returns `true` on success.
+    ## Only one log may be open at a time (subsequent opens replace the
+    ## previous).
+
+  proc Z3_append_log(s: cstring) {.cdecl, header: "z3.h".}
+    ## Write a comment line `s` into the currently-open interaction log.
+    ## No-op if no log is open.
+
+  proc Z3_close_log() {.cdecl, header: "z3.h".}
+    ## Close the currently-open interaction log (if any). Flushing and
+    ## closing the file handle. After this call `Z3_append_log` is a no-op
+    ## until `Z3_open_log` is called again.
+
+  proc Z3_toggle_warning_messages(enabled: bool) {.cdecl, header: "z3.h".}
+    ## Enable (`true`) or suppress (`false`) Z3's diagnostic warning output.
+    ## Affects all contexts in the process. Useful for silencing expected
+    ## warnings (e.g. "WARNING: quantifiers detected" in test suites) without
+    ## disabling the error channel.
 
 # N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
 # some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).

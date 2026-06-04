@@ -168,13 +168,14 @@ Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble e
 
 ## Design
 
-The wrapper ships **37 user-facing modules** (plus the internal `z3/ffi` FFI block) organised around the typed-family + ref-handle pattern. v0.4 closed the C-API contract ("every Z3 capability is reachable"); v0.5 polishes that surface for 1.0 (typed errors, parity surfaces, examples, docs).
+The wrapper ships **48 user-facing modules** (plus the internal `z3/ffi` FFI block) organised around the typed-family + ref-handle pattern. v0.4 closed the C-API contract ("every Z3 capability is reachable"); v0.5 polishes that surface for 1.0 (typed errors, parity surfaces, examples, docs); v2.0.0 is the completeness-pass release adding 11 new modules and breaking renames (see the [2.0.0 migration guide](docs/MIGRATION-1.x-to-2.0.md)).
 
 ### Reading guide
 
 - **New here?** Start with the [example list](#examples) and the [headline example](#nim-z3) at the top of this file. Then skim [`docs/PARITY.md`](docs/PARITY.md) to see how typed families compose.
+- **Upgrading from v1.x?** Read [`docs/MIGRATION-1.x-to-2.0.md`](docs/MIGRATION-1.x-to-2.0.md) — every breaking rename, removed proc, and module addition in the 2.0.0 release is documented there with before/after call-site examples.
 - **Hit a pitfall?** Check [`docs/GOTCHAS.md`](docs/GOTCHAS.md) — user-facing surprises with symptom / cause / wrapper-behaviour / what-to-do for each.
-- **Writing multi-threaded code?** [`docs/THREADING.md`](docs/THREADING.md) is the canonical contract (per-thread contexts work; sharing handles is UB).
+- **Writing multi-threaded code?** [`docs/THREADING.md`](docs/THREADING.md) is the canonical contract (per-thread contexts work; sharing handles is UB; `translate` is the only supported cross-context route; `global_param_*` calls are process-wide).
 - **Want to scope to a subset of Z3's theories?** [`docs/MINIMAL_BUILD.md`](docs/MINIMAL_BUILD.md) covers the `z3WithoutFP` / `z3WithoutSeq` / etc. compile-time flags and the cascade rules; [`docs/config.nims.example`](docs/config.nims.example) is the copy-paste template.
 - **Contributing a new typed family or module?** [`docs/PARITY.md`](docs/PARITY.md) is the checklist; [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) lists the cross-module-internal seams that exist only because Nim has no `internal` visibility.
 
@@ -191,17 +192,15 @@ The wrapper ships **37 user-facing modules** (plus the internal `z3/ffi` FFI blo
 
 ## Versioning
 
-v1.0.0 is the stability commitment; post-1.0 the wrapper enforces SemVer (see "## Stability" below). Per-release rationale and deferral ledgers live in the archived per-version plans (`V0.1_PLAN.md` §18 / `V0.2_PLAN.md` §8 / `V0.3_PLAN.md` §8 + §8b / `V0.4_PLAN.md` §8 + §8b / `V0.5_PLAN.md` §8 + §8b / `V0.6_PLAN.md`); the live `IMPLEMENTATION_PLAN.md` now tracks the post-1.0 v1.x roadmap. Per-release diffs are in `CHANGELOG.md`.
+v2.0.0 is the current release (completeness-pass, breaking renames; see [`CHANGELOG.md [2.0.0]`](CHANGELOG.md) and [`docs/MIGRATION-1.x-to-2.0.md`](docs/MIGRATION-1.x-to-2.0.md)). v1.0.0 was the original stability commitment. Post-1.0 the wrapper enforces SemVer (see "## Stability" below). Per-release rationale and deferral ledgers live in the archived per-version plans (`V0.1_PLAN.md` §18 / `V0.2_PLAN.md` §8 / `V0.3_PLAN.md` §8 + §8b / `V0.4_PLAN.md` §8 + §8b / `V0.5_PLAN.md` §8 + §8b / `V0.6_PLAN.md`); the live `IMPLEMENTATION_PLAN.md` now tracks the post-2.0 roadmap. Per-release diffs are in `CHANGELOG.md`.
 
 ## Stability
 
-v0.6 = v1.0.0 is the stability commitment, incorporating the v1.0-readiness audit cycle (rounds 1 + 2 — see CHANGELOG `[Unreleased]` for the cumulative list).
+The wrapper enforces SemVer:
 
-Post-1.0 the wrapper enforces SemVer:
-
-- **Patch** (`1.0.x`): bug fixes, internal refactors, docs. No public-surface changes.
-- **Minor** (`1.x.0`): additive only — new procs, new typed families, new flags. Existing call sites keep compiling and behaving the same.
-- **Major** (`2.0.0`, …): breaking changes (renames, removed procs, semantics shifts). Will be batched and accompanied by a migration guide in the corresponding `V2.0_PLAN.md`.
+- **Patch** (`2.0.x`, `1.0.x`, …): bug fixes, internal refactors, docs. No public-surface changes.
+- **Minor** (`2.x.0`): additive only — new procs, new typed families, new flags. Existing call sites keep compiling and behaving the same.
+- **Major** (`3.0.0`, …): breaking changes (renames, removed procs, semantics shifts). Will be batched and accompanied by a migration guide. The `2.0.0` major bump is documented in [`docs/MIGRATION-1.x-to-2.0.md`](docs/MIGRATION-1.x-to-2.0.md).
 
 What "public surface" means: everything reachable from `import z3` (the umbrella) plus the documented submodule paths `z3/<name>` listed in [Modules at a glance](#modules-at-a-glance). `RawZ3*` C handles, `*Impl*` width-arithmetic helpers, and cross-module-internal seams catalogued in [`docs/INTERNAL_API.md`](docs/INTERNAL_API.md) are **not** part of the public surface; they may change at any time without a major bump.
 

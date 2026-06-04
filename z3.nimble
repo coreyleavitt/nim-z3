@@ -1,5 +1,5 @@
 # Package
-version       = "1.0.0"
+version       = "2.0.0"
 author        = "Corey Leavitt"
 description   = "Type-safe, memory-safe Nim wrapper for the Z3 SMT solver"
 license       = "Apache-2.0"
@@ -135,7 +135,8 @@ task test, "Run the test suite":
       "tests/tnaming_audit.nim",
       "tests/trunnable_audit.nim",
       "tests/torphan_audit.nim",
-      "tests/tmodule_coverage_audit.nim"]:
+      "tests/tmodule_coverage_audit.nim",
+      "tests/tdocs_sweep_audit.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf
 

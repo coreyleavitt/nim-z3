@@ -6,6 +6,118 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-06-04
+
+The **completeness-pass** release. nim-z3 v1.x had three known additive
+gaps and a bounded correctness tail identified by the RFC-completeness
+audit cycle. v2.0.0 closes the full audit across 12 clusters (N0–N11):
+11 new theory + infrastructure modules, 7 breaking renames, 1 CRITICAL
+correctness fix (the v1.x audit's CRIT-1 `bvToInt` sign-extension gap),
+and the docs / CI sweep (N11.7 — this release).
+
+The migration guide is at [`docs/MIGRATION-1.x-to-2.0.md`](docs/MIGRATION-1.x-to-2.0.md).
+
+### BREAKING — renames (7)
+
+All are load-bearing name collisions or precision improvements; the
+migration guide has before/after call-site examples for each.
+
+- `toInt` (BV signed extraction) → `toInt64` (N4.4 — avoids collision
+  with `Z3String.toInt` added in N5.7)
+- `strToInt` → `Z3String.toInt` (N5.7 — idiomatic method syntax)
+- `intToStr` → `Z3Int.toStr` (N5.7 — idiomatic method syntax)
+- `mkNaN` → `mkFpNaN` (N6.7 — FP-family prefix consistency)
+- `mkInf` → `mkFpInf` (N6.7 — FP-family prefix consistency)
+- `mkZero` → `mkFpZero` (N6.7 — FP-family prefix consistency)
+- `toFp(bv, ...)` → `bvToFpBits` (N6.7 — disambiguates from the
+  `toFp(fp, ...)` family)
+- `mkRegexAll` → `mkRegexAllChar` (N10.11 — `mkRegexAll` now constructs
+  the full-sequence regex, not the full-character-class regex)
+
+### Added — new modules (11)
+
+- **`z3/sets`** (`Z3Set[E]` — distinct over `Z3Array[E, Z3Bool]`; full
+  set-theory surface: `mkEmptySet`, `mkFullSet`, `setAdd`, `setDel`,
+  `setUnion`, `setIntersect`, `setDifference`, `setComplement`,
+  `setMember`, `setSubset`, equality, `toArray`/`toSet` converters)
+- **`z3/astmap`** (`Z3AstMap` typed refcount-managed handle — dual of
+  `Z3AstVector`; `newAstMap`, `contains`, `insert`, `erase`, `find`,
+  `size`, `keys`, iteration)
+- **`z3/uninterpretedval`** (`Z3UninterpretedVal[T]` marker-phantom
+  family — the v1.x deferred uninterpreted-sort typed surface;
+  `declareUninterpretedSort[T]`, `mkUninterpretedVal`, `sortOf[T]`,
+  `datatypeRegistry`-parallel `uninterpretedRegistry`)
+- **`z3/rcf`** (`Z3RcfNum` — real closed field arithmetic:
+  `rcfMkRational`, `rcfAdd`/`Sub`/`Mul`/`Div`/`Neg`, `rcfPow`,
+  `rcfMkInfinity`, `rcfIsInfinite`, `rcfMkEpsilon`,
+  `rcfRoot`/`rcfRoots`, `rcfIsRational`, comparisons)
+- **`z3/algebraic`** (`Z3AlgebraicNum` — algebraic number operations:
+  `algebraicAdd`/`Sub`/`Mul`/`Div`, `algebraicRoot`, `algebraicPower`,
+  `algebraicIsValue`, `algebraicSign`, `toDouble` approximate extraction)
+- **`z3/spacer`** (Spacer CHC/PDR integration: `Z3SpacerResult`,
+  `newFixedpointForSpacer`, `setSpacerParams`, `getSpacerGrounding`,
+  `getSpacerCoverDelta`, `spacerAddCover`)
+- **`z3/simplifier`** (`Z3Simplifier` typed refcount handle;
+  `newSimplifier`, `andThen(s1, s2)`, `apply(simplifier, goal)`;
+  distinct from `z3/simplify`'s term-level `simplify[T]`)
+- **`z3/propagator`** (`Z3Propagator` plugin architecture:
+  `newPropagator`, `Z3PropagatorHandlers` closure bundle,
+  `Z3SolverCallback` opaque handle for consequence/next-split/decide
+  outbound calls, `registerWatch`, `propagateEq`, `propagateConflict`,
+  `propagateConsequence`)
+- **`z3/onclause`** (`registerOnClause` — post-decision-step clause
+  callback for proof logging and interpolant extraction)
+- **`z3/order`** (`Z3PartialOrder`, `Z3LinearOrder`, `Z3TreeOrder`,
+  `Z3PiecewiseLinearOrder` theory constructors)
+- **`z3/logging`** (`Z3_open_log` / `Z3_close_log` / `Z3_append_log`
+  wrappers for Z3's trace-logging facility)
+
+### Added — other surface
+
+- `Z3Solver.getTrail(finalsOnly: bool): Z3AstVector` — N8.1,
+  `Z3_solver_get_levels`-backed trail extraction.
+- `declareDatatypesGen(N: static int)` macro — N7.3/ADR-N0003, generates
+  `declareDatatypes` at any arity via `nnkTupleConstr`; canonical arities
+  2–3 hand-written forms retained as reference.
+- `mkBitVecFromBools(ctx, bits: openArray[Z3Bool]): Z3BitVec[?]` —
+  N3.3, dynamic-width BV construction from a boolean sequence.
+- `newScratchContext(): Z3Context` — convenience alias that creates a
+  fresh context without side-effecting `currentContext`; canonical
+  pattern for temporary/scratch solving contexts documented in
+  [`docs/THREADING.md`](docs/THREADING.md).
+
+### Fixed (correctness)
+
+- **CRIT-1 `bvToInt` sign-extension for W=63** — v1.x's `toInt` on a
+  63-bit BV read the sign bit at offset 63 (out of range for the
+  `int64` narrowing); the renamed `toInt64` re-routes through
+  `Z3_mk_bv2int` + model extraction. N4.4.
+
+### Documentation
+
+- **`docs/THREADING.md`** — expanded with `newScratchContext` /
+  `translate` / `global_param_*` process-scope guidance and an
+  `enableConcurrentDecRef` section documenting the experimental
+  concurrent-refcount mode and its interaction with the one-context-
+  one-thread rule.
+- **`docs/MINIMAL_BUILD.md`** — added gate-flag combination examples
+  and the new `z3WithoutSpacer` / `z3WithoutAlgebraic` / `z3WithoutRcf`
+  flags introduced in N11 cluster.
+- **`docs/IMPLEMENTATION_PLAN.md`** — v2.0 completeness-pass marked done;
+  post-2.0 v2.x roadmap bootstrapped.
+- **`CHANGELOG.md`** — this section.
+- **`README.md`** — version bumped to 2.0.0; 11 new modules added to
+  the "Modules at a glance" table; reading guide extended with the
+  upgrade pointer and threading clarification.
+
+### CI matrix
+
+`.github/workflows/ci.yaml` — gate-flag matrix job added (best-effort;
+gated on the same private-dep blocker as the rest of the matrix).
+Combinations tested: default (no flags), `z3WithoutFP`, `z3WithoutSeq`,
+`z3WithoutTactics`, and the canonical full-`z3WithoutX` config from
+`nimble testMinimal`.
+
 ## [1.0.0] — 2026-05-31
 
 The **stability commitment.** v0.5 was the 1.0-readiness polish

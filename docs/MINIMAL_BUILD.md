@@ -133,6 +133,25 @@ rather than the umbrella. The umbrella exists for the convenience
 of single-import projects; users with stricter compile-time budgets
 escape it.
 
+## Gate-flag combination examples (v2.0+)
+
+Common multi-flag recipes for build profiles:
+
+| Profile | Flags |
+|---|---|
+| BV-only (no FP, no strings, no datatypes) | `-d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutStrings -d:z3WithoutRegex -d:z3WithoutDatatypes` |
+| Solver-only (no analysis, no optimise) | `-d:z3WithoutOptimize -d:z3WithoutTactics -d:z3WithoutFixedpoint` |
+| Core + BV + arrays (embedded / microcontroller verification) | `-d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutDatatypes -d:z3WithoutOptimize -d:z3WithoutFuncDecl` |
+| No Spacer / CHC | `-d:z3WithoutSpacer` |
+| Algebraic-number-free | `-d:z3WithoutAlgebraic -d:z3WithoutRcf` |
+| Canonical full minimal (for tests/tminimal.nim) | all eight `-d:z3WithoutX` flags |
+
+The `-d:z3WithoutSpacer`, `-d:z3WithoutAlgebraic`, and `-d:z3WithoutRcf`
+flags were added in v2.0.0 for the three new heavy-weight theory families.
+They follow the same scope-hiding semantics as the v0.5 flags — hides
+umbrella re-export, does not necessarily reduce compile time (see
+"Honesty disclaimer" above).
+
 ## The `nimble test-minimal` task
 
 The nim-z3 repo ships a `nimble test-minimal` task that compiles

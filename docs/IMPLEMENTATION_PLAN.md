@@ -1,48 +1,46 @@
-# nim-z3 v1.x plan (live)
+# nim-z3 v2.x plan (live)
 
-> **Status: live, promoted 2026-05-31** at the v1.0.0 tag. The
-> v0.6 = v1.0.0 plan is archived at
-> [docs/V0.6_PLAN.md](V0.6_PLAN.md). All prior-version plans
-> remain archived under `docs/V0.N_PLAN.md`.
+> **Status: live, promoted 2026-06-04** at the v2.0.0 tag. The
+> v1.0 plan is archived at [docs/V0.6_PLAN.md](V0.6_PLAN.md)
+> (v0.6 = v1.0.0). All prior-version plans remain archived under
+> `docs/V0.N_PLAN.md`.
 
 A type-safe, memory-safe, idiomatic Nim wrapper for the Z3 SMT
-solver, post-1.0 stability era.
+solver, post-2.0 stability era.
 
-**Status (at v1.0.0)**: 1354 OKs across c + cpp backends (default
-config) plus 18 OKs under the canonical full-`z3WithoutX`-flag
-minimal-build verification. Zero failures. Every Z3 C-API
-capability the audit cycle identified as user-facing-reachable is
-exposed; the `[1.0.0]` CHANGELOG `Deferred to v1.x` subsection
-lists the three known additive items for v1.1.
+**Status (at v2.0.0)**: Completeness-pass release. 12 audit
+clusters (N0–N11) closed. 11 new modules (`z3/sets`, `z3/astmap`,
+`z3/uninterpretedval`, `z3/rcf`, `z3/algebraic`, `z3/spacer`,
+`z3/simplifier`, `z3/propagator`, `z3/onclause`, `z3/order`,
+`z3/logging`). 7 breaking renames. CRIT-1 (`bvToInt` W=63
+sign-extension) fixed. Migration guide at
+[`docs/MIGRATION-1.x-to-2.0.md`](MIGRATION-1.x-to-2.0.md).
 
-## Live deferral list
+## v1.0 deferrals — CLOSED in v2.0
 
-The v1.0.0 release intentionally defers three additive
-capabilities (each has a documented workaround, so none blocks
-adoption):
+The three capabilities deferred at v1.0.0 all landed in v2.0.0:
 
-- **`Z3Set[E]` typed family** — set theory as sugar over
-  `Z3Array[E, Z3Bool]`. ~60 LoC, zero new FFI.
+- **`Z3Set[E]` typed family** — DONE (`z3/sets`, N1.1).
 - **`Z3_model_get_const_decls` / `Z3_model_get_func_decls`** —
-  model-decl enumeration for inspecting all assignments in an
-  arbitrary model (e.g., one loaded via `parseSmt2File`).
+  DONE (model-decl enumeration, N7.6).
 - **`Z3_mk_seq_replace_all` / `_replace_re` / `_split_re`** —
-  multi-occurrence string operations. Existing `replace` is
-  first-occurrence only (see GOTCHAS #19).
+  DONE (N5.7).
 
-These will land as additive minor releases (likely v1.1.0).
-Anything else discovered post-1.0 follows the SemVer rules
+## Post-v2.0 live deferral list
+
+No known additive gaps remain from the RFC-completeness audit. Any
+future additions discovered post-2.0 will follow the SemVer rules
 documented in README "## Stability".
 
-## How patch / minor / major decisions are made post-1.0
+## How patch / minor / major decisions are made post-2.0
 
-- **Patch (1.0.x)**: bug fixes, internal refactors, doc updates,
+- **Patch (2.0.x)**: bug fixes, internal refactors, doc updates,
   doc-rot purges. No public-surface changes.
-- **Minor (1.x.0)**: additive only — new procs, new typed families,
+- **Minor (2.x.0)**: additive only — new procs, new typed families,
   new feature flags. Every pre-existing call site continues to
   compile and behave identically.
-- **Major (2.0.0+)**: breaking changes are batched and accompanied
-  by a `docs/V2.0_PLAN.md` migration guide.
+- **Major (3.0.0+)**: breaking changes are batched and accompanied
+  by a migration guide.
 
 The boundary between "internal refactor" and "public-surface
 change" is precisely the surface defined in README "## Stability"
@@ -52,11 +50,11 @@ width-arithmetic helpers, and the cross-module-internal seams in
 `docs/INTERNAL_API.md` are explicitly NOT part of the public
 surface.
 
-## What lands next (v1.1.0 target)
+## What lands next (v2.1.0 target)
 
-No fixed schedule. The plan opens when a substantive batch of
-v1.0 deferrals is ready or when an external user files an issue
-that warrants a minor bump. Until then this file stays as the
-stability anchor — confirming that v1.0 is the current target and
-that any code change either fits one of the SemVer categories
-above or needs the major-bump treatment.
+No fixed schedule. The plan opens when a substantive new batch is
+ready or when an external user files an issue that warrants a
+minor bump. Until then this file stays as the stability anchor —
+confirming that v2.0 is the current release and that any code
+change either fits one of the SemVer categories above or needs
+the major-bump treatment.

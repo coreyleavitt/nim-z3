@@ -388,6 +388,36 @@ fpCmp(`>`,  Z3_mk_fpa_gt)
 fpCmp(`>=`, Z3_mk_fpa_geq)
 
 # ============================================================================
+# N6.5a — comparison literal lifts (Z3Fp op float64/float32)
+# ============================================================================
+#
+# Each binary comparison has four overloads: (Z3Fp, float64), (float64, Z3Fp),
+# (Z3Fp, float32) on Z3Float32, (float32, Z3Float32).
+#
+# `==` uses `Z3_mk_fpa_eq` (IEEE equality) — matching the Z3Fp×Z3Fp `==`
+# above. `!=` is `not (a == b)`. `<`, `<=`, `>`, `>=` delegate to their
+# Z3Fp×Z3Fp siblings after lifting the literal.
+
+template liftFpCmp(name: untyped) =
+  ## For each comparison `name` already defined on `(Z3Fp[E,S], Z3Fp[E,S])`,
+  ## add two float64 overloads and two float32 overloads.
+  proc `name`*[E, S: static int](a: Z3Fp[E, S], b: float64): Z3Bool {.inline.} =
+    `name`(a, mkFp[E, S](a.ctx, b))
+  proc `name`*[E, S: static int](a: float64, b: Z3Fp[E, S]): Z3Bool {.inline.} =
+    `name`(mkFp[E, S](b.ctx, a), b)
+  proc `name`*(a: Z3Float32, b: float32): Z3Bool {.inline.} =
+    `name`(a, mkFloat32(a.ctx, b))
+  proc `name`*(a: float32, b: Z3Float32): Z3Bool {.inline.} =
+    `name`(mkFloat32(b.ctx, a), b)
+
+liftFpCmp(`==`)
+liftFpCmp(`!=`)
+liftFpCmp(`<`)
+liftFpCmp(`<=`)
+liftFpCmp(`>`)
+liftFpCmp(`>=`)
+
+# ============================================================================
 # No-rounding arithmetic
 # ============================================================================
 

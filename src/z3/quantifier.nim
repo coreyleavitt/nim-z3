@@ -36,7 +36,7 @@
 ## `Z3BoundVar`-style explicit boxing helpers — see the §7 Q2
 ## divergence above.
 
-import ./ffi, ./context, ./error, ./ast, ./arrays
+import ./ffi, ./context, ./error, ./ast, ./arrays, ./introspect
 
 # ============================================================================
 # Z3Pattern — refcount-managed quantifier trigger
@@ -219,6 +219,50 @@ template exists*[B1, B2, B3, B4, B5](
     patterns: openArray[Z3Pattern] = []): Z3Bool =
   quantifierImpl(body.ctx, false,
     [b1.raw, b2.raw, b3.raw, b4.raw, b5.raw], body.raw, patterns)
+
+# ============================================================================
+# forallN / existsN — N-ary escape hatch (N2.6)
+# ============================================================================
+#
+# Per-arity templates cover 1–5 bound variables as the ergonomic surface.
+# `forallN` / `existsN` are the escape hatch for arity > 5 (or for callers
+# building bound-variable lists dynamically). They accept `openArray[Z3AnyAst]`
+# and delegate to the same `quantifierImpl` core, so memory management,
+# pattern threading, and Z3 semantics are identical.
+
+proc forallN*(bound: openArray[Z3AnyAst], body: Z3Bool,
+              patterns: openArray[Z3Pattern] = []): Z3Bool =
+  ## Universal quantifier for any number of bound variables.
+  ##
+  ## Each element of `bound` must be a free constant of any typed AST
+  ## family (`Z3Int`, `Z3Real`, `Z3Bool`, `Z3BitVec[W]`, …) wrapped via
+  ## `toAnyAst`. Z3 re-binds each constant inside `body`.
+  ##
+  ## Use the per-arity `forall` templates for 1–5 bound variables;
+  ## prefer those over `forallN` when the arity is statically known,
+  ## for compile-time type safety. `forallN` is the escape hatch for
+  ## arity > 5 or dynamically-constructed bound-variable sequences.
+  ##
+  ## ```nim
+  ## let vars = @[x1.toAnyAst, x2.toAnyAst, ..., x6.toAnyAst]
+  ## let q = forallN(vars, body)
+  ## ```
+  var raws = newSeq[RawZ3Ast](bound.len)
+  for i, b in bound:
+    raws[i] = b.raw
+  quantifierImpl(body.ctx, true, raws, body.raw, patterns)
+
+proc existsN*(bound: openArray[Z3AnyAst], body: Z3Bool,
+              patterns: openArray[Z3Pattern] = []): Z3Bool =
+  ## Existential quantifier for any number of bound variables.
+  ##
+  ## Same shape as `forallN` — see that proc's docstring for the full
+  ## contract. Use the per-arity `exists` templates for 1–5 bound
+  ## variables.
+  var raws = newSeq[RawZ3Ast](bound.len)
+  for i, b in bound:
+    raws[i] = b.raw
+  quantifierImpl(body.ctx, false, raws, body.raw, patterns)
 
 # ============================================================================
 # Lambda — `Z3_mk_lambda_const` (v1.0 audit round 2, item #2)

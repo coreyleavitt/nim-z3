@@ -875,6 +875,54 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                                queries: ptr UncheckedArray[RawZ3Ast]): cstring
     {.cdecl, header: "z3.h".}
 
+  # --- Spacer / IC3-PDR extensions (z3_spacer.h) -------------------------
+
+  proc Z3_fixedpoint_query_from_lvl(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                    query: RawZ3Ast,
+                                    lvl: cuint): Z3LBool
+    {.cdecl, header: "z3_spacer.h".}
+    ## Run the CHC query from induction level `lvl`. Returns L_TRUE (sat),
+    ## L_FALSE (unsat), or L_UNDEF (unknown). Spacer-engine only.
+
+  proc Z3_fixedpoint_add_invariant(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                   pred: RawZ3FuncDecl,
+                                   property: RawZ3Ast)
+    {.cdecl, header: "z3_spacer.h".}
+    ## Inject an assumed invariant for `pred` into Spacer's state.
+
+  proc Z3_fixedpoint_get_reachable(c: RawZ3Context, d: RawZ3Fixedpoint,
+                                   pred: RawZ3FuncDecl): RawZ3Ast
+    {.cdecl, header: "z3_spacer.h".}
+    ## Retrieve the reachable states formula for `pred` after a query.
+
+  proc Z3_fixedpoint_get_ground_sat_answer(c: RawZ3Context,
+                                           d: RawZ3Fixedpoint): RawZ3Ast
+    {.cdecl, header: "z3_spacer.h".}
+    ## Retrieve the ground sat answer (bottom-up fact witness) after SAT.
+
+  proc Z3_fixedpoint_get_rules_along_trace(c: RawZ3Context,
+                                           d: RawZ3Fixedpoint): RawZ3AstVector
+    {.cdecl, header: "z3_spacer.h".}
+    ## Horn rules fired along the counterexample trace after a SAT query.
+
+  proc Z3_model_extrapolate(c: RawZ3Context, m: RawZ3Model,
+                             fml: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3_spacer.h".}
+    ## Generalise a model of `fml` to a stronger (more general) formula.
+
+  proc Z3_qe_lite(c: RawZ3Context, vars: RawZ3AstVector,
+                  body: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3_spacer.h".}
+    ## Best-effort quantifier elimination: project `vars` out of `body`.
+
+  proc Z3_qe_model_project(c: RawZ3Context, m: RawZ3Model,
+                            num_bounds: cuint,
+                            bound: ptr UncheckedArray[RawZ3App],
+                            body: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3_spacer.h".}
+    ## Model-guided variable projection. Projects `bound` apps out of
+    ## `body` using the model `m` to choose which branch to preserve.
+
   # --- Quantifiers + patterns ---------------------------------------------
 
   proc Z3_mk_pattern(c: RawZ3Context, num_patterns: cuint,

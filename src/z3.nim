@@ -329,5 +329,9 @@ when not z3WithoutFuncDeclEff:
   import z3/funcdecl
   export funcdecl
 
+when not defined(z3WithoutSpacer):
+  import z3/spacer
+  export spacer
+
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

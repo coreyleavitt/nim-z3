@@ -2165,6 +2165,11 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## **v0.4 step 1.** SMT-LIB rendering of the full vector.
   proc Z3_ast_vector_get(c: RawZ3Context, v: RawZ3AstVector, i: cuint): RawZ3Ast
     {.cdecl, header: "z3.h".}
+  proc Z3_ast_vector_translate(source: RawZ3Context, v: RawZ3AstVector,
+                               target: RawZ3Context): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Transfer every AST in `v` from `source` context into `target`.
+    ## Returns a fresh vector owned by `target`; caller takes the initial ref.
 
   # --- AST identity --------------------------------------------------------
 

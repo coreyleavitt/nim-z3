@@ -163,6 +163,20 @@ proc toSeq*[T: Z3Term](v: Z3AstVector, _: typedesc[T]): seq[T] =
     result[i] = wrap[T](v.ctx, raw)
 
 # ============================================================================
+# Cross-context transfer
+# ============================================================================
+
+proc translate*(v: Z3AstVector, target: Z3Context): Z3AstVector =
+  ## Transfer every AST in `v` from its owning context into `target`.
+  ## Returns a fresh vector owned by `target`; the source vector is
+  ## not modified.
+  ##
+  ## Raises `Z3Error` if `target` can't accept the ASTs — most commonly
+  ## because the two contexts were configured with incompatible parameters.
+  wrapAstVector(target,
+    target.checkErr Z3_ast_vector_translate(v.ctx.raw, v.raw, target.raw))
+
+# ============================================================================
 # Pretty-print
 # ============================================================================
 

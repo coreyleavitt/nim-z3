@@ -235,6 +235,21 @@ proc isInt*(r: Z3Real): Z3Bool =
   wrap[Z3Bool](r.ctx, r.ctx.checkErr Z3_mk_is_int(r.ctx.raw, r.raw))
 
 # ============================================================================
+# intToReal / realToInt — coercions between Int and Real sorts
+# ============================================================================
+
+proc intToReal*(a: Z3Int): Z3Real =
+  ## Coerce an Int-sort term to a Real-sort term.
+  ## Maps to `Z3_mk_int2real`.
+  wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_int2real(a.ctx.raw, a.raw))
+
+proc realToInt*(a: Z3Real): Z3Int =
+  ## Floor of a Real-sort term as an Int-sort term.
+  ## Z3 semantics: `realToInt(r) = floor(r)` (rounds towards negative infinity).
+  ## Maps to `Z3_mk_real2int`.
+  wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_real2int(a.ctx.raw, a.raw))
+
+# ============================================================================
 # mkRealInt64 — exact rational from int64 numerator / denominator
 # ============================================================================
 

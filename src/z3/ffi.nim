@@ -518,6 +518,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Boolean predicate `t1 divides t2` (integer divisibility).
 
+  proc Z3_mk_int2real(c: RawZ3Context, t1: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Coerce integer `t1` to its Real-sort equivalent.
+
+  proc Z3_mk_real2int(c: RawZ3Context, t1: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Floor of real `t1` as an Int-sort term.
+
   proc Z3_mk_is_int(c: RawZ3Context, t1: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
     ## Boolean predicate: true iff the real `t1` is an integer value.

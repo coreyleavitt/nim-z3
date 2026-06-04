@@ -9,8 +9,9 @@
 ##
 ## ## When you reach for `Z3Char`
 ##
-## - **Char-level predicates** Z3 ships — `<=` / `<` codepoint ordering
-##   (`char.<=`), `isDigit` (`char.is_digit`), and `toInt`
+## - **Char-level predicates** Z3 ships — `<=` / `<` / `>` / `>=`
+##   codepoint ordering (`char.<=`; `>` / `>=` derived by arg-swap),
+##   `isDigit` (`char.is_digit`), and `toInt`
 ##   (`char.to_int`) for the codepoint extractor.
 ## - **Future BV interop** — `Z3_mk_char_to_bv` / `_from_bv` are real
 ##   Z3 entry points; surfaced in a follow-up once the
@@ -93,6 +94,17 @@ proc `<`*(a, b: Z3Char): Z3Bool =
   var raws = [leq.raw, ne.raw]
   wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_and(a.ctx.raw, 2,
     cast[ptr UncheckedArray[RawZ3Ast]](addr raws[0])))
+
+proc `>`*(a, b: Z3Char): Z3Bool {.inline.} =
+  ## Strict codepoint greater-than. Derived as `b < a` (arg-swap);
+  ## Z3 has no primitive `char.>` — the SMT-LIB Char theory only
+  ## ships `char.<=`.
+  b < a
+
+proc `>=`*(a, b: Z3Char): Z3Bool {.inline.} =
+  ## Codepoint greater-or-equal. Derived as `b <= a` (arg-swap);
+  ## mirrors `<=` by symmetric argument reversal.
+  b <= a
 
 proc isDigit*(a: Z3Char): Z3Bool =
   ## SMT `(char.is_digit a)` — true iff `a` is an ASCII digit `'0'..'9'`.

@@ -392,6 +392,54 @@ type
     ## Callback fired on each unfolding step. Matches
     ## `Z3_fixedpoint_unfold_eh`.
 
+  # ---- N8.4a propagator callback typedefs ------------------------------------
+  # Each typedef maps to the corresponding Z3_DECLARE_CLOSURE in z3_api.h
+  # (lines 1435–1442). The first parameter is always the user_context pointer
+  # supplied to `Z3_solver_propagate_init`. `Z3_solver_callback` is the opaque
+  # callback context — exposed in Nim as `RawZ3PropagatorCtxBox`.
+
+  Z3PropagatorPushEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox) {.cdecl.}
+    ## Called when Z3 pushes a scope. Matches `Z3_push_eh`.
+
+  Z3PropagatorPopEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox, numScopes: cuint) {.cdecl.}
+    ## Called when Z3 pops `numScopes` scopes. Matches `Z3_pop_eh`.
+
+  Z3PropagatorFreshEh* =
+    proc(ctx: pointer, newContext: RawZ3Context): pointer {.cdecl.}
+    ## Called when Z3 spawns a fresh solver; must return a fresh user_context
+    ## for the new solver. Matches `Z3_fresh_eh`.
+
+  Z3PropagatorFixedEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox,
+         t: RawZ3Ast, value: RawZ3Ast) {.cdecl.}
+    ## Called when a registered expression `t` is fixed to `value`.
+    ## Matches `Z3_fixed_eh`.
+
+  Z3PropagatorEqEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox,
+         s: RawZ3Ast, t: RawZ3Ast) {.cdecl.}
+    ## Called for an equality (or disequality) between two registered
+    ## expressions. Shared by both `Z3_solver_propagate_eq` and
+    ## `Z3_solver_propagate_diseq` per ADR-N0004. Matches `Z3_eq_eh`.
+
+  Z3PropagatorFinalEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox) {.cdecl.}
+    ## Called at the final-check point (all decisions assigned). Matches
+    ## `Z3_final_eh`.
+
+  Z3PropagatorCreatedEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox, t: RawZ3Ast) {.cdecl.}
+    ## Called when a new expression using a declared propagator function is
+    ## created. Matches `Z3_created_eh`.
+
+  Z3PropagatorDecideEh* =
+    proc(ctx: pointer, cb: RawZ3PropagatorCtxBox,
+         t: RawZ3Ast, idx: cuint, phase: bool) {.cdecl.}
+    ## Called when Z3 decides to split on a registered expression.
+    ## Matches `Z3_decide_eh`.
+
 # ============================================================================
 # Z3 FFI declarations
 # ============================================================================
@@ -2661,6 +2709,90 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_polynomial_subresultants(c: RawZ3Context,
                                    p, q, x: RawZ3Ast): RawZ3AstVector
     {.cdecl, header: "z3.h".}
+
+  # --- Propagator (N8.4a — FFI surface) ------------------------------------
+
+  proc Z3_solver_propagate_init(c: RawZ3Context, s: RawZ3Solver,
+                                userCtx: pointer,
+                                pushEh:  Z3PropagatorPushEh,
+                                popEh:   Z3PropagatorPopEh,
+                                freshEh: Z3PropagatorFreshEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a user propagator with the solver. Must be called first;
+    ## establishes the user context and mandatory push/pop/fresh hooks.
+
+  proc Z3_solver_propagate_fixed(c: RawZ3Context, s: RawZ3Solver,
+                                 fixedEh: Z3PropagatorFixedEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback for when a registered expression is fixed to a value.
+
+  proc Z3_solver_propagate_final(c: RawZ3Context, s: RawZ3Solver,
+                                 finalEh: Z3PropagatorFinalEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback at the final-check point.
+
+  proc Z3_solver_propagate_eq(c: RawZ3Context, s: RawZ3Solver,
+                              eqEh: Z3PropagatorEqEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback for expression equalities.
+
+  proc Z3_solver_propagate_diseq(c: RawZ3Context, s: RawZ3Solver,
+                                 diseqEh: Z3PropagatorEqEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback for expression disequalities.
+    ## Shares the `Z3PropagatorEqEh` type with `Z3_solver_propagate_eq`
+    ## (per C header and ADR-N0004).
+
+  proc Z3_solver_propagate_created(c: RawZ3Context, s: RawZ3Solver,
+                                   createdEh: Z3PropagatorCreatedEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback when a new expression with a declared propagator
+    ## function is first created by the solver.
+
+  proc Z3_solver_propagate_decide(c: RawZ3Context, s: RawZ3Solver,
+                                  decideEh: Z3PropagatorDecideEh)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback when the solver splits on a registered expression.
+
+  proc Z3_solver_next_split(c: RawZ3Context, cb: RawZ3PropagatorCtxBox,
+                            t: RawZ3Ast, idx: cuint, phase: Z3LBool): bool
+    {.cdecl, header: "z3.h".}
+    ## Override the next decision variable and phase. Call from within a
+    ## `Z3PropagatorDecideEh` callback. Returns false if `t` is already
+    ## assigned internally.
+
+  proc Z3_solver_propagate_declare(c: RawZ3Context, name: RawZ3Symbol,
+                                   n: cuint,
+                                   domain: ptr UncheckedArray[RawZ3Sort],
+                                   range: RawZ3Sort): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Create an uninterpreted function declaration for use with the
+    ## propagator. Expressions using it trigger `Z3PropagatorCreatedEh`.
+
+  proc Z3_solver_propagate_register(c: RawZ3Context, s: RawZ3Solver,
+                                    e: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Register a Bool or BitVec expression for propagation events
+    ## (fixed/eq/diseq). Call at any time outside a callback.
+
+  proc Z3_solver_propagate_register_cb(c: RawZ3Context,
+                                       cb: RawZ3PropagatorCtxBox,
+                                       e: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Like `Z3_solver_propagate_register` but callable from within a
+    ## callback (takes the callback context, not the solver).
+
+  proc Z3_solver_propagate_consequence(c: RawZ3Context,
+                                       cb: RawZ3PropagatorCtxBox,
+                                       numFixed: cuint,
+                                       fixed: ptr UncheckedArray[RawZ3Ast],
+                                       numEqs: cuint,
+                                       eqLhs: ptr UncheckedArray[RawZ3Ast],
+                                       eqRhs: ptr UncheckedArray[RawZ3Ast],
+                                       conseq: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+    ## Assert a propagation consequence given a set of fixed premises and
+    ## equality premises. Returns false if the consequence is already true.
 
 # N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
 # some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).

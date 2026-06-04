@@ -889,6 +889,8 @@ proc evalFp*[E, S: static int](m: Z3Model, a: Z3Fp[E, S]): Z3Fp[E, S]
 - `toFp(bv, _: typedesc[Z3Fp[E,S]])` → `bvToFpBits` — hard break.
 - Extends `optimize.maximize`/`minimize` constraint set to allow `Z3Fp` objectives.
 
+**v5.1 implementer caveat (N6.7):** Z3 `Z3_optimize_maximize`/`minimize` accept any AST in C signature but **categorically reject FP objectives at runtime** (`Z3_EXCEPTION: Objective must be bit-vector, integer or real`). Nim overloads compile and dispatch; users get `Z3OperationError` at solve time. Wrapper is correct — Z3 itself does not support FP optimization at v4.15. Tests document this via try/catch.
+
 ---
 
 ## Cluster N7 — Datatypes + Optimize + Fixedpoint

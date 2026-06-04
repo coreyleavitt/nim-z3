@@ -40,7 +40,7 @@
 ##   research-grade Relation / FiniteDomain / TypeVar — for
 ##   completeness with Z3's API.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./chars, ./fp, ./sequence, ./strings, ./regex, ./sortdispatch
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./chars, ./fp, ./sequence, ./strings, ./regex, ./sortdispatch, ./params
 
 # ============================================================================
 # Z3AstKind / Z3SortKind — Nim-side enums
@@ -497,4 +497,63 @@ proc declParameter*(ctx: Z3Context, d: RawZ3FuncDecl, i: int): Z3DeclParam =
     let s = Z3_get_decl_rational_parameter(ctx.raw, d, cuint(i))
     Z3DeclParam(kind: pkRational,
                 rationalVal: $s)
+
+# ============================================================================
+# N2.4c — AST-level predicates, identity ids, global param descriptors,
+#          type-variable sort construction
+# ============================================================================
+
+proc isWellSorted*(ctx: Z3Context, ast: RawZ3Ast): bool {.inline.} =
+  ## Returns `true` iff `ast` is a well-sorted term or formula with
+  ## respect to `ctx`'s type system.  Equivalent to Z3's
+  ## `Z3_is_well_sorted`.
+  Z3_is_well_sorted(ctx.raw, ast)
+
+proc isApp*(ctx: Z3Context, ast: RawZ3Ast): bool {.inline.} =
+  ## Returns `true` iff `ast` is a function application, including
+  ## 0-arity "free constants" (`mkIntVar`, `mkBoolVar`, …).
+  ## Numerals built with `mkInt` / `mkReal` are **not** applications
+  ## in Z3's classification; use `isNumeralAst` for those.
+  Z3_is_app(ctx.raw, ast)
+
+proc isNumeralAst*(ctx: Z3Context, ast: RawZ3Ast): bool {.inline.} =
+  ## Returns `true` iff `ast` is a numeral literal (`mkInt`,
+  ## `mkReal`, `mkBitVec`, …).  Free variables (`mkIntVar`) return
+  ## `false`.
+  Z3_is_numeral_ast(ctx.raw, ast)
+
+proc astId*(ctx: Z3Context, ast: RawZ3Ast): int {.inline.} =
+  ## Unique monotone identifier for AST node `ast` within `ctx`.
+  ## Stable for the lifetime of the context.  Two calls on the same
+  ## node return the same id; structurally-different nodes have
+  ## different ids.
+  int(Z3_get_ast_id(ctx.raw, ast))
+
+proc sortId*(ctx: Z3Context, s: RawZ3Sort): int {.inline.} =
+  ## Unique monotone identifier for sort `s` within `ctx`.
+  ## Analogous to `astId` but operates on sorts.
+  int(Z3_get_sort_id(ctx.raw, s))
+
+proc indexValue*(ctx: Z3Context, ast: RawZ3Ast): int {.inline.} =
+  ## De-Bruijn index of a bound variable (kind `akVar`).  Meaningful
+  ## only on ASTs produced by `Z3_mk_bound` / `mkBound`; the result
+  ## is unspecified for other AST kinds.
+  int(Z3_get_index_value(ctx.raw, ast))
+
+proc globalParamDescrs*(ctx: Z3Context): Z3ParamDescrs =
+  ## Returns a `Z3ParamDescrs` schema describing all Z3
+  ## process-wide (manager-global) parameters: `verbose`,
+  ## `trace`, `memory_max_size`, etc.  The schema is owned by the
+  ## Z3 manager singleton; the returned handle is reference-counted
+  ## as usual.
+  let raw = ctx.checkErr Z3_get_global_param_descrs(ctx.raw)
+  wrapParamDescrs(ctx, raw)
+
+proc mkTypeVariable*(ctx: Z3Context, name: string): RawZ3Sort =
+  ## Constructs a polymorphic type-variable sort with the given
+  ## `name`.  The resulting sort has kind `skTypeVar`.  Two calls
+  ## with the same name in the same context return structurally-
+  ## equal (interned) sorts.
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  ctx.checkErr Z3_mk_type_variable(ctx.raw, sym)
 

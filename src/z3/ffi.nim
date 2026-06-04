@@ -1086,6 +1086,43 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_param_descrs_to_string(c: RawZ3Context, p: RawZ3ParamDescrs): cstring
     {.cdecl, header: "z3.h".}
+  proc Z3_get_global_param_descrs(c: RawZ3Context): RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
+    ## Returns the param-descrs for Z3's process-wide (manager-global)
+    ## parameters. The handle is reference-counted via the normal
+    ## `Z3_param_descrs_inc_ref` / `_dec_ref` pair.
+
+  # --- N2.4c: AST-level predicates, identity ids, type variable ---------------
+
+  proc Z3_is_well_sorted(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+    ## Returns `true` iff `t` is a well-sorted formula/term.
+
+  proc Z3_is_app(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+    ## Returns `true` iff `a` is a function application (including
+    ## 0-arity constants — free variables in Z3's vocabulary).
+
+  proc Z3_is_numeral_ast(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+    ## Returns `true` iff `a` is a numeral literal.
+
+  proc Z3_get_ast_id(c: RawZ3Context, t: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+    ## Unique identifier for AST node `t` within context `c`.
+    ## Stable for the lifetime of the context.
+
+  proc Z3_get_sort_id(c: RawZ3Context, s: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+    ## Unique identifier for sort `s` within context `c`.
+
+  proc Z3_get_index_value(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+    ## De-Bruijn index of a bound variable AST (kind `akVar`).
+
+  proc Z3_mk_type_variable(c: RawZ3Context, s: RawZ3Symbol): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Constructs a polymorphic type-variable sort with the given name.
 
   # --- Array sort + ops ----------------------------------------------------
 

@@ -290,6 +290,52 @@ proc evalFloat32*(m: Z3Model, a: Z3Float32,
                   modelCompletion = true): float32 {.inline.} =
   m.eval(a, modelCompletion).toFloat32
 
+proc evalFloat64Opt*(m: Z3Model, a: Z3Float64,
+                     modelCompletion = true): Option[float64] =
+  ## Option-returning variant of `evalFloat64`. Returns `some(v)` when
+  ## `a` evaluates to a concrete FP numeral under `m`; `none` if the
+  ## evaluated AST is not a numeral (e.g. unconstrained variable with
+  ## `modelCompletion = false`). Raises `Z3Error` on a hard solver
+  ## error (mismatched context, etc.).
+  try:
+    some(m.eval(a, modelCompletion).toFloat64)
+  except Z3InvalidUsageError:
+    none(float64)
+
+proc evalFloat32Opt*(m: Z3Model, a: Z3Float32,
+                     modelCompletion = true): Option[float32] =
+  ## Option-returning variant of `evalFloat32`. Returns `some(v)` when
+  ## `a` evaluates to a concrete FP numeral under `m`; `none` if the
+  ## evaluated AST is not a numeral.
+  try:
+    some(m.eval(a, modelCompletion).toFloat32)
+  except Z3InvalidUsageError:
+    none(float32)
+
+proc evalFp*[E, S: static int](m: Z3Model, a: Z3Fp[E, S],
+                                modelCompletion = true): auto =
+  ## Generic FP model extractor dispatching on `[E, S]`:
+  ##
+  ## - `[11, 53]` (binary64 / `Z3Float64`): returns `Option[float64]`.
+  ## - `[8, 24]`  (binary32 / `Z3Float32`): returns `Option[float32]`.
+  ## - All other shapes: returns a `string` encoding the SMT-LIB FP
+  ##   numeral via `getNumeralSignificandString` and
+  ##   `getNumeralExponentString` extracted from the evaluated AST.
+  ##   The string form is lossless for any IEEE-style precision not
+  ##   directly representable as a Nim scalar.
+  ##
+  ## The three branches are resolved at compile time via `when`; no
+  ## runtime dispatch occurs.
+  when E == 11 and S == 53:
+    m.evalFloat64Opt(a, modelCompletion)
+  elif E == 8 and S == 24:
+    m.evalFloat32Opt(a, modelCompletion)
+  else:
+    let evaled = m.eval(a, modelCompletion)
+    let sig = evaled.getNumeralSignificandString()
+    let exp = evaled.getNumeralExponentString()
+    "sig=" & sig & " exp=" & exp
+
 # ============================================================================
 # Special-value literals + predicates
 # ============================================================================

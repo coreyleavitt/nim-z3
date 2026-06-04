@@ -128,6 +128,111 @@ proc mkFuncDecl*[ArgsTup: tuple, Ret](name: string): Z3FuncDecl[ArgsTup, Ret] =
   mkFuncDecl[ArgsTup, Ret](requireCurrentContext(), name)
 
 # ============================================================================
+# defineFun — define a recursive (non-uninterpreted) function. N5.5.
+# ============================================================================
+#
+# `defineFun[A1, Ret](name, body)` creates a `Z3FuncDecl` whose
+# interpretation is fixed by the supplied body proc. Internally calls
+# `Z3_mk_rec_func_decl` + `Z3_add_rec_def`. The body receives fresh
+# typed Z3 constants as its parameters; those constants appear free in
+# the returned body AST.
+#
+# Per-arity overloads for 1..3 arguments (covers all N5.5 tests).
+# Body proc type has no explicit CC annotation so Nim's implicit coercion
+# from nimcall → closure applies at the call site (works for non-capturing
+# and capturing lambdas alike).
+
+proc defineFun*[A1, Ret](
+    ctx: Z3Context, name: string,
+    body: proc(a1: A1): Ret): Z3FuncDecl[(A1,), Ret] =
+  ## Define a unary recursive function `name(a1) = body(a1)`.
+  ##
+  ## Implementation note: argument constants are created using the same
+  ## inline pattern as `mkIntVar` (direct `wrap(ctx, Z3_mk_const(...))`)
+  ## to avoid a Nim 2.2 ORC bug where a stored `RawZ3Ast` let-binding is
+  ## treated as "moved" and zeroed when passed to a subsequent `wrap` call.
+  let domain = [sortOfType[A1](ctx)]
+  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](unsafeAddr domain[0])
+  let rangeSort = sortOfType[Ret](ctx)
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  let raw = ctx.checkErr Z3_mk_rec_func_decl(
+    ctx.raw, sym, 1'u32, domainPtr, rangeSort)
+  incRefFD(ctx, raw)
+  let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
+    sortOfType[A1](ctx)))
+  let bodyExpr = body(a1)
+  var argsArr = [a1.raw]
+  Z3_add_rec_def(ctx.raw, raw, 1'u32,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  Z3FuncDecl[(A1,), Ret](raw: raw, ctx: ctx)
+
+proc defineFun*[A1, Ret](name: string,
+    body: proc(a1: A1): Ret): Z3FuncDecl[(A1,), Ret] {.inline.} =
+  defineFun[A1, Ret](requireCurrentContext(), name, body)
+
+proc defineFun*[A1, A2, Ret](
+    ctx: Z3Context, name: string,
+    body: proc(a1: A1, a2: A2): Ret): Z3FuncDecl[(A1, A2), Ret] =
+  ## Define a binary recursive function `name(a1, a2) = body(a1, a2)`.
+  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx)]
+  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
+  let rangeSort = sortOfType[Ret](ctx)
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  let raw = ctx.checkErr Z3_mk_rec_func_decl(
+    ctx.raw, sym, 2'u32, domainPtr, rangeSort)
+  incRefFD(ctx, raw)
+  # Inline wrap pattern (avoids Nim 2.2 ORC bycopy-move bug — see unary note).
+  let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
+    sortOfType[A1](ctx)))
+  let a2 = wrap[A2](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg1").cstring),
+    sortOfType[A2](ctx)))
+  let bodyExpr = body(a1, a2)
+  var argsArr = [a1.raw, a2.raw]
+  Z3_add_rec_def(ctx.raw, raw, 2'u32,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  Z3FuncDecl[(A1, A2), Ret](raw: raw, ctx: ctx)
+
+proc defineFun*[A1, A2, Ret](name: string,
+    body: proc(a1: A1, a2: A2): Ret): Z3FuncDecl[(A1, A2), Ret] {.inline.} =
+  defineFun[A1, A2, Ret](requireCurrentContext(), name, body)
+
+proc defineFun*[A1, A2, A3, Ret](
+    ctx: Z3Context, name: string,
+    body: proc(a1: A1, a2: A2, a3: A3): Ret): Z3FuncDecl[(A1, A2, A3), Ret] =
+  ## Define a ternary recursive function `name(a1, a2, a3) = body(...)`.
+  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx),
+                sortOfType[A3](ctx)]
+  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
+  let rangeSort = sortOfType[Ret](ctx)
+  let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  let raw = ctx.checkErr Z3_mk_rec_func_decl(
+    ctx.raw, sym, 3'u32, domainPtr, rangeSort)
+  incRefFD(ctx, raw)
+  # Inline wrap pattern (avoids Nim 2.2 ORC bycopy-move bug — see unary note).
+  let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
+    sortOfType[A1](ctx)))
+  let a2 = wrap[A2](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg1").cstring),
+    sortOfType[A2](ctx)))
+  let a3 = wrap[A3](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg2").cstring),
+    sortOfType[A3](ctx)))
+  let bodyExpr = body(a1, a2, a3)
+  var argsArr = [a1.raw, a2.raw, a3.raw]
+  Z3_add_rec_def(ctx.raw, raw, 3'u32,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  Z3FuncDecl[(A1, A2, A3), Ret](raw: raw, ctx: ctx)
+
+proc defineFun*[A1, A2, A3, Ret](name: string,
+    body: proc(a1: A1, a2: A2, a3: A3): Ret
+    ): Z3FuncDecl[(A1, A2, A3), Ret] {.inline.} =
+  defineFun[A1, A2, A3, Ret](requireCurrentContext(), name, body)
+
+# ============================================================================
 # Application — per-arity overloads + `()` callable hooks for 0..6 args
 # ============================================================================
 #
@@ -349,3 +454,103 @@ proc `[]`*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret],
     result.value = wrap[Ret](fi.ctx, valRaw)
   finally:
     Z3_func_entry_dec_ref(fi.ctx.raw, entry)
+
+# ============================================================================
+# Sequence HOF — seqMap / seqMapi / seqFoldl / seqFoldli. N5.5.
+# ============================================================================
+#
+# Z3's seq HOF API (`Z3_mk_seq_map` etc.) takes the function as a `Z3_ast`
+# obtained from `Z3_func_decl_to_ast`. The typed Nim surface accepts a
+# `Z3FuncDecl` and converts it internally. Lives here (rather than in
+# `z3/sequence`) because `sequence.nim` is imported by this module — the
+# reverse import would create a cycle.
+#
+# Phantom-type constraints encode the expected arities:
+#
+#   seqMap   : f : (E) → F,           s : Seq[E]           → Seq[F]
+#   seqMapi  : f : (Z3Int, E) → F,    startIdx, s           → Seq[F]
+#   seqFoldl : f : (A, E) → A,        init : A, s : Seq[E]  → A
+#   seqFoldli: f : (Z3Int, A, E) → A, startIdx, init, s     → A
+
+proc seqMap*[E, F](f: Z3FuncDecl[(E,), F],
+                   s: Z3Seq[E]): Z3Seq[F] =
+  ## SMT `(seq.map f s)`. Applies unary `f` to every element of `s`,
+  ## yielding a new sequence of the same length with return type `F`.
+  ##
+  ## Z3's `Z3_mk_seq_map` requires a lambda expression. We build
+  ## `(lambda ((x E)) (f x))` via `Z3_mk_lambda_const` and pass it.
+  let ctx = f.ctx
+  # Inline wrap — avoids Nim 2.2 ORC bycopy-move bug (see defineFun note).
+  let x = wrap[E](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqmap_x".cstring),
+    sortOfType[E](ctx)))
+  let bodyRaw = f(x).raw
+  var xApp = ctx.checkErr Z3_to_app(ctx.raw, x.raw)
+  let lambdaRaw = ctx.checkErr Z3_mk_lambda_const(ctx.raw, 1'u32,
+    cast[ptr UncheckedArray[RawZ3App]](addr xApp), bodyRaw)
+  wrap[Z3Seq[F]](ctx, ctx.checkErr Z3_mk_seq_map(ctx.raw, lambdaRaw, s.raw))
+
+proc seqMapi*[E, F](f: Z3FuncDecl[(Z3Int, E), F],
+                    startIdx: Z3Int,
+                    s: Z3Seq[E]): Z3Seq[F] =
+  ## SMT `(seq.mapi f startIdx s)`. Like `seqMap` but `f` also receives
+  ## the 0-based index offset by `startIdx` as its first argument.
+  let ctx = f.ctx
+  let wIdx  = wrap[Z3Int](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqmapi_i".cstring),
+    sortOfType[Z3Int](ctx)))
+  let wElem = wrap[E](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqmapi_e".cstring),
+    sortOfType[E](ctx)))
+  let bodyRaw = f(wIdx, wElem).raw
+  var apps = [ctx.checkErr Z3_to_app(ctx.raw, wIdx.raw),
+              ctx.checkErr Z3_to_app(ctx.raw, wElem.raw)]
+  let lambdaRaw = ctx.checkErr Z3_mk_lambda_const(ctx.raw, 2'u32,
+    cast[ptr UncheckedArray[RawZ3App]](addr apps[0]), bodyRaw)
+  wrap[Z3Seq[F]](ctx,
+    ctx.checkErr Z3_mk_seq_mapi(ctx.raw, lambdaRaw, startIdx.raw, s.raw))
+
+proc seqFoldl*[E, A](f: Z3FuncDecl[(A, E), A],
+                     init: A,
+                     s: Z3Seq[E]): A =
+  ## SMT `(seq.foldl f init s)`. Left-fold `f(acc, elem)` over `s`
+  ## starting from `init`.
+  let ctx = f.ctx
+  let wAcc  = wrap[A](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqfoldl_a".cstring),
+    sortOfType[A](ctx)))
+  let wElem = wrap[E](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqfoldl_e".cstring),
+    sortOfType[E](ctx)))
+  let bodyRaw = f(wAcc, wElem).raw
+  var apps = [ctx.checkErr Z3_to_app(ctx.raw, wAcc.raw),
+              ctx.checkErr Z3_to_app(ctx.raw, wElem.raw)]
+  let lambdaRaw = ctx.checkErr Z3_mk_lambda_const(ctx.raw, 2'u32,
+    cast[ptr UncheckedArray[RawZ3App]](addr apps[0]), bodyRaw)
+  wrap[A](ctx, ctx.checkErr Z3_mk_seq_foldl(ctx.raw, lambdaRaw, init.raw, s.raw))
+
+proc seqFoldli*[E, A](f: Z3FuncDecl[(Z3Int, A, E), A],
+                      startIdx: Z3Int,
+                      init: A,
+                      s: Z3Seq[E]): A =
+  ## SMT `(seq.foldli f startIdx init s)`. Like `seqFoldl` but `f` also
+  ## receives the element index (offset by `startIdx`) as its first arg.
+  let ctx = f.ctx
+  let wIdx  = wrap[Z3Int](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqfoldli_i".cstring),
+    sortOfType[Z3Int](ctx)))
+  let wAcc  = wrap[A](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqfoldli_a".cstring),
+    sortOfType[A](ctx)))
+  let wElem = wrap[E](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
+    ctx.checkErr Z3_mk_string_symbol(ctx.raw, "seqfoldli_e".cstring),
+    sortOfType[E](ctx)))
+  let bodyRaw = f(wIdx, wAcc, wElem).raw
+  var apps = [ctx.checkErr Z3_to_app(ctx.raw, wIdx.raw),
+              ctx.checkErr Z3_to_app(ctx.raw, wAcc.raw),
+              ctx.checkErr Z3_to_app(ctx.raw, wElem.raw)]
+  let lambdaRaw = ctx.checkErr Z3_mk_lambda_const(ctx.raw, 3'u32,
+    cast[ptr UncheckedArray[RawZ3App]](addr apps[0]), bodyRaw)
+  wrap[A](ctx,
+    ctx.checkErr Z3_mk_seq_foldli(ctx.raw, lambdaRaw, startIdx.raw,
+      init.raw, s.raw))

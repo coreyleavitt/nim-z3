@@ -33,3 +33,5 @@ nim.cfg
 
 # Generated documentation tree.
 htmldocs/
+nimcache_test/
+nimcache_*/

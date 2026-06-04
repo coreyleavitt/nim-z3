@@ -652,6 +652,22 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `Z3_inc_ref` / `Z3_dec_ref` (datatypes.nim does the same).
     ## **v0.3 step 7.**
 
+  proc Z3_mk_rec_func_decl(c: RawZ3Context, s: RawZ3Symbol,
+                           domain_size: cuint,
+                           domain: ptr UncheckedArray[RawZ3Sort],
+                           range: RawZ3Sort): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Declare a recursive function. Must be followed by `Z3_add_rec_def`
+    ## to provide the body. N5.5.
+
+  proc Z3_add_rec_def(c: RawZ3Context, f: RawZ3FuncDecl,
+                      n: cuint, args: ptr UncheckedArray[RawZ3Ast],
+                      body: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Provide the body of a recursive function declared via
+    ## `Z3_mk_rec_func_decl`. `args` are fresh constant ASTs (one per
+    ## parameter) that appear free in `body`. N5.5.
+
   proc Z3_to_app(c: RawZ3Context, a: RawZ3Ast): RawZ3App
     {.cdecl, header: "z3.h".}
     ## Cast a constant `Ast` to its `App` form. `Z3_mk_forall_const`
@@ -1931,6 +1947,23 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_mk_seq_last_index(c: RawZ3Context, s, sub: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
+
+  # N5.5 — Sequence HOF: map / mapi / foldl / foldli
+  proc Z3_mk_seq_map(c: RawZ3Context, f, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## SMT `(seq.map f s)` — apply unary `f` over every element of `s`.
+  proc Z3_mk_seq_mapi(c: RawZ3Context, f, i, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## SMT `(seq.mapi f i s)` — apply binary `f(index, elem)` starting
+    ## at index `i`.
+  proc Z3_mk_seq_foldl(c: RawZ3Context, f, a, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## SMT `(seq.foldl f a s)` — left fold with accumulator `a`.
+  proc Z3_mk_seq_foldli(c: RawZ3Context, f, i, a, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## SMT `(seq.foldli f i a s)` — left fold with index tracking,
+    ## starting index `i`, accumulator `a`.
+
   proc Z3_mk_str_to_int(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast

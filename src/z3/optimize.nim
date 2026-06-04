@@ -35,7 +35,7 @@
 ## 6B's `getParamDescrs` returns the schema at runtime), and
 ## `tests/toptimize.nim` for working examples of each mode.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./fp, ./model, ./solver, ./params, ./astvector
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./fp, ./model, ./solver, ./params, ./astvector, ./stats, ./introspect
 
 # ============================================================================
 # Z3Optimize — lifecycle
@@ -296,6 +296,65 @@ proc getHelp*(o: Z3Optimize): string =
   ## string with each parameter name and its meaning. Mirrors
   ## `Z3Fixedpoint.getHelp` and `Z3_fixedpoint_get_help`.
   $Z3_optimize_get_help(o.ctx.raw, o.raw)
+
+# ============================================================================
+# N7.6b — getStatistics, getAssertions, getObjectives,
+#          setInitialValue, getLowerAsVector, getUpperAsVector
+# ============================================================================
+
+proc getStatistics*(o: Z3Optimize): Z3Stats =
+  ## Solver-style statistics for this optimiser. Returns a `Z3Stats`
+  ## handle after any `check()` call; may hold zero entries on trivial
+  ## problems. Mirrors `Z3Solver.getStatistics`.
+  wrapStats(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_statistics(o.ctx.raw, o.raw))
+
+proc getAssertions*(o: Z3Optimize): Z3AstVector =
+  ## Returns the set of asserted hard constraints (added via `add` /
+  ## `assertAndTrack`) as an `Z3AstVector`. Each element is a `Z3Bool`
+  ## typed AST. The vector length equals the number of asserted hard
+  ## constraints at the time of the call.
+  wrapAstVector(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_assertions(o.ctx.raw, o.raw))
+
+proc getObjectives*(o: Z3Optimize): Z3AstVector =
+  ## Returns the current set of objectives (maximize / minimize targets
+  ## and soft-constraint pseudo-objectives) as a `Z3AstVector`. Each
+  ## element is the objective expression passed to `maximize` /
+  ## `minimize`, or the internal expression produced by `addSoft`.
+  wrapAstVector(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_objectives(o.ctx.raw, o.raw))
+
+proc setInitialValue*(o: Z3Optimize, v: Z3AnyAst, value: Z3AnyAst) =
+  ## Provide a warm-start hint: suggest that the variable `v` should
+  ## start the search at `value`. Z3 treats this as a hint only — it
+  ## is never added as a constraint and may be silently ignored.
+  ## Useful for guiding the optimiser toward known good regions when
+  ## a prior solution or domain insight is available.
+  o.ctx.checkErrVoid Z3_optimize_set_initial_value(o.ctx.raw, o.raw,
+                                                    v.raw, value.raw)
+
+proc getLowerAsVector*(o: Z3Optimize, idx: int): Z3AstVector =
+  ## Multi-precision lower-bound representation for objective `idx`.
+  ## Returns a `Z3AstVector` whose elements encode the bound in Z3's
+  ## internal extended-number representation — typically three ASTs:
+  ## the rational part, the sign-of-infinity coefficient, and the
+  ## infinitesimal (epsilon) coefficient. Prefer `lower(h)` for a
+  ## single-AST scalar bound; use this proc when you need the full
+  ## three-component representation (e.g. to distinguish a finite bound
+  ## from a bound involving an infinitesimal). Must be called after a
+  ## `check()` returning `zsSat`.
+  wrapAstVector(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_lower_as_vector(o.ctx.raw, o.raw,
+                                                    cuint(idx)))
+
+proc getUpperAsVector*(o: Z3Optimize, idx: int): Z3AstVector =
+  ## Multi-precision upper-bound representation for objective `idx`.
+  ## Twin of `getLowerAsVector`. Must be called after a `check()`
+  ## returning `zsSat`.
+  wrapAstVector(o.ctx,
+    o.ctx.checkErr Z3_optimize_get_upper_as_vector(o.ctx.raw, o.raw,
+                                                    cuint(idx)))
 
 # ============================================================================
 # Pretty

@@ -965,6 +965,58 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## string with each parameter name + meaning. Mirrors
     ## `Z3_fixedpoint_get_help`.
 
+  # --- Optimize — N7.6b extensions -----------------------------------------
+
+  proc Z3_optimize_get_statistics(c: RawZ3Context, o: RawZ3Optimize): RawZ3Stats
+    {.cdecl, header: "z3.h".}
+    ## Solver-style statistics for this optimiser. Mirrors
+    ## `Z3_solver_get_statistics`.
+
+  proc Z3_optimize_get_assertions(c: RawZ3Context, o: RawZ3Optimize): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Returns the set of asserted constraints as an AST vector. Each
+    ## element corresponds to a `Z3_optimize_assert` / hard-assert call.
+
+  proc Z3_optimize_get_objectives(c: RawZ3Context, o: RawZ3Optimize): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Returns the current set of objectives (maximize/minimize targets
+    ## and soft-constraint pseudo-objectives) as an AST vector.
+
+  proc Z3_optimize_set_initial_value(c: RawZ3Context, o: RawZ3Optimize,
+                                     v: RawZ3Ast, val: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Provide a warm-start hint: tell Z3 to try `v = val` as an initial
+    ## assignment. Z3 may ignore this hint; it is never an additional
+    ## constraint.
+
+  proc Z3_optimize_get_lower_as_vector(c: RawZ3Context, o: RawZ3Optimize,
+                                       idx: cuint): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Multi-precision lower-bound representation for objective `idx`.
+    ## Returns a vector whose elements encode the bound in Z3's internal
+    ## extended-number representation (typically three elements: sign,
+    ## value, infinitesimal coefficient).
+
+  proc Z3_optimize_get_upper_as_vector(c: RawZ3Context, o: RawZ3Optimize,
+                                       idx: cuint): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Multi-precision upper-bound representation. Twin of
+    ## `Z3_optimize_get_lower_as_vector`.
+
+  # Z3_optimize_register_model_eh — FFI stub only.
+  # Typed closure wrapper is intrusive (requires a stable C-ABI thunk and
+  # boxed closure state). Deferred to a dedicated follow-up parallel to
+  # N7.8 fixedpoint callback handling.
+  proc Z3_optimize_register_model_eh(c: RawZ3Context, o: RawZ3Optimize,
+                                     m: RawZ3Model,
+                                     ctx: pointer,
+                                     model_eh: proc(ctx: pointer) {.cdecl.})
+    {.cdecl, header: "z3.h".}
+    ## Raw C callback registration. `model_eh` is called by Z3 whenever
+    ## it finds an improved model during optimisation. See ADR-N0004 and
+    ## `z3/fixedpoint` for the pattern used when a typed closure wrapper
+    ## is eventually added.
+
   # --- Fixedpoint / CHC (v0.4 step 5) --------------------------------------
 
   proc Z3_mk_fixedpoint(c: RawZ3Context): RawZ3Fixedpoint

@@ -520,6 +520,357 @@ proc declareDatatypes*[T1, T2, T3](
     (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3]) =
   declareDatatypes(requireCurrentContext(), d1, d2, d3)
 
+# declareDatatypes — arities 4-8 (generated via the same pattern as 2-3)
+
+proc declareDatatypes*[T1, T2, T3, T4](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2],
+    d3: DatatypeSpec[T3], d4: DatatypeSpec[T4]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2],
+     Z3DatatypeDecl[T3], Z3DatatypeDecl[T4]) =
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0; nameToIdx[$T2] = 1
+  nameToIdx[$T3] = 2; nameToIdx[$T4] = 3
+  var w1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var w2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var w3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+  var w4 = buildRawConstructors(ctx, d4.cons, 3, nameToIdx)
+  doAssert w1.rawCons.len > 0, "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert w2.rawCons.len > 0, "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert w3.rawCons.len > 0, "declareDatatypes: " & $T3 & " has zero constructors"
+  doAssert w4.rawCons.len > 0, "declareDatatypes: " & $T4 & " has zero constructors"
+  let l1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w1.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w1.rawCons[0]))
+  let l2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w2.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w2.rawCons[0]))
+  let l3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w3.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w3.rawCons[0]))
+  let l4 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w4.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w4.rawCons[0]))
+  var sortNames = @[ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T4).cstring)]
+  var sortsOut = newSeq[RawZ3Sort](4)
+  var lists = @[l1, l2, l3, l4]
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 4, cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]), cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]), cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  Z3_del_constructor_list(ctx.raw, l1); Z3_del_constructor_list(ctx.raw, l2)
+  Z3_del_constructor_list(ctx.raw, l3); Z3_del_constructor_list(ctx.raw, l4)
+  ctx.datatypeRegistry[$T1] = sortsOut[0]; ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]; ctx.datatypeRegistry[$T4] = sortsOut[3]
+  (Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: c1),
+   Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: c2),
+   Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: c3),
+   Z3DatatypeDecl[T4](ctx: ctx, sort: sortsOut[3], cons: c4))
+
+proc declareDatatypes*[T1, T2, T3, T4](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2],
+    d3: DatatypeSpec[T3], d4: DatatypeSpec[T4]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2],
+     Z3DatatypeDecl[T3], Z3DatatypeDecl[T4]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3, d4)
+
+proc declareDatatypes*[T1, T2, T3, T4, T5](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5]) =
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0; nameToIdx[$T2] = 1; nameToIdx[$T3] = 2
+  nameToIdx[$T4] = 3; nameToIdx[$T5] = 4
+  var w1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var w2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var w3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+  var w4 = buildRawConstructors(ctx, d4.cons, 3, nameToIdx)
+  var w5 = buildRawConstructors(ctx, d5.cons, 4, nameToIdx)
+  doAssert w1.rawCons.len > 0, "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert w2.rawCons.len > 0, "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert w3.rawCons.len > 0, "declareDatatypes: " & $T3 & " has zero constructors"
+  doAssert w4.rawCons.len > 0, "declareDatatypes: " & $T4 & " has zero constructors"
+  doAssert w5.rawCons.len > 0, "declareDatatypes: " & $T5 & " has zero constructors"
+  let l1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w1.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w1.rawCons[0]))
+  let l2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w2.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w2.rawCons[0]))
+  let l3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w3.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w3.rawCons[0]))
+  let l4 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w4.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w4.rawCons[0]))
+  let l5 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w5.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w5.rawCons[0]))
+  var sortNames = @[ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T4).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T5).cstring)]
+  var sortsOut = newSeq[RawZ3Sort](5)
+  var lists = @[l1, l2, l3, l4, l5]
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 5, cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]), cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]), cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+  Z3_del_constructor_list(ctx.raw, l1); Z3_del_constructor_list(ctx.raw, l2)
+  Z3_del_constructor_list(ctx.raw, l3); Z3_del_constructor_list(ctx.raw, l4)
+  Z3_del_constructor_list(ctx.raw, l5)
+  ctx.datatypeRegistry[$T1] = sortsOut[0]; ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]; ctx.datatypeRegistry[$T4] = sortsOut[3]
+  ctx.datatypeRegistry[$T5] = sortsOut[4]
+  (Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: c1),
+   Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: c2),
+   Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: c3),
+   Z3DatatypeDecl[T4](ctx: ctx, sort: sortsOut[3], cons: c4),
+   Z3DatatypeDecl[T5](ctx: ctx, sort: sortsOut[4], cons: c5))
+
+proc declareDatatypes*[T1, T2, T3, T4, T5](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3, d4, d5)
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6]) =
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0; nameToIdx[$T2] = 1; nameToIdx[$T3] = 2
+  nameToIdx[$T4] = 3; nameToIdx[$T5] = 4; nameToIdx[$T6] = 5
+  var w1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var w2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var w3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+  var w4 = buildRawConstructors(ctx, d4.cons, 3, nameToIdx)
+  var w5 = buildRawConstructors(ctx, d5.cons, 4, nameToIdx)
+  var w6 = buildRawConstructors(ctx, d6.cons, 5, nameToIdx)
+  doAssert w1.rawCons.len > 0, "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert w2.rawCons.len > 0, "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert w3.rawCons.len > 0, "declareDatatypes: " & $T3 & " has zero constructors"
+  doAssert w4.rawCons.len > 0, "declareDatatypes: " & $T4 & " has zero constructors"
+  doAssert w5.rawCons.len > 0, "declareDatatypes: " & $T5 & " has zero constructors"
+  doAssert w6.rawCons.len > 0, "declareDatatypes: " & $T6 & " has zero constructors"
+  let l1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w1.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w1.rawCons[0]))
+  let l2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w2.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w2.rawCons[0]))
+  let l3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w3.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w3.rawCons[0]))
+  let l4 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w4.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w4.rawCons[0]))
+  let l5 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w5.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w5.rawCons[0]))
+  let l6 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w6.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w6.rawCons[0]))
+  var sortNames = @[ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T4).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T5).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T6).cstring)]
+  var sortsOut = newSeq[RawZ3Sort](6)
+  var lists = @[l1, l2, l3, l4, l5, l6]
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 6, cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]), cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]), cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+  Z3_del_constructor_list(ctx.raw, l1); Z3_del_constructor_list(ctx.raw, l2)
+  Z3_del_constructor_list(ctx.raw, l3); Z3_del_constructor_list(ctx.raw, l4)
+  Z3_del_constructor_list(ctx.raw, l5); Z3_del_constructor_list(ctx.raw, l6)
+  ctx.datatypeRegistry[$T1] = sortsOut[0]; ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]; ctx.datatypeRegistry[$T4] = sortsOut[3]
+  ctx.datatypeRegistry[$T5] = sortsOut[4]; ctx.datatypeRegistry[$T6] = sortsOut[5]
+  (Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: c1),
+   Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: c2),
+   Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: c3),
+   Z3DatatypeDecl[T4](ctx: ctx, sort: sortsOut[3], cons: c4),
+   Z3DatatypeDecl[T5](ctx: ctx, sort: sortsOut[4], cons: c5),
+   Z3DatatypeDecl[T6](ctx: ctx, sort: sortsOut[5], cons: c6))
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3, d4, d5, d6)
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6],
+    d7: DatatypeSpec[T7]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6],
+     Z3DatatypeDecl[T7]) =
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0; nameToIdx[$T2] = 1; nameToIdx[$T3] = 2
+  nameToIdx[$T4] = 3; nameToIdx[$T5] = 4; nameToIdx[$T6] = 5
+  nameToIdx[$T7] = 6
+  var w1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var w2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var w3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+  var w4 = buildRawConstructors(ctx, d4.cons, 3, nameToIdx)
+  var w5 = buildRawConstructors(ctx, d5.cons, 4, nameToIdx)
+  var w6 = buildRawConstructors(ctx, d6.cons, 5, nameToIdx)
+  var w7 = buildRawConstructors(ctx, d7.cons, 6, nameToIdx)
+  doAssert w1.rawCons.len > 0, "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert w2.rawCons.len > 0, "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert w3.rawCons.len > 0, "declareDatatypes: " & $T3 & " has zero constructors"
+  doAssert w4.rawCons.len > 0, "declareDatatypes: " & $T4 & " has zero constructors"
+  doAssert w5.rawCons.len > 0, "declareDatatypes: " & $T5 & " has zero constructors"
+  doAssert w6.rawCons.len > 0, "declareDatatypes: " & $T6 & " has zero constructors"
+  doAssert w7.rawCons.len > 0, "declareDatatypes: " & $T7 & " has zero constructors"
+  let l1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w1.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w1.rawCons[0]))
+  let l2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w2.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w2.rawCons[0]))
+  let l3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w3.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w3.rawCons[0]))
+  let l4 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w4.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w4.rawCons[0]))
+  let l5 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w5.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w5.rawCons[0]))
+  let l6 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w6.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w6.rawCons[0]))
+  let l7 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w7.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w7.rawCons[0]))
+  var sortNames = @[ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T4).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T5).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T6).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T7).cstring)]
+  var sortsOut = newSeq[RawZ3Sort](7)
+  var lists = @[l1, l2, l3, l4, l5, l6, l7]
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 7, cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]), cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]), cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+  let c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
+  Z3_del_constructor_list(ctx.raw, l1); Z3_del_constructor_list(ctx.raw, l2)
+  Z3_del_constructor_list(ctx.raw, l3); Z3_del_constructor_list(ctx.raw, l4)
+  Z3_del_constructor_list(ctx.raw, l5); Z3_del_constructor_list(ctx.raw, l6)
+  Z3_del_constructor_list(ctx.raw, l7)
+  ctx.datatypeRegistry[$T1] = sortsOut[0]; ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]; ctx.datatypeRegistry[$T4] = sortsOut[3]
+  ctx.datatypeRegistry[$T5] = sortsOut[4]; ctx.datatypeRegistry[$T6] = sortsOut[5]
+  ctx.datatypeRegistry[$T7] = sortsOut[6]
+  (Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: c1),
+   Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: c2),
+   Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: c3),
+   Z3DatatypeDecl[T4](ctx: ctx, sort: sortsOut[3], cons: c4),
+   Z3DatatypeDecl[T5](ctx: ctx, sort: sortsOut[4], cons: c5),
+   Z3DatatypeDecl[T6](ctx: ctx, sort: sortsOut[5], cons: c6),
+   Z3DatatypeDecl[T7](ctx: ctx, sort: sortsOut[6], cons: c7))
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6],
+    d7: DatatypeSpec[T7]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6],
+     Z3DatatypeDecl[T7]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3, d4, d5, d6, d7)
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7, T8](
+    ctx: Z3Context,
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6],
+    d7: DatatypeSpec[T7], d8: DatatypeSpec[T8]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6],
+     Z3DatatypeDecl[T7], Z3DatatypeDecl[T8]) =
+  var nameToIdx = initTable[string, int]()
+  nameToIdx[$T1] = 0; nameToIdx[$T2] = 1; nameToIdx[$T3] = 2
+  nameToIdx[$T4] = 3; nameToIdx[$T5] = 4; nameToIdx[$T6] = 5
+  nameToIdx[$T7] = 6; nameToIdx[$T8] = 7
+  var w1 = buildRawConstructors(ctx, d1.cons, 0, nameToIdx)
+  var w2 = buildRawConstructors(ctx, d2.cons, 1, nameToIdx)
+  var w3 = buildRawConstructors(ctx, d3.cons, 2, nameToIdx)
+  var w4 = buildRawConstructors(ctx, d4.cons, 3, nameToIdx)
+  var w5 = buildRawConstructors(ctx, d5.cons, 4, nameToIdx)
+  var w6 = buildRawConstructors(ctx, d6.cons, 5, nameToIdx)
+  var w7 = buildRawConstructors(ctx, d7.cons, 6, nameToIdx)
+  var w8 = buildRawConstructors(ctx, d8.cons, 7, nameToIdx)
+  doAssert w1.rawCons.len > 0, "declareDatatypes: " & $T1 & " has zero constructors"
+  doAssert w2.rawCons.len > 0, "declareDatatypes: " & $T2 & " has zero constructors"
+  doAssert w3.rawCons.len > 0, "declareDatatypes: " & $T3 & " has zero constructors"
+  doAssert w4.rawCons.len > 0, "declareDatatypes: " & $T4 & " has zero constructors"
+  doAssert w5.rawCons.len > 0, "declareDatatypes: " & $T5 & " has zero constructors"
+  doAssert w6.rawCons.len > 0, "declareDatatypes: " & $T6 & " has zero constructors"
+  doAssert w7.rawCons.len > 0, "declareDatatypes: " & $T7 & " has zero constructors"
+  doAssert w8.rawCons.len > 0, "declareDatatypes: " & $T8 & " has zero constructors"
+  let l1 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w1.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w1.rawCons[0]))
+  let l2 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w2.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w2.rawCons[0]))
+  let l3 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w3.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w3.rawCons[0]))
+  let l4 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w4.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w4.rawCons[0]))
+  let l5 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w5.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w5.rawCons[0]))
+  let l6 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w6.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w6.rawCons[0]))
+  let l7 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w7.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w7.rawCons[0]))
+  let l8 = ctx.checkErr Z3_mk_constructor_list(ctx.raw, cuint(w8.rawCons.len), cast[ptr UncheckedArray[RawZ3Constructor]](addr w8.rawCons[0]))
+  var sortNames = @[ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T1).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T2).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T3).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T4).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T5).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T6).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T7).cstring), ctx.checkErr Z3_mk_string_symbol(ctx.raw, ($T8).cstring)]
+  var sortsOut = newSeq[RawZ3Sort](8)
+  var lists = @[l1, l2, l3, l4, l5, l6, l7, l8]
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, 8, cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]), cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]), cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+  let c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
+  let c8 = queryConstructorsInto[T8](ctx, d8.cons, w8.rawCons)
+  Z3_del_constructor_list(ctx.raw, l1); Z3_del_constructor_list(ctx.raw, l2)
+  Z3_del_constructor_list(ctx.raw, l3); Z3_del_constructor_list(ctx.raw, l4)
+  Z3_del_constructor_list(ctx.raw, l5); Z3_del_constructor_list(ctx.raw, l6)
+  Z3_del_constructor_list(ctx.raw, l7); Z3_del_constructor_list(ctx.raw, l8)
+  ctx.datatypeRegistry[$T1] = sortsOut[0]; ctx.datatypeRegistry[$T2] = sortsOut[1]
+  ctx.datatypeRegistry[$T3] = sortsOut[2]; ctx.datatypeRegistry[$T4] = sortsOut[3]
+  ctx.datatypeRegistry[$T5] = sortsOut[4]; ctx.datatypeRegistry[$T6] = sortsOut[5]
+  ctx.datatypeRegistry[$T7] = sortsOut[6]; ctx.datatypeRegistry[$T8] = sortsOut[7]
+  (Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: c1),
+   Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: c2),
+   Z3DatatypeDecl[T3](ctx: ctx, sort: sortsOut[2], cons: c3),
+   Z3DatatypeDecl[T4](ctx: ctx, sort: sortsOut[3], cons: c4),
+   Z3DatatypeDecl[T5](ctx: ctx, sort: sortsOut[4], cons: c5),
+   Z3DatatypeDecl[T6](ctx: ctx, sort: sortsOut[5], cons: c6),
+   Z3DatatypeDecl[T7](ctx: ctx, sort: sortsOut[6], cons: c7),
+   Z3DatatypeDecl[T8](ctx: ctx, sort: sortsOut[7], cons: c8))
+
+proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7, T8](
+    d1: DatatypeSpec[T1], d2: DatatypeSpec[T2], d3: DatatypeSpec[T3],
+    d4: DatatypeSpec[T4], d5: DatatypeSpec[T5], d6: DatatypeSpec[T6],
+    d7: DatatypeSpec[T7], d8: DatatypeSpec[T8]):
+    (Z3DatatypeDecl[T1], Z3DatatypeDecl[T2], Z3DatatypeDecl[T3],
+     Z3DatatypeDecl[T4], Z3DatatypeDecl[T5], Z3DatatypeDecl[T6],
+     Z3DatatypeDecl[T7], Z3DatatypeDecl[T8]) =
+  declareDatatypes(requireCurrentContext(), d1, d2, d3, d4, d5, d6, d7, d8)
+
+# declareDatatypesN — runtime-N seq-form escape hatch.
+# Uses `void` as the phantom type; all constructors are accessible via
+# `con`, `recognizer`, `accessor` with no compile-time sort guarantees.
+# This is useful for dynamically-built datatype families where the number
+# of sorts isn't known at compile time.
+
+proc declareDatatypesN*(
+    ctx: Z3Context,
+    specs: openArray[(string, seq[ConstructorSpec])]): seq[Z3DatatypeDecl[void]] =
+  ## Declare N mutually-recursive datatypes given as `(sortName, constructors)`
+  ## pairs. Returns a `seq[Z3DatatypeDecl[void]]` of the same length.
+  ##
+  ## This is the escape hatch when the number of datatypes isn't known at
+  ## compile time. The `void` phantom provides no type-level sort tracking;
+  ## use the typed `declareDatatypes` overloads when possible.
+  let n = specs.len
+  doAssert n >= 1, "declareDatatypesN: must have at least one datatype"
+  # Build nameToIdx from the sort names
+  var nameToIdx = initTable[string, int]()
+  for i, (sname, _) in specs:
+    nameToIdx[sname] = i
+  # Build raw constructors for each spec
+  var works = newSeq[RawConsWork](n)
+  for i, (_, cons) in specs:
+    works[i] = buildRawConstructors(ctx, cons, i, nameToIdx)
+    doAssert works[i].rawCons.len > 0,
+      "declareDatatypesN: spec[" & $i & "] has zero constructors"
+  # Build constructor lists
+  var lists = newSeq[RawZ3ConstructorList](n)
+  for i in 0 ..< n:
+    lists[i] = ctx.checkErr Z3_mk_constructor_list(ctx.raw,
+      cuint(works[i].rawCons.len),
+      cast[ptr UncheckedArray[RawZ3Constructor]](addr works[i].rawCons[0]))
+  # Build sort name symbols
+  var sortNames = newSeq[RawZ3Symbol](n)
+  for i, (sname, _) in specs:
+    sortNames[i] = ctx.checkErr Z3_mk_string_symbol(ctx.raw, sname.cstring)
+  var sortsOut = newSeq[RawZ3Sort](n)
+  ctx.checkErrVoid Z3_mk_datatypes(ctx.raw, cuint(n),
+    cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
+    cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
+    cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
+  # Extract constructor func_decls and build results
+  result = newSeq[Z3DatatypeDecl[void]](n)
+  for i, (sname, cons) in specs:
+    let conRefs = queryConstructorsInto[void](ctx, cons, works[i].rawCons)
+    result[i] = Z3DatatypeDecl[void](ctx: ctx, sort: sortsOut[i], cons: conRefs)
+    ctx.datatypeRegistry[sname] = sortsOut[i]
+  # Clean up constructor lists
+  for i in 0 ..< n:
+    Z3_del_constructor_list(ctx.raw, lists[i])
+
 # ============================================================================
 # Lookup — con, recognizer, accessor
 # ============================================================================

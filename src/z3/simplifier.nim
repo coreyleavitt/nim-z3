@@ -80,6 +80,12 @@ when not defined(z3WithoutSimplifierObject):
     ## Look up a built-in simplifier by name. Raises `Z3Error` for
     ## unknown names. See module docstring for common names; call
     ## `allSimplifierNames(ctx)` (from `z3/tactic`) for the full list.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let simp = mkSimplifier(ctx, "elim-and")
+      doAssert simp != nil
     wrapSimplifier(ctx, ctx.checkErr Z3_mk_simplifier(ctx.raw, name.cstring))
 
   proc mkSimplifier*(name: string): Z3Simplifier =
@@ -99,6 +105,15 @@ when not defined(z3WithoutSimplifierObject):
     ## `Z3_solver_add_simplifier` returns a fresh solver handle; this
     ## wrapper ref-counts and returns it as a `Z3Solver`. The original
     ## `s` is unmodified. Typical usage:
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let simp = mkSimplifier(ctx, "elim-and")
+      let x = mkIntVar(ctx, "x")
+      let s = newSolver(ctx).addSimplifier(simp)
+      s.add(x > mkInt(ctx, 0))
+      doAssert s.check() == zsSat
     ##
     ## ```nim
     ## let s = newSolver(ctx).addSimplifier(mkSimplifier(ctx, "elim-and"))

@@ -109,6 +109,17 @@ template setRaw[E](s: Z3Set[E]): RawZ3Ast =
 
 proc mkEmptySet*[E](ctx: Z3Context): Z3Set[E] =
   ## The empty set over the sort of `E`.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let s = mkEmptySet[Z3Int](ctx)
+    let x = mkInt(ctx, 42)
+    # The empty set contains no elements — membership is always false.
+    let isMember = member(x, s)
+    let solver = newSolver(ctx)
+    solver.add isMember
+    doAssert solver.check() == zsUnsat
   let domSort = sortOfType[E](ctx)
   wrap[Z3Array[E, Z3Bool]](ctx,
     ctx.checkErr Z3_mk_empty_set(ctx.raw, domSort)).toSet
@@ -119,6 +130,16 @@ proc mkEmptySet*[E](_: typedesc[E]): Z3Set[E] =
 
 proc mkFullSet*[E](ctx: Z3Context): Z3Set[E] =
   ## The full set (universe) over the sort of `E`.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let full = mkFullSet[Z3Int](ctx)
+    let x = mkInt(ctx, 7)
+    # The full set contains every element — membership is always true.
+    let solver = newSolver(ctx)
+    solver.add(not member(x, full))
+    doAssert solver.check() == zsUnsat
   let domSort = sortOfType[E](ctx)
   wrap[Z3Array[E, Z3Bool]](ctx,
     ctx.checkErr Z3_mk_full_set(ctx.raw, domSort)).toSet
@@ -155,6 +176,19 @@ proc member*[E](e: E, s: Z3Set[E]): Z3Bool =
 
 proc union*[E](a, b: Z3Set[E]): Z3Set[E] =
   ## Binary union `a ∪ b`.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let x = mkInt(ctx, 1)
+    let y = mkInt(ctx, 2)
+    let sa = mkEmptySet[Z3Int](ctx).add(x)
+    let sb = mkEmptySet[Z3Int](ctx).add(y)
+    let u = union(sa, sb)
+    # Both x and y are members of the union.
+    let solver = newSolver(ctx)
+    solver.add(not member(x, u))
+    doAssert solver.check() == zsUnsat
   let ctx = setCtx(a)
   var args = [setRaw(a), setRaw(b)]
   wrap[Z3Array[E, Z3Bool]](ctx,

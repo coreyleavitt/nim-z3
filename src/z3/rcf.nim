@@ -101,6 +101,14 @@ proc wrapRcf(ctx: Z3Context, raw: RawZ3RcfNum): Z3RcfNum {.inline.} =
 proc mkRational*(ctx: Z3Context, numerator, denominator: int): Z3RcfNum =
   ## Build the exact rational `numerator / denominator` as an RCF numeral.
   ## Z3 parses the string `"num/den"` and stores the exact rational.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let half = mkRational(ctx, 1, 2)
+    let one = mkSmallInt(ctx, 1)
+    # 1/2 < 1 in the reals
+    doAssert half < one
   let s = &"{numerator}/{denominator}"
   wrapRcf(ctx, Z3_rcf_mk_rational(ctx.raw, cstring(s)))
 
@@ -110,6 +118,16 @@ proc mkSmallInt*(ctx: Z3Context, n: int): Z3RcfNum =
 
 proc mkPi*(ctx: Z3Context): Z3RcfNum =
   ## Build the exact RCF representation of π.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let pi = mkPi(ctx)
+    let three = mkSmallInt(ctx, 3)
+    let four  = mkSmallInt(ctx, 4)
+    # π is between 3 and 4.
+    doAssert three < pi
+    doAssert pi < four
   wrapRcf(ctx, Z3_rcf_mk_pi(ctx.raw))
 
 proc mkE*(ctx: Z3Context): Z3RcfNum =
@@ -132,6 +150,17 @@ proc `+`*(a, b: Z3RcfNum): Z3RcfNum =
   ## is fine because Nim passes plain objects by value; the underlying Z3
   ## handle is NOT refcounted, so we must not free `a` or `b` here. The
   ## inputs' `=destroy` will call `Z3_rcf_del` when they go out of scope.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let two  = mkSmallInt(ctx, 2)
+    let pi   = mkPi(ctx)
+    let sum  = mkSmallInt(ctx, 2) + mkPi(ctx)
+    let five = mkSmallInt(ctx, 5)
+    # 2 + π > 5 is false; 2 + π > 4 is true.
+    doAssert not (sum > five)
+    doAssert sum > mkSmallInt(ctx, 4)
   wrapRcf(a.ctx, Z3_rcf_add(a.ctx.raw, a.raw, b.raw))
 
 proc `-`*(a, b: Z3RcfNum): Z3RcfNum =

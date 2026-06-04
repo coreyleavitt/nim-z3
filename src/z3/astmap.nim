@@ -69,6 +69,12 @@ proc wrapAstMap*(ctx: Z3Context, raw: RawZ3AstMap): Z3AstMap =
 
 proc newAstMap*(ctx: Z3Context): Z3AstMap =
   ## Create a fresh empty AST map bound to `ctx`.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let m = newAstMap(ctx)
+    doAssert m.len == 0
   wrapAstMap(ctx, ctx.checkErr Z3_mk_ast_map(ctx.raw))
 
 # ============================================================================
@@ -78,6 +84,16 @@ proc newAstMap*(ctx: Z3Context): Z3AstMap =
 proc insert*[K: Z3Term, V: Z3Term](m: Z3AstMap, k: K, v: V) =
   ## Insert or replace the mapping k→v. If k is already present the
   ## old value is overwritten; `len` does not increase.
+  ##
+  runnableExamples:
+    import z3, std/options
+    let ctx = newContext()
+    let m = newAstMap(ctx)
+    let k = mkIntVar(ctx, "x")
+    let v = mkInt(ctx, 42)
+    m.insert(k, v)
+    doAssert m.len == 1
+    doAssert m.find(toAnyAst(k), Z3Int).isSome
   m.ctx.checkErrVoid Z3_ast_map_insert(m.ctx.raw, m.raw, k.raw, v.raw)
 
 proc erase*(m: Z3AstMap, k: Z3AnyAst) =

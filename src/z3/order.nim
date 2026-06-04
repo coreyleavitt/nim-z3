@@ -43,10 +43,16 @@ when not defined(z3WithoutOrder):
     ## Multiple independent linear orders on the same sort are supported by
     ## using distinct `id` values.
     ##
-    ## ```nim
-    ## let lt = mkLinearOrder[Z3Int](ctx, 0)
-    ## s.add lt(a, b)
-    ## ```
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let lt = mkLinearOrder[Z3Int](ctx, 0)
+      let a = mkIntVar(ctx, "a")
+      let b = mkIntVar(ctx, "b")
+      let s = newSolver(ctx)
+      s.add lt(a, b)
+      # The ordering is satisfiable — a < b has solutions.
+      doAssert s.check() == zsSat
     let s = sortOfType[E](ctx)
     let raw = ctx.checkErr Z3_mk_linear_order(ctx.raw, s, cuint(id))
     wrapFuncDecl[tuple[a, b: E], Z3Bool](ctx, raw)
@@ -119,13 +125,17 @@ when not defined(z3WithoutOrder):
     ##
     ## `f` must be a binary relation (arity 2); Z3 raises an error otherwise.
     ##
-    ## ```nim
-    ## let edge = mkFuncDecl[(Z3Int, Z3Int), Z3Bool](ctx, "edge")
-    ## let tc   = mkTransitiveClosure(edge)
-    ## s.add edge(mkInt(1), mkInt(2))
-    ## s.add edge(mkInt(2), mkInt(3))
-    ## # tc(1, 3) is now satisfiable.
-    ## ```
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let edge = mkFuncDecl[(Z3Int, Z3Int), Z3Bool](ctx, "edge")
+      let tc   = mkTransitiveClosure(edge)
+      let s = newSolver(ctx)
+      s.add edge(mkInt(ctx, 1), mkInt(ctx, 2))
+      s.add edge(mkInt(ctx, 2), mkInt(ctx, 3))
+      # tc(1, 3) is derivable by transitivity.
+      s.add tc(mkInt(ctx, 1), mkInt(ctx, 3))
+      doAssert s.check() == zsSat
     let ctx = f.ctx
     let raw = ctx.checkErr Z3_mk_transitive_closure(ctx.raw, f.raw)
     wrapFuncDecl[ArgsTup, Ret](ctx, raw)

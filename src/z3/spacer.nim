@@ -61,6 +61,20 @@ when not defined(z3WithoutSpacer):
     ## bounded query.
     ##
     ## Returns `zsSat`, `zsUnsat`, or `zsUnknown`.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let fp = newFixedpoint(ctx)
+      let p = newParams(ctx)
+      p.set("fp.engine", "spacer")
+      fp.setParams(p)
+      let pred = mkFuncDecl[(Z3Int,), Z3Bool](ctx, "P")
+      fp.registerRelation(pred)
+      fp.addRule(pred(mkInt(ctx, 0)), "base")
+      # Query: is P(0) reachable? It was asserted as a rule, so yes.
+      let res = fp.queryFromLevel(0, pred(mkInt(ctx, 0)))
+      doAssert res == zsSat
     doAssert level >= 0
     let res = fp.ctx.checkErr Z3_fixedpoint_query_from_lvl(
       fp.ctx.raw, fp.raw, query.raw, cuint(level))

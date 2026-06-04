@@ -121,6 +121,15 @@ proc declareUninterpretedSort*[T](
   ## Z3 sort (Z3 identifies uninterpreted sorts by name within a
   ## context); the registry is overwritten with the latest handle.
   ##
+  runnableExamples:
+    import z3
+    type ColorSort = distinct void
+    let ctx = newContext()
+    discard declareUninterpretedSort[ColorSort](ctx, "Color")
+    # Variables of the sort can now be created.
+    let c = mkUninterpretedVar[ColorSort]("c", ctx)
+    doAssert c is Z3UninterpretedVal[ColorSort]
+  ##
   ## ```nim
   ## type ColorSort = distinct void
   ## let colorSort = declareUninterpretedSort[ColorSort](ctx, "Color")
@@ -145,6 +154,19 @@ proc mkUninterpretedVar*[T](
   ## Declare a free variable of the uninterpreted sort `T` in context `ctx`.
   ## The sort must have been registered via `declareUninterpretedSort[T]`
   ## before calling this.
+  ##
+  runnableExamples:
+    import z3
+    type LocSort = distinct void
+    let ctx = newContext()
+    discard declareUninterpretedSort[LocSort](ctx, "Loc")
+    let a = mkUninterpretedVar[LocSort]("a", ctx)
+    let b = mkUninterpretedVar[LocSort]("b", ctx)
+    # Two distinct uninterpreted variables may or may not be equal —
+    # the solver can satisfy either assignment.
+    let solver = newSolver(ctx)
+    solver.add(a == b)
+    doAssert solver.check() == zsSat
   let rawSort = sortOf(Z3UninterpretedVal[T], ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   wrap[Z3UninterpretedVal[T]](ctx,

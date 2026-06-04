@@ -120,6 +120,18 @@ proc algebraicNeg*(a: Z3Real): Z3Real =
 proc algebraicRoot*(a: Z3Real, k: int): Z3Real =
   ## Return a^(1/k), the k-th root of algebraic numeral `a`.
   ## Precondition: k is odd OR a ≥ 0.
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    let two   = mkReal(ctx, 2)
+    let sqrt2 = algebraicRoot(two, 2)   # √2
+    let one   = mkReal(ctx, 1)
+    let three = mkReal(ctx, 3)
+    # √2 is between 1 and 3.
+    doAssert algebraicGt(sqrt2, one)
+    doAssert algebraicLt(sqrt2, three)
+    doAssert algebraicIsValue(sqrt2)
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_algebraic_root(a.ctx.raw, a.raw, cuint(k)))
 
 proc algebraicPower*(a: Z3Real, k: int): Z3Real =
@@ -175,6 +187,16 @@ proc algebraicRoots*(p: Z3Real, vals: openArray[Z3Real]): seq[Z3Real] =
   ##
   ## All elements of `vals` must satisfy `algebraicIsValue`. Plain rational
   ## constants (`mkReal`) are also accepted (Z3 coerces them).
+  ##
+  runnableExamples:
+    import z3
+    let ctx = newContext()
+    # Build the polynomial p(x) = x^2 - 2 using a bound variable.
+    let x  = mkBoundReal(ctx, 0)
+    let p  = x * x - mkReal(ctx, 2)
+    let roots = algebraicRoots(p, [])
+    # x^2 - 2 has exactly two real roots: √2 and -√2.
+    doAssert roots.len == 2
   let ctx = p.ctx
   var rawVals = newSeq[RawZ3Ast](vals.len)
   for i, v in vals:

@@ -125,65 +125,83 @@ type
                            header: "z3.h", bycopy.} = object
     ## Opaque callback context passed by Z3 into user-supplied propagator hooks.
 
-proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-            RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-            RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-            RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
-            RawZ3Probe |
-            RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult |
-            RawZ3Params | RawZ3ParserContext |
-            RawZ3FuncInterp | RawZ3FuncEntry |
-            RawZ3ParamDescrs): bool {.inline.} =
-  ## Nil check for opaque value types. The `bycopy` emission doesn't
-  ## expose the underlying pointer for standard `isNil` to bind to;
-  ## reinterpret-cast through `pointer` for a single-instruction check.
-  cast[pointer](x) == nil
+import std/macros
 
-# Identity-equality for opaque value types. Without these, Nim's
-# default `==` compares the empty-from-Nim's-POV `bycopy` structs
-# field-by-field — and since they expose no fields, all instances
-# compare equal regardless of the underlying C pointer. That breaks
-# the `=copy` short-circuit (`if dst.raw != src.raw`) and was the
-# cause of a real refcount bug surfaced by step 4-5 testing.
-proc `==`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
-          RawZ3Probe |
-          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
-          RawZ3ParserContext |
-          RawZ3FuncInterp | RawZ3FuncEntry | RawZ3ParamDescrs](
-    a, b: T): bool {.inline.} =
-  cast[pointer](a) == cast[pointer](b)
+## `emitOpaqueOps` macro — emit per-type `isNil`, `==`, `!=` overloads for
+## every opaque RawZ3* handle type. Using per-type procs (instead of a generic
+## typeclass union) avoids the ambiguity with `system.==` on `tuple or object`
+## that the generic form triggers in Nim 2.x.
+##
+## Background: Nim's `bycopy` objects expose no fields to Nim, so the compiler
+## falls back to `system.==` (field-by-field) which always returns `true` for
+## zero-field objects. We need pointer-identity semantics. The generic
+## `[T: A|B|...]` form is ambiguous with `system.==`; per-type overloads
+## resolve unambiguously.
+macro emitOpaqueOps*(types: varargs[untyped]): untyped =
+  result = newStmtList()
+  for t in types:
+    let tn = t  # the type name node
+    # proc isNil*(x: T): bool {.inline.} = cast[pointer](x) == nil
+    let isNilProc = newProc(
+      name = newTree(nnkPostfix, ident("*"), ident("isNil")),
+      params = [ident("bool"), newIdentDefs(ident("x"), tn)],
+      body = newTree(nnkInfix,
+               ident("=="),
+               newTree(nnkCast, ident("pointer"), ident("x")),
+               newNilLit()),
+      procType = nnkProcDef
+    )
+    isNilProc.addPragma(ident("inline"))
+    result.add isNilProc
 
-proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
-          RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
-          RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
-          RawZ3Pattern | RawZ3Optimize | RawZ3Fixedpoint | RawZ3Stats |
-          RawZ3Probe |
-          RawZ3Goal | RawZ3Tactic | RawZ3ApplyResult | RawZ3Params |
-          RawZ3ParserContext |
-          RawZ3FuncInterp | RawZ3FuncEntry | RawZ3ParamDescrs](
-    a, b: T): bool {.inline.} =
-  cast[pointer](a) != cast[pointer](b)
+    # proc `==`*(a, b: T): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
+    let eqProc = newProc(
+      name = newTree(nnkPostfix, ident("*"),
+               newTree(nnkAccQuoted, ident("=="))),
+      params = [ident("bool"),
+                newIdentDefs(ident("a"), tn),
+                newIdentDefs(ident("b"), tn)],
+      body = newTree(nnkInfix,
+               ident("=="),
+               newTree(nnkCast, ident("pointer"), ident("a")),
+               newTree(nnkCast, ident("pointer"), ident("b"))),
+      procType = nnkProcDef
+    )
+    eqProc.addPragma(ident("inline"))
+    result.add eqProc
 
-# Explicit identity ops for N1.x types (kept outside the generic
-# constraint to avoid ambiguity with system.== for bycopy objects)
+    # proc `!=`*(a, b: T): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
+    let neqProc = newProc(
+      name = newTree(nnkPostfix, ident("*"),
+               newTree(nnkAccQuoted, ident("!="))),
+      params = [ident("bool"),
+                newIdentDefs(ident("a"), tn),
+                newIdentDefs(ident("b"), tn)],
+      body = newTree(nnkInfix,
+               ident("!="),
+               newTree(nnkCast, ident("pointer"), ident("a")),
+               newTree(nnkCast, ident("pointer"), ident("b"))),
+      procType = nnkProcDef
+    )
+    neqProc.addPragma(ident("inline"))
+    result.add neqProc
 
-proc isNil*(x: RawZ3AstMap): bool {.inline.} = cast[pointer](x) == nil
-proc isNil*(x: RawZ3RcfNum): bool {.inline.} = cast[pointer](x) == nil
-proc isNil*(x: RawZ3Simplifier): bool {.inline.} = cast[pointer](x) == nil
-proc isNil*(x: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](x) == nil
-
-proc `==`*(a, b: RawZ3AstMap): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
-proc `==`*(a, b: RawZ3RcfNum): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
-proc `==`*(a, b: RawZ3Simplifier): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
-proc `==`*(a, b: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
-
-proc `!=`*(a, b: RawZ3AstMap): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
-proc `!=`*(a, b: RawZ3RcfNum): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
-proc `!=`*(a, b: RawZ3Simplifier): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
-proc `!=`*(a, b: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
+# Identity ops for all opaque handle types.
+# Without these, Nim's default `==` compares the empty-from-Nim's-POV `bycopy`
+# structs field-by-field — and since they expose no fields, all instances
+# compare equal regardless of the underlying C pointer. That breaks the `=copy`
+# short-circuit (`if dst.raw != src.raw`) and was the cause of a real refcount
+# bug surfaced by step 4-5 testing.
+emitOpaqueOps(
+  RawZ3Config, RawZ3Context, RawZ3Sort, RawZ3Ast, RawZ3App,
+  RawZ3Symbol, RawZ3Solver, RawZ3Model, RawZ3FuncDecl,
+  RawZ3AstVector, RawZ3Constructor, RawZ3ConstructorList,
+  RawZ3Pattern, RawZ3Optimize, RawZ3Fixedpoint, RawZ3Stats,
+  RawZ3Probe, RawZ3Goal, RawZ3Tactic, RawZ3ApplyResult,
+  RawZ3Params, RawZ3ParserContext,
+  RawZ3FuncInterp, RawZ3FuncEntry, RawZ3ParamDescrs,
+  RawZ3AstMap, RawZ3RcfNum, RawZ3Simplifier, RawZ3PropagatorCtxBox
+)
 
 # ============================================================================
 # Z3 enums — must be importc with `size: sizeof(cint)` for ABI compat

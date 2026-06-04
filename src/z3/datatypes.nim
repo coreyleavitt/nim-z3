@@ -1123,6 +1123,78 @@ proc mkEnumerationSort*(
   mkEnumerationSort(requireCurrentContext(), name, members)
 
 # ============================================================================
+# mkTupleSort — Z3_mk_tuple_sort convenience wrapper (N7.2)
+# ============================================================================
+#
+# `Z3_mk_tuple_sort` is a Z3 convenience that builds a product (tuple) sort
+# in one call, without going through the full `mk_constructor` / `mk_datatype`
+# machinery. It returns the sort directly and fills two caller-allocated
+# output args: the constructor func_decl and an array of projection func_decls.
+#
+# Lifecycle: same as N7.1. Z3 emits the constructor and all projection
+# func_decls at refcount 0; we `incRefFuncDecl` each one before returning so
+# they stay live for as long as the caller holds the returned seqs.
+
+proc mkTupleSort*(
+    ctx: Z3Context,
+    name: string,
+    fields: openArray[(string, RawZ3Sort)]
+): tuple[sort: RawZ3Sort, ctor: RawZ3FuncDecl, projs: seq[RawZ3FuncDecl]] =
+  ## Build a named tuple sort with the given `(fieldName, fieldSort)` pairs.
+  ##
+  ## Returns the Z3 sort, the constructor func_decl, and a seq of projection
+  ## func_decls in field order. All func_decls are `inc_ref`'d before return
+  ## so they live as long as the caller holds the returned values.
+  ##
+  ## Example:
+  ## ```nim
+  ## let intS = ctx.checkErr Z3_mk_int_sort(ctx.raw)
+  ## let (sort, ctor, projs) =
+  ##   mkTupleSort(ctx, "Point", [("x", intS), ("y", intS)])
+  ## ```
+  let n = fields.len
+
+  # Build symbol array for field names
+  var fieldNameSyms = newSeq[RawZ3Symbol](n)
+  var fieldSorts = newSeq[RawZ3Sort](n)
+  for i, (fname, fsort) in fields:
+    fieldNameSyms[i] = ctx.checkErr Z3_mk_string_symbol(ctx.raw, fname.cstring)
+    fieldSorts[i] = fsort
+
+  # Pre-allocate output for the constructor and projection func_decls
+  var ctorOut: RawZ3FuncDecl
+  var projsOut = newSeq[RawZ3FuncDecl](n)
+
+  let nameSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+
+  let fieldNamesPtr =
+    if n > 0: cast[ptr UncheckedArray[RawZ3Symbol]](addr fieldNameSyms[0])
+    else: nil
+  let fieldSortsPtr =
+    if n > 0: cast[ptr UncheckedArray[RawZ3Sort]](addr fieldSorts[0])
+    else: nil
+  let projsPtr =
+    if n > 0: cast[ptr UncheckedArray[RawZ3FuncDecl]](addr projsOut[0])
+    else: nil
+
+  let sort = ctx.checkErr Z3_mk_tuple_sort(ctx.raw, nameSym, cuint(n),
+    fieldNamesPtr, fieldSortsPtr, addr ctorOut, projsPtr)
+
+  # Z3 emits func_decls at refcount 0; inc_ref them now.
+  incRefFuncDecl(ctx, ctorOut)
+  for fd in projsOut:
+    incRefFuncDecl(ctx, fd)
+
+  (sort: sort, ctor: ctorOut, projs: projsOut)
+
+proc mkTupleSort*(
+    name: string,
+    fields: openArray[(string, RawZ3Sort)]
+): tuple[sort: RawZ3Sort, ctor: RawZ3FuncDecl, projs: seq[RawZ3FuncDecl]] =
+  ## Context-free overload; uses `requireCurrentContext()`.
+  mkTupleSort(requireCurrentContext(), name, fields)
+
+# ============================================================================
 # Equality + pretty
 # ============================================================================
 

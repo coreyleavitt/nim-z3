@@ -621,6 +621,21 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `enum_testers[i]` is the corresponding recognizer. Both output
     ## arrays must be pre-allocated by the caller to length `n`.
 
+  proc Z3_mk_tuple_sort(c: RawZ3Context,
+                        mk_tuple_name: RawZ3Symbol,
+                        num_fields: cuint,
+                        field_names: ptr UncheckedArray[RawZ3Symbol],
+                        field_sorts: ptr UncheckedArray[RawZ3Sort],
+                        mk_tuple_decl: ptr RawZ3FuncDecl,
+                        proj_decl: ptr UncheckedArray[RawZ3FuncDecl]
+                       ): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Build a named tuple sort with `num_fields` fields. On return,
+    ## `mk_tuple_decl` holds the constructor func_decl and `proj_decl[i]`
+    ## holds the i-th projection func_decl. Both output args must be
+    ## pre-allocated by the caller (`proj_decl` to length `num_fields`).
+    ## Z3 emits func_decls at refcount 0; callers must `inc_ref` them.
+
   proc Z3_get_datatype_sort_num_constructors(c: RawZ3Context,
                                              t: RawZ3Sort): cuint
     {.cdecl, header: "z3.h".}

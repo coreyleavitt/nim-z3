@@ -192,8 +192,12 @@ proc defineFun*[A1, Ret](
   ## inline pattern as `mkIntVar` (direct `wrap(ctx, Z3_mk_const(...))`)
   ## to avoid a Nim 2.2 ORC bug where a stored `RawZ3Ast` let-binding is
   ## treated as "moved" and zeroed when passed to a subsequent `wrap` call.
-  let domain = [sortOfType[A1](ctx)]
-  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](unsafeAddr domain[0])
+  ##
+  ## Z3 4.15 stack-args+rec_func_decl bug: domain and argsArr must be
+  ## heap-allocated (seq) so Z3's rec_func machinery can safely hold a
+  ## pointer past the C-API call boundary. Stack arrays trigger SIGSEGV.
+  var domain = @[sortOfType[A1](ctx)]
+  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   let raw = ctx.checkErr Z3_mk_rec_func_decl(
@@ -203,7 +207,7 @@ proc defineFun*[A1, Ret](
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
     sortOfType[A1](ctx)))
   let bodyExpr = body(a1)
-  var argsArr = [a1.raw]
+  var argsArr = @[a1.raw]
   Z3_add_rec_def(ctx.raw, raw, 1'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
   Z3FuncDecl[(A1,), Ret](raw: raw, ctx: ctx)
@@ -216,7 +220,8 @@ proc defineFun*[A1, A2, Ret](
     ctx: Z3Context, name: string,
     body: proc(a1: A1, a2: A2): Ret): Z3FuncDecl[(A1, A2), Ret] =
   ## Define a binary recursive function `name(a1, a2) = body(a1, a2)`.
-  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx)]
+  ## Z3 4.15: heap-allocated seq to avoid stack-args+rec_func_decl SIGSEGV.
+  var domain = @[sortOfType[A1](ctx), sortOfType[A2](ctx)]
   let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
@@ -231,7 +236,7 @@ proc defineFun*[A1, A2, Ret](
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg1").cstring),
     sortOfType[A2](ctx)))
   let bodyExpr = body(a1, a2)
-  var argsArr = [a1.raw, a2.raw]
+  var argsArr = @[a1.raw, a2.raw]
   Z3_add_rec_def(ctx.raw, raw, 2'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
   Z3FuncDecl[(A1, A2), Ret](raw: raw, ctx: ctx)
@@ -244,8 +249,9 @@ proc defineFun*[A1, A2, A3, Ret](
     ctx: Z3Context, name: string,
     body: proc(a1: A1, a2: A2, a3: A3): Ret): Z3FuncDecl[(A1, A2, A3), Ret] =
   ## Define a ternary recursive function `name(a1, a2, a3) = body(...)`.
-  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx),
-                sortOfType[A3](ctx)]
+  ## Z3 4.15: heap-allocated seq to avoid stack-args+rec_func_decl SIGSEGV.
+  var domain = @[sortOfType[A1](ctx), sortOfType[A2](ctx),
+                 sortOfType[A3](ctx)]
   let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
@@ -263,7 +269,7 @@ proc defineFun*[A1, A2, A3, Ret](
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg2").cstring),
     sortOfType[A3](ctx)))
   let bodyExpr = body(a1, a2, a3)
-  var argsArr = [a1.raw, a2.raw, a3.raw]
+  var argsArr = @[a1.raw, a2.raw, a3.raw]
   Z3_add_rec_def(ctx.raw, raw, 3'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
   Z3FuncDecl[(A1, A2, A3), Ret](raw: raw, ctx: ctx)
@@ -300,8 +306,9 @@ proc defineRecFun*[A1, Ret](
   ## Define a unary self-recursive function `name(a1) = body(self, a1)`.
   ## `self` in the body refers to the function being defined, enabling
   ## recursive calls like `self(a1 - mkInt(1))`.
-  let domain = [sortOfType[A1](ctx)]
-  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](unsafeAddr domain[0])
+  ## Z3 4.15: heap-allocated seq to avoid stack-args+rec_func_decl SIGSEGV.
+  var domain = @[sortOfType[A1](ctx)]
+  let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   let raw = ctx.checkErr Z3_mk_rec_func_decl(
@@ -327,7 +334,8 @@ proc defineRecFun*[A1, A2, Ret](
     body: proc(self: Z3FuncDecl[(A1, A2), Ret], a1: A1, a2: A2): Ret
     ): Z3FuncDecl[(A1, A2), Ret] =
   ## Define a binary self-recursive function `name(a1, a2) = body(self, a1, a2)`.
-  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx)]
+  ## Z3 4.15: heap-allocated seq to avoid stack-args+rec_func_decl SIGSEGV.
+  var domain = @[sortOfType[A1](ctx), sortOfType[A2](ctx)]
   let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
@@ -357,7 +365,8 @@ proc defineRecFun*[A1, A2, A3, Ret](
     body: proc(self: Z3FuncDecl[(A1, A2, A3), Ret], a1: A1, a2: A2, a3: A3): Ret
     ): Z3FuncDecl[(A1, A2, A3), Ret] =
   ## Define a ternary self-recursive function `name(a1, a2, a3) = body(self, ...)`.
-  var domain = [sortOfType[A1](ctx), sortOfType[A2](ctx), sortOfType[A3](ctx)]
+  ## Z3 4.15: heap-allocated seq to avoid stack-args+rec_func_decl SIGSEGV.
+  var domain = @[sortOfType[A1](ctx), sortOfType[A2](ctx), sortOfType[A3](ctx)]
   let domainPtr = cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
   let rangeSort = sortOfType[Ret](ctx)
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)

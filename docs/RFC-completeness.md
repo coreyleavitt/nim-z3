@@ -588,6 +588,8 @@ Build gate: `-d:z3WithoutSpacer` excludes the module (Spacer may be stripped fro
 
 Same as v1: `Z3_model_get_num_consts/_const_decl/_num_funcs/_func_decl/_num_sorts/_sort/_sort_universe/_has_interp/_translate`.
 
+**v5.1 Z3 4.15.0 quirk (implementer note):** `Z3_mk_context_rc` (which `newContext` uses for refcount-managed lifecycle) interacts badly with uninterpreted sort constants in Z3 4.15: passing them to `Z3_mk_distinct`/`Z3_mk_eq`/`Z3_mk_app` SIGSEGVs. Affects `Z3_mk_const` AND `Z3_mk_fresh_const`. Reproduces in pure C. **Workaround:** use `Z3_parse_smtlib2_string` / `loadSmt2String` to construct uninterpreted-sort terms — that path is unaffected. Used in N2.1's `sortUniverse` test (see `tests/tmodel_enum.nim`).
+
 ### N2.2 — Model construction API
 
 Same as v1: `Z3_mk_model/_add_const_interp/_add_func_interp/_func_interp_set_else/_func_interp_add_entry`.
@@ -598,7 +600,7 @@ Same as v1: `Z3_get_datatype_sort_num_constructors/_constructor/_recognizer/_con
 
 ### N2.4a — Decl name/arity/domain/range introspection (split per Lens 4 MED-6)
 
-`Z3_get_decl_name/arity/domain/range/func_decl_id`. ~5 procs, returns typed values.
+`Z3_get_decl_name`, `Z3_get_domain_size` (NOT `Z3_get_decl_arity` — that name doesn't exist in the C API), `Z3_get_domain`, `Z3_get_range`, `Z3_get_func_decl_id`. ~5 procs, returns typed values.
 
 ### N2.4b — Decl parameter introspection (split per Lens 4 MED-6)
 

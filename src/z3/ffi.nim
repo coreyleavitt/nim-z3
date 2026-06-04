@@ -109,6 +109,22 @@ type
     ## solver / tactic / simplifier accepts. Refcounted via
     ## `Z3_param_descrs_inc_ref` / `_dec_ref`.
 
+  # --- N0.1 / N1.x reserved handles -----------------------------------------
+  RawZ3AstMap* {.importc: "Z3_ast_map", header: "z3.h", bycopy.} = object
+    ## Mutable mapping from `Z3_ast` keys to `Z3_ast` values. Used for
+    ## term-substitution caches and model-evaluation memo tables.
+    ## Refcounted via `Z3_ast_map_inc_ref` / `_dec_ref`.
+  RawZ3RcfNum* {.importc: "Z3_rcf_num", header: "z3.h", bycopy.} = object
+    ## Real closed field numeral — an exact algebraic number produced
+    ## by the RCF (Real Closed Fields) solver. NOT a Z3_ast; lifecycle
+    ## via `Z3_rcf_del` (no inc/dec_ref pair).
+  RawZ3Simplifier* {.importc: "Z3_simplifier", header: "z3.h", bycopy.} = object
+    ## Named simplification strategy. Refcounted via
+    ## `Z3_simplifier_inc_ref` / `_dec_ref`.
+  RawZ3PropagatorCtxBox* {.importc: "Z3_solver_callback",
+                           header: "z3.h", bycopy.} = object
+    ## Opaque callback context passed by Z3 into user-supplied propagator hooks.
+
 proc isNil*(x: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
             RawZ3Symbol | RawZ3Solver | RawZ3Model | RawZ3FuncDecl |
             RawZ3AstVector | RawZ3Constructor | RawZ3ConstructorList |
@@ -150,6 +166,24 @@ proc `!=`*[T: RawZ3Config | RawZ3Context | RawZ3Sort | RawZ3Ast | RawZ3App |
           RawZ3FuncInterp | RawZ3FuncEntry | RawZ3ParamDescrs](
     a, b: T): bool {.inline.} =
   cast[pointer](a) != cast[pointer](b)
+
+# Explicit identity ops for N1.x types (kept outside the generic
+# constraint to avoid ambiguity with system.== for bycopy objects)
+
+proc isNil*(x: RawZ3AstMap): bool {.inline.} = cast[pointer](x) == nil
+proc isNil*(x: RawZ3RcfNum): bool {.inline.} = cast[pointer](x) == nil
+proc isNil*(x: RawZ3Simplifier): bool {.inline.} = cast[pointer](x) == nil
+proc isNil*(x: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](x) == nil
+
+proc `==`*(a, b: RawZ3AstMap): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
+proc `==`*(a, b: RawZ3RcfNum): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
+proc `==`*(a, b: RawZ3Simplifier): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
+proc `==`*(a, b: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](a) == cast[pointer](b)
+
+proc `!=`*(a, b: RawZ3AstMap): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
+proc `!=`*(a, b: RawZ3RcfNum): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
+proc `!=`*(a, b: RawZ3Simplifier): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
+proc `!=`*(a, b: RawZ3PropagatorCtxBox): bool {.inline.} = cast[pointer](a) != cast[pointer](b)
 
 # ============================================================================
 # Z3 enums — must be importc with `size: sizeof(cint)` for ABI compat
@@ -369,6 +403,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_mk_const(c: RawZ3Context, s: RawZ3Symbol, ty: RawZ3Sort): RawZ3Ast
     {.cdecl, header: "z3.h".}
     ## "Constant" in Z3-speak = a free variable bound to a sort.
+
+  proc Z3_mk_fresh_const(c: RawZ3Context, prefix: cstring, ty: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Create a fresh constant of sort `ty` with a unique name derived from
+    ## `prefix`. Unlike `Z3_mk_const`, this generates an internal unique id
+    ## so the resulting AST is structurally distinct from any other constant
+    ## — safe to use where `Z3_mk_const` with a plain symbol causes Z3 4.15
+    ## sort-identity confusion in `Z3_mk_distinct` / `Z3_mk_eq`.
 
   proc Z3_mk_int(c: RawZ3Context, v: cint, ty: RawZ3Sort): RawZ3Ast
     {.cdecl, header: "z3.h".}
@@ -893,6 +935,23 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_func_entry_get_arg(c: RawZ3Context, e: RawZ3FuncEntry,
                              i: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # --- Model construction (N2.2) -------------------------------------------
+  proc Z3_mk_model(c: RawZ3Context): RawZ3Model
+    {.cdecl, header: "z3.h".}
+  proc Z3_add_const_interp(c: RawZ3Context, m: RawZ3Model,
+                            f: RawZ3FuncDecl, a: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_add_func_interp(c: RawZ3Context, m: RawZ3Model,
+                           f: RawZ3FuncDecl,
+                           default_value: RawZ3Ast): RawZ3FuncInterp
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_set_else(c: RawZ3Context, fi: RawZ3FuncInterp,
+                                else_value: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_func_interp_add_entry(c: RawZ3Context, fi: RawZ3FuncInterp,
+                                 args: RawZ3AstVector, value: RawZ3Ast)
     {.cdecl, header: "z3.h".}
 
   # --- Z3ParamDescrs (v0.5 step 6B) ----------------------------------------
@@ -1440,6 +1499,32 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_solver_to_string(c: RawZ3Context, s: RawZ3Solver): cstring
     {.cdecl, header: "z3.h".}
 
+  # --- Model enumeration (N2.1) ---------------------------------------------
+  proc Z3_model_has_interp(c: RawZ3Context, m: RawZ3Model,
+                            a: RawZ3FuncDecl): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_num_consts(c: RawZ3Context, m: RawZ3Model): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_const_decl(c: RawZ3Context, m: RawZ3Model,
+                                i: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_num_funcs(c: RawZ3Context, m: RawZ3Model): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_func_decl(c: RawZ3Context, m: RawZ3Model,
+                               i: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_num_sorts(c: RawZ3Context, m: RawZ3Model): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_sort(c: RawZ3Context, m: RawZ3Model,
+                          i: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_get_sort_universe(c: RawZ3Context, m: RawZ3Model,
+                                   s: RawZ3Sort): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_model_translate(c: RawZ3Context, m: RawZ3Model,
+                           dst: RawZ3Context): RawZ3Model
+    {.cdecl, header: "z3.h".}
+
   # --- Characters (v0.3 step 4) --------------------------------------------
   #
   # Z3's Char sort is a Unicode codepoint type. The string/regex theory
@@ -1676,4 +1761,158 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_mk_re_loop(c: RawZ3Context, re: RawZ3Ast, lo, hi: cuint): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_re_power(c: RawZ3Context, re: RawZ3Ast, n: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # --- Set operations (z3_api.h) — N1.1 ------------------------------------
+
+  proc Z3_mk_empty_set(c: RawZ3Context, domain: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_full_set(c: RawZ3Context, domain: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_add(c: RawZ3Context, set: RawZ3Ast, elem: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_del(c: RawZ3Context, set: RawZ3Ast, elem: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_union(c: RawZ3Context, num_args: cuint,
+                        args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_intersect(c: RawZ3Context, num_args: cuint,
+                            args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_difference(c: RawZ3Context, arg1, arg2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_complement(c: RawZ3Context, arg: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_member(c: RawZ3Context, elem, set: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_subset(c: RawZ3Context, arg1, arg2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_mk_set_has_size(c: RawZ3Context, set, k: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  # --- AST map (z3_ast_containers.h) — N1.2 --------------------------------
+
+  proc Z3_mk_ast_map(c: RawZ3Context): RawZ3AstMap
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_inc_ref(c: RawZ3Context, m: RawZ3AstMap)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_dec_ref(c: RawZ3Context, m: RawZ3AstMap)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_contains(c: RawZ3Context, m: RawZ3AstMap,
+                            k: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_find(c: RawZ3Context, m: RawZ3AstMap,
+                        k: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_insert(c: RawZ3Context, m: RawZ3AstMap, k, v: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_erase(c: RawZ3Context, m: RawZ3AstMap, k: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_reset(c: RawZ3Context, m: RawZ3AstMap)
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_size(c: RawZ3Context, m: RawZ3AstMap): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_keys(c: RawZ3Context, m: RawZ3AstMap): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_ast_map_to_string(c: RawZ3Context, m: RawZ3AstMap): cstring
+    {.cdecl, header: "z3.h".}
+
+  # --- RCF (z3_rcf.h) — N1.6 -----------------------------------------------
+
+  proc Z3_rcf_del(c: RawZ3Context, a: RawZ3RcfNum)
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_rational(c: RawZ3Context, val: cstring): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_small_int(c: RawZ3Context, val: cint): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_pi(c: RawZ3Context): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_e(c: RawZ3Context): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mk_infinitesimal(c: RawZ3Context): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_add(c: RawZ3Context, a, b: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_sub(c: RawZ3Context, a, b: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_mul(c: RawZ3Context, a, b: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_div(c: RawZ3Context, a, b: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_neg(c: RawZ3Context, a: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_inv(c: RawZ3Context, a: RawZ3RcfNum): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_power(c: RawZ3Context, a: RawZ3RcfNum, k: cuint): RawZ3RcfNum
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_lt(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_le(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_gt(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_ge(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_eq(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_neq(c: RawZ3Context, a, b: RawZ3RcfNum): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_num_to_string(c: RawZ3Context, a: RawZ3RcfNum,
+                             compact, html: bool): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_rcf_num_to_decimal_string(c: RawZ3Context, a: RawZ3RcfNum,
+                                    prec: cuint): cstring
+    {.cdecl, header: "z3.h".}
+
+  # --- Algebraic numbers (z3_algebraic.h) — N1.7a --------------------------
+
+  proc Z3_algebraic_is_value(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_is_pos(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_is_neg(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_is_zero(c: RawZ3Context, a: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_sign(c: RawZ3Context, a: RawZ3Ast): cint
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_add(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_sub(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_mul(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_div(c: RawZ3Context, a, b: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_root(c: RawZ3Context, a: RawZ3Ast, k: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_power(c: RawZ3Context, a: RawZ3Ast, k: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_lt(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_gt(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_le(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_ge(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_eq(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_neq(c: RawZ3Context, a, b: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_roots(c: RawZ3Context, p: RawZ3Ast, n: cuint,
+                           a: ptr UncheckedArray[RawZ3Ast]): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_eval(c: RawZ3Context, p: RawZ3Ast, n: cuint,
+                         a: ptr UncheckedArray[RawZ3Ast]): cint
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_get_poly(c: RawZ3Context, a: RawZ3Ast): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+  proc Z3_algebraic_get_i(c: RawZ3Context, a: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+
+  # --- Polynomial subresultants (z3_polynomial.h) — merged N1.7a -----------
+
+  proc Z3_polynomial_subresultants(c: RawZ3Context,
+                                   p, q, x: RawZ3Ast): RawZ3AstVector
     {.cdecl, header: "z3.h".}

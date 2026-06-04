@@ -271,17 +271,23 @@ const
 
 import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/builder, z3/boolean, z3/arith, z3/solver, z3/model, z3/bitvec,
-       z3/pretty, z3/simplify, z3/arrays, z3/quantifier,
+       z3/pretty, z3/simplify, z3/arrays, z3/sets, z3/quantifier,
        z3/params, z3/semantics, z3/chars,
-       z3/astvector, z3/stats,
+       z3/astvector, z3/astmap, z3/stats,
        z3/introspect, z3/proof, z3/fixedpoint, z3/rewrite, z3/translate,
-       z3/globalparams, z3/io
+       z3/globalparams, z3/io,
+       z3/uninterpretedval,
+       z3/rcf,
+       z3/algebraic
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
-       solver, model, bitvec, pretty, simplify, arrays, quantifier,
+       solver, model, bitvec, pretty, simplify, arrays, sets, quantifier,
        params, semantics, chars,
-       astvector, stats,
+       astvector, astmap, stats,
        introspect, proof, fixedpoint, rewrite,
-       translate, globalparams, io
+       translate, globalparams, io,
+       uninterpretedval,
+       rcf,
+       algebraic
 
 # ============================================================================
 # Gateable theories (re-exported only when the corresponding flag is off)

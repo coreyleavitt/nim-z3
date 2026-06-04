@@ -23,7 +23,7 @@
 ## actually needed to constrain.
 
 import std/options
-import ./ffi, ./context, ./error, ./ast, ./builder, ./solver
+import ./ffi, ./context, ./error, ./ast, ./builder, ./solver, ./astvector
 export solver
 
 type
@@ -264,3 +264,63 @@ proc `$`*(m: Z3Model): string =
   ## SMT-LIB rendering of the full model — every assigned variable
   ## and its value.
   $Z3_model_to_string(m.ctx.raw, m.raw)
+
+# ============================================================================
+# Model enumeration — N2.1
+# ============================================================================
+
+proc numConsts*(m: Z3Model): int =
+  ## Number of constant (nullary) function declarations pinned by this model.
+  int(Z3_model_get_num_consts(m.ctx.raw, m.raw))
+
+proc constDecl*(m: Z3Model, i: int): RawZ3FuncDecl =
+  ## `i`-th constant declaration (0-based). Handle is model-owned; caller
+  ## must not free it. Raises if `i` is out of bounds.
+  doAssert i >= 0 and i < m.numConsts,
+    "Z3Model.constDecl: index " & $i & " out of bounds [0, " & $m.numConsts & ")"
+  m.ctx.checkErr Z3_model_get_const_decl(m.ctx.raw, m.raw, cuint(i))
+
+proc numFuncs*(m: Z3Model): int =
+  ## Number of non-nullary function declarations pinned by this model.
+  int(Z3_model_get_num_funcs(m.ctx.raw, m.raw))
+
+proc funcDecl*(m: Z3Model, i: int): RawZ3FuncDecl =
+  ## `i`-th function declaration (0-based). Handle is model-owned.
+  ## Raises if `i` is out of bounds.
+  doAssert i >= 0 and i < m.numFuncs,
+    "Z3Model.funcDecl: index " & $i & " out of bounds [0, " & $m.numFuncs & ")"
+  m.ctx.checkErr Z3_model_get_func_decl(m.ctx.raw, m.raw, cuint(i))
+
+proc numSorts*(m: Z3Model): int =
+  ## Number of uninterpreted sorts whose finite universe the model enumerates.
+  int(Z3_model_get_num_sorts(m.ctx.raw, m.raw))
+
+proc sort*(m: Z3Model, i: int): RawZ3Sort =
+  ## `i`-th enumerated uninterpreted sort (0-based). Handle is model-owned.
+  ## Raises if `i` is out of bounds.
+  doAssert i >= 0 and i < m.numSorts,
+    "Z3Model.sort: index " & $i & " out of bounds [0, " & $m.numSorts & ")"
+  m.ctx.checkErr Z3_model_get_sort(m.ctx.raw, m.raw, cuint(i))
+
+proc sortUniverse*(m: Z3Model, s: RawZ3Sort): Z3AstVector =
+  ## Finite set of AST nodes assigned to uninterpreted sort `s` in this model.
+  ##
+  ## Z3 returns the vector with an extra ref-count; `wrapAstVector` adds
+  ## another and registers the dec_ref finalizer — we immediately release
+  ## the Z3-given surplus so the net delta relative to the pre-call count
+  ## is exactly +1 (the one held by the returned `Z3AstVector`).
+  let raw = m.ctx.checkErr Z3_model_get_sort_universe(m.ctx.raw, m.raw, s)
+  let v = wrapAstVector(m.ctx, raw)
+  Z3_ast_vector_dec_ref(m.ctx.raw, raw)
+  v
+
+proc hasInterp*(m: Z3Model, d: RawZ3FuncDecl): bool =
+  ## `true` if declaration `d` has an interpretation pinned in model `m`.
+  Z3_model_has_interp(m.ctx.raw, m.raw, d)
+
+proc translate*(m: Z3Model, target: Z3Context): Z3Model =
+  ## Return a copy of `m` with all AST nodes translated into `target`.
+  ## Useful for cross-context reasoning (e.g. transfer a satisfying model
+  ## to a second solver that works in a sibling context).
+  let raw = m.ctx.checkErr Z3_model_translate(m.ctx.raw, m.raw, target.raw)
+  wrapModel(target, raw)

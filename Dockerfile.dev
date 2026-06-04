@@ -1,0 +1,8 @@
+FROM ghcr.io/coreyleavitt/nim:2.2.10
+
+# Pre-install z3-devel so test cycles don't pay the zypper overhead each run.
+RUN zypper --non-interactive --gpg-auto-import-keys refresh && \
+    zypper --non-interactive install z3-devel && \
+    zypper clean --all
+
+WORKDIR /work

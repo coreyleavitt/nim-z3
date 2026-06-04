@@ -558,3 +558,82 @@ proc congruenceNext*[T: Z3Term](s: Z3Solver, ast: T): RawZ3Ast =
   ## Returns `RawZ3Ast` for the same reason as `congruenceRoot` — avoids the
   ## `solver → introspect → bitvec → model → solver` import cycle. N8.2.
   s.ctx.checkErr Z3_solver_congruence_next(s.ctx.raw, s.raw, ast.raw)
+
+# ============================================================================
+# Misc constructors + introspection (N8.3)
+# ============================================================================
+
+proc newSolverForLogic*(ctx: Z3Context, logic: string): Z3Solver =
+  ## Create a solver specialised for the given SMT-LIB 2 logic string
+  ## (e.g., `"QF_BV"`, `"QF_LIA"`, `"QF_NRA"`). Z3 selects a decision
+  ## procedure pipeline tuned for that fragment, which may be significantly
+  ## faster than the general-purpose `newSolver` on problems that fit the
+  ## logic.
+  ##
+  ## ```nim
+  ## let s = newSolverForLogic(ctx, "QF_LIA")
+  ## let x = mkIntVar("x")
+  ## s.add(x > 0)
+  ## doAssert s.check() == zsSat
+  ## ```
+  ##
+  ## N8.3.
+  let sym = Z3_mk_string_symbol(ctx.raw, cstring(logic))
+  wrapSolver(ctx, ctx.checkErr Z3_mk_solver_for_logic(ctx.raw, sym))
+
+proc numScopes*(s: Z3Solver): int =
+  ## Return the number of `push()` calls that have not yet been matched by
+  ## `pop()` — the current scope-stack depth. A freshly constructed solver
+  ## has depth 0.
+  ##
+  ## ```nim
+  ## let s = newSolver()
+  ## doAssert s.numScopes() == 0
+  ## s.push()
+  ## doAssert s.numScopes() == 1
+  ## s.pop()
+  ## doAssert s.numScopes() == 0
+  ## ```
+  ##
+  ## N8.3.
+  int(Z3_solver_get_num_scopes(s.ctx.raw, s.raw))
+
+proc toDimacs*(s: Z3Solver, include_names: bool = true): string =
+  ## Render the solver's current Boolean constraint set as a DIMACS CNF
+  ## string. `include_names = true` (default) emits `c <var> <name>`
+  ## comment lines mapping DIMACS variable indices to SMT-LIB names.
+  ##
+  ## This is meaningful only for *propositional* (Boolean) problems — the
+  ## output is the internal CNF after preprocessing. For mixed-theory
+  ## problems the output may be incomplete or empty.
+  ##
+  ## After calling `check()`, Z3 has bit-blasted or Tseitin-encoded the
+  ## assertions into CNF; calling `toDimacs` before `check()` reflects
+  ## whatever internal state Z3 has accumulated so far.
+  ##
+  ## N8.3.
+  $Z3_solver_to_dimacs_string(s.ctx.raw, s.raw, include_names)
+
+proc importModelConverter*(src, dst: Z3Solver) =
+  ## Transfer `src`'s model converter to `dst`. Both solvers must share the
+  ## same context. This propagates the model-reconstruction pipeline (e.g.
+  ## definition-expansion steps accumulated during tactic preprocessing)
+  ## so that a witness extracted from `dst` can be correctly lifted back to
+  ## the original variable space.
+  ##
+  ## Smoke-safe to call on solvers with no model converter — the call is a
+  ## no-op in that case.
+  ##
+  ## N8.3.
+  Z3_solver_import_model_converter(src.ctx.raw, src.raw, dst.raw)
+
+proc interrupt*(s: Z3Solver) =
+  ## Interrupt a running `check()` on this solver. Intended to be called
+  ## from a different thread (or signal handler) while `check` is executing;
+  ## the check will return `zsUnknown` with `reasonUnknown() == "interrupted"`.
+  ##
+  ## Calling `interrupt` on an idle solver is safe and has no observable
+  ## effect on subsequent `check()` calls.
+  ##
+  ## N8.3.
+  Z3_solver_interrupt(s.ctx.raw, s.raw)

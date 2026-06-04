@@ -1866,6 +1866,38 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Return the next AST in `a`'s congruence class (cyclic list). N8.2.
 
+  proc Z3_mk_solver_for_logic(c: RawZ3Context, logic: RawZ3Symbol): RawZ3Solver
+    {.cdecl, header: "z3.h".}
+    ## Create a solver specialised for the given SMT-LIB logic (e.g.,
+    ## "QF_BV", "QF_LIA"). The solver selects a decision procedure tuned to
+    ## the fragment. N8.3.
+
+  proc Z3_solver_get_num_scopes(c: RawZ3Context, s: RawZ3Solver): cuint
+    {.cdecl, header: "z3.h".}
+    ## Return the number of `push()` calls that have not been matched by
+    ## `pop()` — the current stack depth. N8.3.
+
+  proc Z3_solver_to_dimacs_string(c: RawZ3Context, s: RawZ3Solver,
+                                   include_names: bool): cstring
+    {.cdecl, header: "z3.h".}
+    ## Render the solver's current Boolean constraint set as a DIMACS CNF
+    ## string. `include_names` controls whether variable-name comments are
+    ## emitted. Meaningful only for pure SAT/propositional problems. N8.3.
+
+  proc Z3_solver_import_model_converter(ctx: RawZ3Context,
+                                        src: RawZ3Solver,
+                                        dst: RawZ3Solver)
+    {.cdecl, header: "z3.h".}
+    ## Transfer `src`'s model converter to `dst`. Used to propagate model
+    ## reconstruction steps across solver pipelines (e.g. tactic-simplified
+    ## into a residual solver). N8.3.
+
+  proc Z3_solver_interrupt(c: RawZ3Context, s: RawZ3Solver)
+    {.cdecl, header: "z3.h".}
+    ## Interrupt a running solver. Safe to call from another thread while
+    ## `Z3_solver_check` is executing in this context; the check will return
+    ## `Z3_L_UNDEF` with reason "interrupted". N8.3.
+
   # --- Model ----------------------------------------------------------------
 
   proc Z3_model_eval(c: RawZ3Context, m: RawZ3Model, t: RawZ3Ast,

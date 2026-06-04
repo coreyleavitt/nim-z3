@@ -1340,6 +1340,47 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## (sign-bit-fill) right shift.
   proc Z3_mk_bvashr(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}
 
+  # --- BitVec ops: overflow/underflow predicates ---------------------------
+
+  proc Z3_mk_bvadd_no_overflow(c: RawZ3Context, t1, t2: RawZ3Ast,
+                               is_signed: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff `t1 + t2` does not overflow. `is_signed` selects
+    ## signed vs unsigned interpretation.
+
+  proc Z3_mk_bvadd_no_underflow(c: RawZ3Context, t1, t2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff signed `t1 + t2` does not underflow (signed-only per C API).
+
+  proc Z3_mk_bvsub_no_overflow(c: RawZ3Context, t1, t2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff signed `t1 - t2` does not overflow (signed-only per C API).
+
+  proc Z3_mk_bvsub_no_underflow(c: RawZ3Context, t1, t2: RawZ3Ast,
+                                 is_signed: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff `t1 - t2` does not underflow. `is_signed` selects
+    ## signed vs unsigned interpretation.
+
+  proc Z3_mk_bvmul_no_overflow(c: RawZ3Context, t1, t2: RawZ3Ast,
+                               is_signed: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff `t1 * t2` does not overflow. `is_signed` selects
+    ## signed vs unsigned interpretation.
+
+  proc Z3_mk_bvmul_no_underflow(c: RawZ3Context, t1, t2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff signed `t1 * t2` does not underflow (signed-only per C API).
+
+  proc Z3_mk_bvneg_no_overflow(c: RawZ3Context, t1: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff signed negation of `t1` does not overflow (signed-only per C API).
+
+  proc Z3_mk_bvsdiv_no_overflow(c: RawZ3Context, t1, t2: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## True iff signed `t1 / t2` does not overflow (signed-only per C API;
+    ## only case: INT_MIN / -1).
+
   # --- BitVec ops: comparison (unsigned + signed) --------------------------
 
   proc Z3_mk_bvult(c: RawZ3Context, l, r: RawZ3Ast): RawZ3Ast {.cdecl, header: "z3.h".}

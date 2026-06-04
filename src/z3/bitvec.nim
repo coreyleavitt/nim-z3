@@ -517,3 +517,75 @@ proc `$`*[W: static int](a: Z3BitVec[W]): string = termToSmt2(a)
 
 # The BV-specific `smtEquiv` overload lived here in v0.2; v0.3 step 2
 # absorbed it into the generic `smtEquiv[T]` in `z3/semantics`.
+
+# ============================================================================
+# Overflow / underflow predicates (N3.1)
+#
+# These return a Z3Bool AST that is TRUE when the stated arithmetic
+# property holds (no overflow / no underflow). The C API carries a
+# `is_signed` parameter on ops where both unsigned and signed
+# interpretations are meaningful; ops that are inherently signed-only
+# have no such parameter (the C API omits it — we match exactly).
+#
+# Signature summary (matches z3_api.h):
+#   addNoOverflow  (a, b, signed) — unsigned or signed
+#   addNoUnderflow (a, b)         — signed-only
+#   subNoOverflow  (a, b)         — signed-only
+#   subNoUnderflow (a, b, signed) — unsigned or signed
+#   mulNoOverflow  (a, b, signed) — unsigned or signed
+#   mulNoUnderflow (a, b)         — signed-only
+#   negNoOverflow  (a)            — signed-only
+#   sdivNoOverflow (a, b)         — signed-only (INT_MIN / -1 case)
+# ============================================================================
+
+proc addNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+  ## True iff `a + b` does not overflow under the chosen sign interpretation.
+  ## `signed = false` checks unsigned overflow (result > 2^W - 1);
+  ## `signed = true` checks signed overflow (result > INT_MAX for W bits).
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvadd_no_overflow(a.ctx.raw, a.raw, b.raw, signed))
+
+proc addNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+  ## True iff signed `a + b` does not underflow (result >= INT_MIN for W bits).
+  ## Signed-only — unsigned addition cannot underflow.
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvadd_no_underflow(a.ctx.raw, a.raw, b.raw))
+
+proc subNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+  ## True iff signed `a - b` does not overflow (result <= INT_MAX for W bits).
+  ## Signed-only — unsigned subtraction overflow manifests as underflow.
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvsub_no_overflow(a.ctx.raw, a.raw, b.raw))
+
+proc subNoUnderflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+  ## True iff `a - b` does not underflow under the chosen sign interpretation.
+  ## `signed = false` checks unsigned underflow (borrow, result < 0);
+  ## `signed = true` checks signed underflow (result < INT_MIN for W bits).
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvsub_no_underflow(a.ctx.raw, a.raw, b.raw, signed))
+
+proc mulNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+  ## True iff `a * b` does not overflow under the chosen sign interpretation.
+  ## `signed = false` checks unsigned overflow (result > 2^W - 1);
+  ## `signed = true` checks signed overflow (result > INT_MAX for W bits).
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvmul_no_overflow(a.ctx.raw, a.raw, b.raw, signed))
+
+proc mulNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+  ## True iff signed `a * b` does not underflow (result >= INT_MIN for W bits).
+  ## Signed-only — unsigned multiplication cannot produce values below zero.
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvmul_no_underflow(a.ctx.raw, a.raw, b.raw))
+
+proc negNoOverflow*[W: static int](a: Z3BitVec[W]): Z3Bool =
+  ## True iff the signed negation of `a` does not overflow.
+  ## The only overflowing case is `neg(INT_MIN)`: `-(- 2^(W-1))` = 2^(W-1),
+  ## which exceeds INT_MAX. Signed-only.
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvneg_no_overflow(a.ctx.raw, a.raw))
+
+proc sdivNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+  ## True iff signed `a / b` does not overflow.
+  ## The only overflowing case is `INT_MIN / -1`. Signed-only.
+  wrap[Z3Bool](a.ctx,
+    a.ctx.checkErr Z3_mk_bvsdiv_no_overflow(a.ctx.raw, a.raw, b.raw))

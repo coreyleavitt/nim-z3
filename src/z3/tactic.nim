@@ -45,6 +45,8 @@
 ## Run `(get-tactics)` in a Z3 CLI session for the full list.
 
 import ./ffi, ./context, ./error, ./ast, ./params, ./solver, ./model
+
+export Z3GoalPrec
 # `solver` for Z3Status / wrap discipline; `model` for `wrapModel`
 # (needed by `convertModel` which round-trips models across sub-goals).
 
@@ -101,6 +103,52 @@ proc isDecidedUnsat*(g: Z3Goal): bool =
 
 proc `$`*(g: Z3Goal): string =
   $Z3_goal_to_string(g.ctx.raw, g.raw)
+
+proc numExprs*(g: Z3Goal): int =
+  ## Total number of sub-expressions in all formulas in the goal.
+  ## More fine-grained than `size`; useful for complexity heuristics.
+  int(Z3_goal_num_exprs(g.ctx.raw, g.raw))
+
+proc depth*(g: Z3Goal): int =
+  ## Depth of the goal in a tactic-application tree. A freshly-created
+  ## goal has depth 0; each tactic application increments it.
+  int(Z3_goal_depth(g.ctx.raw, g.raw))
+
+proc precision*(g: Z3Goal): Z3GoalPrec =
+  ## Approximation status of the goal. `gpPrecise` for goals that have
+  ## not been approximated; `gpUnder`/`gpOver`/`gpUnderOver` when a
+  ## tactic introduced an under- or over-approximation.
+  Z3_goal_precision(g.ctx.raw, g.raw)
+
+proc assertConstraint*(g: Z3Goal, c: Z3Bool) =
+  ## Add constraint `c` to the goal. Alias for `add`; provided so the
+  ## N8.8 surface is complete and callers can use the more explicit name
+  ## when the distinction matters.
+  g.ctx.checkErrVoid Z3_goal_assert(g.ctx.raw, g.raw, c.raw)
+
+proc reset*(g: Z3Goal) =
+  ## Remove all formulas from the goal, leaving it empty. Does not
+  ## change the goal's model/unsat-core/proof flags.
+  g.ctx.checkErrVoid Z3_goal_reset(g.ctx.raw, g.raw)
+
+proc translate*(g: Z3Goal, target: Z3Context): Z3Goal =
+  ## Transfer this goal (all its asserted formulas) into `target`
+  ## context. The returned goal is owned by `target`. The source goal
+  ## is not modified.
+  let raw = target.checkErr Z3_goal_translate(g.ctx.raw, g.raw, target.raw)
+  if raw.isNil:
+    var e = newException(Z3InvalidUsageError,
+      "Z3_goal_translate returned nil — contexts may be incompatible.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  Z3_goal_inc_ref(target.raw, raw)
+  Z3Goal(raw: raw, ctx: target)
+
+proc toDimacs*(g: Z3Goal, includeNames: bool = true): string =
+  ## Render the goal in DIMACS CNF format. Only valid for propositional
+  ## goals (all formulas must be clauses). `includeNames` controls
+  ## whether variable names are included as comments.
+  $Z3_goal_to_dimacs_string(g.ctx.raw, g.raw, includeNames)
 
 # Internal: wrap a freshly-returned Z3_goal handle from FFI.
 proc wrapGoal(ctx: Z3Context, raw: RawZ3Goal): Z3Goal =

@@ -338,6 +338,19 @@ type
     Z3_PARAMETER_FUNC_DECL  = 6
     Z3_PARAMETER_INTERNAL   = 7
 
+  Z3GoalPrec* {.importc: "Z3_goal_prec", header: "z3.h",
+                size: sizeof(cint).} = enum
+    ## Approximation status of a goal after tactic application.
+    ##
+    ## - `gpPrecise`   — no approximation; sat/unsat answers preserved.
+    ## - `gpUnder`     — under-approximation; sat answers preserved.
+    ## - `gpOver`      — over-approximation; unsat answers preserved.
+    ## - `gpUnderOver` — both approximations applied; no guarantee.
+    gpPrecise   = 0  ## Z3_GOAL_PRECISE
+    gpUnder     = 1  ## Z3_GOAL_UNDER
+    gpOver      = 2  ## Z3_GOAL_OVER
+    gpUnderOver = 3  ## Z3_GOAL_UNDER_OVER
+
 # ============================================================================
 # Z3 callback types
 # ============================================================================
@@ -853,6 +866,20 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_goal_is_decided_unsat(c: RawZ3Context, g: RawZ3Goal): bool
     {.cdecl, header: "z3.h".}
   proc Z3_goal_to_string(c: RawZ3Context, g: RawZ3Goal): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_num_exprs(c: RawZ3Context, g: RawZ3Goal): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_depth(c: RawZ3Context, g: RawZ3Goal): cuint
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_reset(c: RawZ3Context, g: RawZ3Goal)
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_translate(source: RawZ3Context, g: RawZ3Goal,
+                         target: RawZ3Context): RawZ3Goal
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_to_dimacs_string(c: RawZ3Context, g: RawZ3Goal,
+                                include_names: bool): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_goal_precision(c: RawZ3Context, g: RawZ3Goal): Z3GoalPrec
     {.cdecl, header: "z3.h".}
 
   # --- Tactics -------------------------------------------------------------

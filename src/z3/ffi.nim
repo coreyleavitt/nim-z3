@@ -1891,6 +1891,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## next Z3 call that may invalidate it.
   proc Z3_is_string(c: RawZ3Context, s: RawZ3Ast): bool
     {.cdecl, header: "z3.h".}
+  proc Z3_get_string_length(c: RawZ3Context, s: RawZ3Ast): cuint
+    {.cdecl, header: "z3.h".}
+    ## Codepoint count of a string literal AST. Precondition:
+    ## `Z3_is_string(c, s)`.
+  proc Z3_get_string_contents(c: RawZ3Context, s: RawZ3Ast,
+                               length: cuint, contents: ptr cuint)
+    {.cdecl, header: "z3.h".}
+    ## Fill the caller-allocated `contents` array (size ≥ `length`) with
+    ## the Unicode codepoints of the string literal `s`. Precondition:
+    ## `Z3_is_string(c, s)` and `length == Z3_get_string_length(c, s)`.
 
   proc Z3_mk_seq_sort(c: RawZ3Context, elem: RawZ3Sort): RawZ3Sort
     {.cdecl, header: "z3.h".}

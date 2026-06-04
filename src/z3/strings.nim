@@ -134,6 +134,43 @@ proc intToStr*(i: Z3Int): Z3String =
   wrap[Z3String](i.ctx, i.ctx.checkErr Z3_mk_int_to_str(i.ctx.raw, i.raw))
 
 # ============================================================================
+# Literal-AST introspection — string-specific (N5.3)
+# ============================================================================
+
+proc checkStringLiteral(s: Z3String, procName: string) {.inline.} =
+  ## Guard shared by `getStringLength` and `getStringContents`.
+  ## Raises `Z3InvalidUsageError` if `s` is not a concrete string literal.
+  if not Z3_is_string(s.ctx.raw, s.raw):
+    var e = newException(Z3InvalidUsageError,
+      procName & ": AST `" & $Z3_ast_to_string(s.ctx.raw, s.raw) &
+      "` is not a literal string.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+
+proc getStringLength*(s: Z3String): int =
+  ## Codepoint count of a string literal AST. Equivalent to
+  ## `Z3_get_string_length`. Only valid on literal string ASTs; raises
+  ## `Z3InvalidUsageError` for symbolic variables or other non-literal
+  ## ASTs (mirrors the `toStr` contract).
+  checkStringLiteral(s, "getStringLength")
+  int(Z3_get_string_length(s.ctx.raw, s.raw))
+
+proc getStringContents*(s: Z3String): seq[int] =
+  ## Codepoints of a string literal AST as a `seq[int]`. Calls
+  ## `Z3_get_string_length` to size the buffer, then
+  ## `Z3_get_string_contents` to populate it. Only valid on literal
+  ## string ASTs; raises `Z3InvalidUsageError` otherwise.
+  checkStringLiteral(s, "getStringContents")
+  let length = Z3_get_string_length(s.ctx.raw, s.raw)
+  if length == 0'u32:
+    return @[]
+  var buf = newSeq[cuint](int(length))
+  Z3_get_string_contents(s.ctx.raw, s.raw, length, addr buf[0])
+  result = newSeq[int](int(length))
+  for i in 0 ..< int(length):
+    result[i] = int(buf[i])
+
+# ============================================================================
 # Nim-`string`-literal lifts — Z3String-specific (not generic to Z3Seq[E])
 # ============================================================================
 #

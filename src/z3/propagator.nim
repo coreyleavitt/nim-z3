@@ -125,11 +125,12 @@ proc propagatorFreshShim(ctx: pointer,
     newHandlers = box.handlers.fresh(newCtx)
   let subBox = PropagatorCtxBox(handlers: newHandlers, ctx: newCtx,
                                 solver: nil)
-  # Root the subBox in the parent so Nim's GC can see it.
+  # Root via parent's subBoxes seq (ORC reachability path per ADR-N0004 v3).
+  # No GC_ref needed: seq membership keeps the ref alive. The old GC_ref was
+  # redundant (subBox already in seq) and caused a leak because clearSubBoxes
+  # called GC_unref but nothing called GC_unref on boxes that were never
+  # explicitly cleared.
   box.subBoxes.add(subBox)
-  GC_ref(subBox)   # extra pin: subBox is reachable via box.subBoxes AND
-                   # via Z3's user_context pointer (raw cast); the GC ref
-                   # ensures it survives until clearSubBoxes is called.
   result = cast[pointer](subBox)
 
 proc propagatorFixedShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
@@ -211,7 +212,9 @@ proc newPropagator*(s: Z3Solver, handlers: Z3PropagatorHandlers): Z3Propagator =
   ## 2. Optional callbacks registered only when the handler is non-nil,
   ##    avoiding unnecessary overhead on Z3's callback dispatch.
   let box = PropagatorCtxBox(handlers: handlers, ctx: s.ctx, solver: s)
-  GC_ref(box)   # pin: Z3 holds a raw pointer; Nim GC must not collect it.
+  # No GC_ref needed: `Z3Propagator` holds `box` as a `ref` field, giving
+  # ORC the reachability path (ADR-N0004 v3). The extra GC_ref was redundant
+  # and caused a leak because it was never matched with a GC_unref.
   let rawCtx    = cast[pointer](box)
 
   # Mandatory: push / pop / fresh
@@ -255,31 +258,30 @@ proc registerCb*[T: Z3Term](cb: Z3SolverCallback, ctx: Z3Context, e: T) =
 # consequence — assert a theory consequence inside a callback
 # ---------------------------------------------------------------------------
 
-proc consequence*(cb: Z3SolverCallback, lits, eqs: seq[Z3AnyAst],
-                  conseq: Z3AnyAst) =
+proc consequence*(cb: Z3SolverCallback, lits: seq[Z3AnyAst],
+                  eqs: seq[(Z3AnyAst, Z3AnyAst)], conseq: Z3AnyAst) =
   ## Assert that `conseq` follows from the premises `lits` (fixed literals)
-  ## and `eqs` (equal-pair list, length must be even: lhs0, rhs0, lhs1, rhs1
-  ## …). Valid only inside a callback; the context is recovered from the
-  ## thread-local `currentBox`.
+  ## and `eqs` (pairs of equal ASTs). Valid only inside a callback; the
+  ## context is recovered from the thread-local `currentBox`.
   ##
-  ## `eqs` encodes equal pairs: `eqs[2i]` is the lhs, `eqs[2i+1]` the rhs.
-  ## `Z3_solver_propagate_consequence` takes separate lhs/rhs arrays.
+  ## `eqs` is a seq of `(lhs, rhs)` tuples — the tuple type enforces the
+  ## pairing invariant at compile time (no runtime doAssert needed).
+  ## `Z3_solver_propagate_consequence` takes separate lhs/rhs arrays;
+  ## they are split internally just before the FFI call.
   doAssert currentBox != nil,
     "consequence: called outside a propagator callback (currentBox is nil)"
-  doAssert (eqs.len mod 2) == 0,
-    "consequence: eqs must have even length (lhs/rhs pairs)"
   let ctx = currentBox.ctx
 
   var fixedRaws = newSeq[RawZ3Ast](lits.len)
   for i, l in lits:
     fixedRaws[i] = l.raw
 
-  let numEqs = eqs.len div 2
+  let numEqs = eqs.len
   var eqLhs  = newSeq[RawZ3Ast](numEqs)
   var eqRhs  = newSeq[RawZ3Ast](numEqs)
-  for i in 0 ..< numEqs:
-    eqLhs[i] = eqs[2 * i].raw
-    eqRhs[i] = eqs[2 * i + 1].raw
+  for i, pair in eqs:
+    eqLhs[i] = pair[0].raw
+    eqRhs[i] = pair[1].raw
 
   let fixedPtr: ptr UncheckedArray[RawZ3Ast] =
     if fixedRaws.len > 0:
@@ -320,13 +322,15 @@ proc nextSplit*(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) =
 # propagateConflict — assert a contradiction inside a callback
 # ---------------------------------------------------------------------------
 
-proc propagateConflict*(cb: Z3SolverCallback, lits, eqs: seq[Z3AnyAst]) =
+proc propagateConflict*(cb: Z3SolverCallback, lits: seq[Z3AnyAst],
+                        eqs: seq[(Z3AnyAst, Z3AnyAst)] = @[]) =
   ## Assert a contradiction (UNSAT) by propagating `false` as the consequence
   ## of the given premises. Equivalent to calling `consequence` with
   ## `conseq = mkFalse(ctx)`.
   ##
   ## `lits` — fixed literals that, together with `eqs`, imply contradiction.
-  ## `eqs`  — equal-pair list (length must be even: lhs0, rhs0, lhs1, rhs1 …).
+  ## `eqs`  — equal pairs `(lhs, rhs)` that, together with `lits`, imply
+  ##           contradiction. Defaults to empty (most common case).
   ##
   ## Valid only inside a callback; the context is recovered from the
   ## thread-local `currentBox`.
@@ -345,7 +349,6 @@ proc clearSubBoxes*(p: Z3Propagator) =
   ##
   ## Safe to call only OUTSIDE an active `check()` — calling during a callback
   ## invalidates Z3 pointers. Sub-boxes are also released automatically when
-  ## `p` is collected; this proc is for explicit eager cleanup.
-  for sub in p.box.subBoxes:
-    GC_unref(sub)
+  ## `p` is collected (ORC drops them with the seq); this proc is for explicit
+  ## eager cleanup only.
   p.box.subBoxes.setLen(0)

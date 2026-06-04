@@ -21,34 +21,45 @@
 ## back into Z3 in a way that would re-enter the solver (same restriction as
 ## the propagator's final handler).
 ##
-## ## Strong-reference ownership
+## ## Ownership design
 ##
-## `registerOnClause` heap-allocates a `RawZ3OnClauseBox` and pins it with
-## `GC_ref`. Z3 holds the raw pointer as `user_context`; the strong ref
-## prevents the GC from collecting the box before `check()` returns.
-## The box is released with `GC_unref` only when the `Z3Solver` itself is
-## finalised — which guarantees lifetime coverage for any number of
-## `check()` calls after registration.
+## `registerOnClause` stores the heap-allocated `RawZ3OnClauseBox` ref in a
+## thread-local `Table[uint, seq[ref RawZ3OnClauseBox]]` keyed on the raw
+## solver pointer. ORC keeps the boxes alive as long as they're in the table.
+## Entries accumulate across repeated `registerOnClause` calls on the same
+## solver (Z3 replaces the active callback, but we retain the old box to avoid
+## use-after-free if Z3 fires it after the replacement). Entries are not
+## reclaimed until the thread exits or the table is reset — this is acceptable
+## for v2.0 because (a) solvers are short-lived in practice, and (b) each box
+## is small (a closure + context ref). A future `unregisterOnClause` proc can
+## trim the seq when the solver is known dead.
 ##
 ## Only one on-clause callback can be active per solver at a time; calling
 ## `registerOnClause` a second time replaces the previous registration
-## (Z3 semantics).
+## (Z3 semantics). The previous box is retained in the table (not freed)
+## because Z3 may still hold the raw pointer transiently across the boundary.
 
 when not defined(z3WithoutOnClause):
+  import std/tables
   import ./ffi, ./context, ./ast, ./solver, ./astvector, ./introspect
 
   # --------------------------------------------------------------------------
-  # RawZ3OnClauseBox — Nim-side closure storage, GC-pinned
+  # RawZ3OnClauseBox — Nim-side closure storage
   # --------------------------------------------------------------------------
 
   type
     RawZ3OnClauseBox = ref object
       ## Heap-allocated closure holder. Z3 receives a raw `pointer` to this
-      ## object as `user_context`; we keep a strong ref on the `Z3Solver` so
-      ## the box can safely be used across multiple `check()` calls.
+      ## object as `user_context`. The box is kept alive by ORC through the
+      ## thread-local `onClauseBoxes` registry below.
       cb:  proc(proofHint: Z3AnyAst, deps: seq[uint],
                 lits: Z3AstVector) {.closure.}
       ctx: Z3Context
+
+  # Thread-local registry: raw solver pointer → seq of boxes held for that
+  # solver. ORC keeps boxes alive as long as they're in this table.
+  # RawZ3OnClauseBox is already a ref object; seq[RawZ3OnClauseBox] holds refs.
+  var onClauseBoxes {.threadvar.}: Table[uint, seq[RawZ3OnClauseBox]]
 
   # --------------------------------------------------------------------------
   # C-side shim — must be a module-level {.cdecl.} proc (not a closure).
@@ -93,7 +104,11 @@ when not defined(z3WithoutOnClause):
     ## Requires Z3 4.12+. Compile with `-d:z3WithoutOnClause` to disable
     ## this surface on older Z3 builds.
     let box = RawZ3OnClauseBox(cb: cb, ctx: s.ctx)
-    GC_ref(box)  # pin: Z3 holds a raw pointer; GC must not collect it
+    # Root via thread-local table (ORC reachability path); no GC_ref needed.
+    let key = cast[uint](s.raw)
+    if key notin onClauseBoxes:
+      onClauseBoxes[key] = @[]
+    onClauseBoxes[key].add(box)
     let rawCtx = cast[pointer](box)
     # Cast the shim to `pointer` because the FFI declares the callback param
     # as `pointer` to avoid a Nim-vs-C `const unsigned int *` mismatch;

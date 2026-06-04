@@ -263,7 +263,7 @@ proc `!=`*[E, S: static int](a, b: Z3Fp[E, S]): Z3Bool =
 # Model extraction
 # ============================================================================
 
-proc fpBitsToUint64(a: Z3Fp): uint64 =
+proc fpBitsToUint64[E, S: static int](a: Z3Fp[E, S]): uint64 =
   ## Internal: extract the IEEE 754 bit pattern of an FP literal as a
   ## uint64. Z3 doesn't ship a direct float-extractor; the route is
   ## via `Z3_mk_fpa_to_ieee_bv` + `simplify` + the existing BV numeral

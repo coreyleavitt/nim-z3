@@ -530,9 +530,8 @@ proc cube*(s: Z3Solver, vars: Z3AstVector, backtrackLevel: int): Z3AstVector =
   ## Backed by `Z3_solver_cube`. Works with both `newSolver` and
   ## `newSimpleSolver`; call `check()` first on the solver to warm up
   ## internal state. N8.2.
-  var varsCopy = vars  # may not be needed but clarifies ownership intent
   let raw = s.ctx.checkErr Z3_solver_cube(
-    s.ctx.raw, s.raw, varsCopy.raw, cuint(backtrackLevel))
+    s.ctx.raw, s.raw, vars.raw, cuint(backtrackLevel))
   wrapAstVector(s.ctx, raw)
 
 proc congruenceRoot*[T: Z3Term](s: Z3Solver, ast: T): RawZ3Ast =

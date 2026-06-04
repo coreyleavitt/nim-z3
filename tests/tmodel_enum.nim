@@ -95,39 +95,37 @@ suite "Z3Model — numConsts / constDecl / numFuncs / funcDecl / hasInterp":
 # ---------------------------------------------------------------------------
 
 suite "Z3Model — numSorts / sort / sortUniverse":
-  # Use mkUninterpretedSort (exported from z3/sort) and Z3_mk_const from the
-  # exported ffi module to create two values of an opaque sort.
-  # Use Z3_mk_distinct (takes ptr UncheckedArray) to assert they differ.
+  # Z3 4.15 regression note:
+  # Both Z3_mk_const and Z3_mk_fresh_const with an uninterpreted sort are
+  # broken under Z3_mk_context_rc (which newContext() uses) — any attempt
+  # to pass those constants to Z3_mk_distinct / Z3_mk_eq / Z3_mk_app
+  # produces "sort mismatch" and SIGSEGV.  The bug reproduces in pure C;
+  # confirmed on 4.15.0.0.  The SMT-LIB2 parser goes through a different
+  # internal code-path and is not affected, so we feed the constraint via
+  # `loadSmt2String` / `s.loadSmt2String(...)` to work around it.
 
   test "numSorts >= 1 after asserting constraint on an uninterpreted sort":
     let ctx = newContext()
-    let s = newSolver()
-    let colorSort = mkUninterpretedSort(ctx, "Color")
-    let symRed  = Z3_mk_string_symbol(ctx.raw, "red")
-    let symBlue = Z3_mk_string_symbol(ctx.raw, "blue")
-    let rawRed  = Z3_mk_const(ctx.raw, symRed,  colorSort.raw)
-    let rawBlue = Z3_mk_const(ctx.raw, symBlue, colorSort.raw)
-    # Use Z3_mk_distinct to assert red != blue.
-    var args = [rawRed, rawBlue]
-    let neq = Z3_mk_distinct(ctx.raw, 2'u32,
-                              cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]))
-    s.add wrap[Z3Bool](ctx, neq)
+    let s = newSolver(ctx)
+    s.loadSmt2String """
+      (declare-sort Color 0)
+      (declare-const red Color)
+      (declare-const blue Color)
+      (assert (distinct red blue))
+    """
     check s.check() == zsSat
     let m = s.model()
     check m.numSorts >= 1
 
   test "sort(i) returns non-nil RawZ3Sort for each tracked sort":
     let ctx = newContext()
-    let s = newSolver()
-    let colorSort = mkUninterpretedSort(ctx, "Color")
-    let symRed  = Z3_mk_string_symbol(ctx.raw, "red")
-    let symBlue = Z3_mk_string_symbol(ctx.raw, "blue")
-    let rawRed  = Z3_mk_const(ctx.raw, symRed,  colorSort.raw)
-    let rawBlue = Z3_mk_const(ctx.raw, symBlue, colorSort.raw)
-    var args = [rawRed, rawBlue]
-    let neq = Z3_mk_distinct(ctx.raw, 2'u32,
-                              cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]))
-    s.add wrap[Z3Bool](ctx, neq)
+    let s = newSolver(ctx)
+    s.loadSmt2String """
+      (declare-sort Color 0)
+      (declare-const red Color)
+      (declare-const blue Color)
+      (assert (distinct red blue))
+    """
     check s.check() == zsSat
     let m = s.model()
     let ns = m.numSorts
@@ -138,16 +136,13 @@ suite "Z3Model — numSorts / sort / sortUniverse":
 
   test "sortUniverse for Color has >= 2 elements when red != blue":
     let ctx = newContext()
-    let s = newSolver()
-    let colorSort = mkUninterpretedSort(ctx, "Color")
-    let symRed  = Z3_mk_string_symbol(ctx.raw, "red")
-    let symBlue = Z3_mk_string_symbol(ctx.raw, "blue")
-    let rawRed  = Z3_mk_const(ctx.raw, symRed,  colorSort.raw)
-    let rawBlue = Z3_mk_const(ctx.raw, symBlue, colorSort.raw)
-    var args = [rawRed, rawBlue]
-    let neq = Z3_mk_distinct(ctx.raw, 2'u32,
-                              cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]))
-    s.add wrap[Z3Bool](ctx, neq)
+    let s = newSolver(ctx)
+    s.loadSmt2String """
+      (declare-sort Color 0)
+      (declare-const red Color)
+      (declare-const blue Color)
+      (assert (distinct red blue))
+    """
     check s.check() == zsSat
     let m = s.model()
     let ns = m.numSorts

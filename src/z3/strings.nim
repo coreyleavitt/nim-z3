@@ -132,3 +132,27 @@ liftBinString(`&`, Z3String)
 liftBinString(contains, Z3Bool)
 liftBinString(startsWith, Z3Bool)
 liftBinString(endsWith, Z3Bool)
+
+# ============================================================================
+# Lexicographic ordering — string-specific (no generic Z3Seq equivalent)
+# ============================================================================
+#
+# SMT-LIB `str.<` and `str.<=` map to Z3_mk_str_lt / Z3_mk_str_le.
+# The Z3 C API has no `Z3_mk_str_gt` or `Z3_mk_str_ge`; `>` and `>=`
+# are derived by swapping the two arguments.
+
+proc `<`*(a, b: Z3String): Z3Bool {.inline.} =
+  ## Lexicographic strict less-than. Wraps `Z3_mk_str_lt`.
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_str_lt(a.ctx.raw, a.raw, b.raw))
+
+proc `<=`*(a, b: Z3String): Z3Bool {.inline.} =
+  ## Lexicographic less-or-equal. Wraps `Z3_mk_str_le`.
+  wrap[Z3Bool](a.ctx, a.ctx.checkErr Z3_mk_str_le(a.ctx.raw, a.raw, b.raw))
+
+proc `>`*(a, b: Z3String): Z3Bool {.inline.} =
+  ## Lexicographic strict greater-than. Derived as `b < a`.
+  b < a
+
+proc `>=`*(a, b: Z3String): Z3Bool {.inline.} =
+  ## Lexicographic greater-or-equal. Derived as `b <= a`.
+  b <= a

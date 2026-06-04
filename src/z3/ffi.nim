@@ -1923,6 +1923,12 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
+  proc Z3_mk_str_lt(c: RawZ3Context, prefix, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Lexicographic strict less-than: `prefix <_lex s`.
+  proc Z3_mk_str_le(c: RawZ3Context, prefix, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Lexicographic less-or-equal: `prefix <=_lex s`.
 
   # --- FloatingPoint (v0.3 step 6) -----------------------------------------
   #

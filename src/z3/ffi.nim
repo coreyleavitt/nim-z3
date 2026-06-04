@@ -1923,6 +1923,20 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
+  proc Z3_mk_string_to_code(c: RawZ3Context, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Unicode codepoint of the first (and only) character of a
+    ## single-character string. Returns -1 for the empty string or any
+    ## string of length != 1.
+  proc Z3_mk_string_from_code(c: RawZ3Context, a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Single-character string whose codepoint equals `a`.
+  proc Z3_mk_ubv_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Unsigned bit-vector to decimal string representation.
+  proc Z3_mk_sbv_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Signed bit-vector to decimal string representation.
   proc Z3_mk_str_lt(c: RawZ3Context, prefix, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
     ## Lexicographic strict less-than: `prefix <_lex s`.

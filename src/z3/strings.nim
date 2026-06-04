@@ -30,7 +30,7 @@
 ## arithmetic, regex membership, and free string variables may return
 ## `zsUnknown` or run for a long time.
 
-import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./chars, ./sequence
+import ./ffi, ./context, ./error, ./ast, ./builder, ./model, ./chars, ./sequence, ./bitvec
 export sequence
   # Re-export so `import z3/strings` users get the generic Z3Seq surface
   # for free — that's where `len`, `concat`, `nth`, etc. now live. The
@@ -100,6 +100,29 @@ proc evalStr*(m: Z3Model, a: Z3String, modelCompletion = true): string {.inline.
 # Int interop — string-specific (no generic Z3Seq equivalent)
 # ============================================================================
 
+# ============================================================================
+# Codepoint conversion — string-specific (N5.2)
+# ============================================================================
+
+proc toCode*(s: Z3String): Z3Int =
+  ## SMT `(str.to_code s)`. The Unicode codepoint of the single character
+  ## in `s`, or `-1` if `s` is empty or has length > 1.
+  ##
+  ## Wraps `Z3_mk_string_to_code`.
+  wrap[Z3Int](s.ctx, s.ctx.checkErr Z3_mk_string_to_code(s.ctx.raw, s.raw))
+
+proc fromCode*(ctx: Z3Context, c: Z3Int): Z3String =
+  ## SMT `(str.from_code c)`. A single-character string whose codepoint
+  ## equals `c`. For `c` outside the valid Unicode range Z3 returns the
+  ## empty string.
+  ##
+  ## Wraps `Z3_mk_string_from_code`.
+  wrap[Z3String](ctx, ctx.checkErr Z3_mk_string_from_code(ctx.raw, c.raw))
+
+proc fromCode*(c: Z3Int): Z3String =
+  ## Context-free variant — uses the current implicit context.
+  fromCode(c.ctx, c)
+
 proc strToInt*(s: Z3String): Z3Int =
   ## SMT `(str.to.int s)`. Non-negative integer the digits of `s`
   ## represent, or `-1` if `s` isn't a non-empty digit string.
@@ -156,3 +179,33 @@ proc `>`*(a, b: Z3String): Z3Bool {.inline.} =
 proc `>=`*(a, b: Z3String): Z3Bool {.inline.} =
   ## Lexicographic greater-or-equal. Derived as `b <= a`.
   b <= a
+
+# ============================================================================
+# BV-to-string conversion — cross-theory (N5.2)
+# ============================================================================
+#
+# Lives here (strings.nim) rather than bitvec.nim because `Z3String` is
+# defined in this gated module; bitvec.nim is always-on core and cannot
+# import a gated-theory module without breaking the layering.
+
+proc toString*[W: static int](a: Z3BitVec[W], signed: bool = false): Z3String =
+  ## Theory-level BV → String conversion. Returns a `Z3String` AST
+  ## containing the decimal representation of `a`.
+  ##
+  ## `signed = false` (default): unsigned interpretation, result in
+  ##   `["0", "2^W − 1"]`.
+  ## `signed = true`: two's-complement signed interpretation, result in
+  ##   `["-2^(W−1)", "2^(W−1) − 1"]`.
+  ##
+  ## This is a *formula builder* — the result is a `Z3String` AST that
+  ## participates in further string/arithmetic reasoning. Contrast with
+  ## `.toBigUintStr` / `.toBigIntStr` (model extractors on concrete
+  ## numerals).
+  ##
+  ## Wraps `Z3_mk_ubv_to_str` (unsigned) or `Z3_mk_sbv_to_str` (signed).
+  if signed:
+    wrap[Z3String](a.ctx,
+      a.ctx.checkErr Z3_mk_sbv_to_str(a.ctx.raw, a.raw))
+  else:
+    wrap[Z3String](a.ctx,
+      a.ctx.checkErr Z3_mk_ubv_to_str(a.ctx.raw, a.raw))

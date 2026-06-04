@@ -183,36 +183,18 @@ when not defined(z3WithoutAlgebraic):
     Z3_algebraic_neq(a.ctx.raw, a.raw, b.raw)
 
   # ==========================================================================
-  # Standard comparison operators — thin aliases over algebraicXxx procs.
-  # These return concrete Nim `bool`, NOT symbolic `Z3Bool`. Arithmetic
-  # operators (+, -, *, /) are NOT defined here because they would shadow
-  # arith.nim's symbolic operators (which also operate on Z3Real) and cause
-  # ambiguous call errors when both modules are in scope via `import z3`.
-  # Use `algebraicAdd` / `algebraicSub` / `algebraicMul` / `algebraicDiv`
-  # for the explicit concrete forms.
+  # No operator overloads (+, -, *, /, <, <=, >, >=, ==, !=) are exposed here.
   #
-  # The comparison operators are safe to expose as operators because their
-  # return type (bool) differs from arith.nim's comparison operators (Z3Bool),
-  # making the two families non-ambiguous for callers who only need concrete
-  # ordering checks.
-  # ==========================================================================
-
-  proc `<`*(a, b: Z3Real): bool {.inline.} =
-    ## Algebraic less-than (concrete bool). Alias for `algebraicLt`.
-    algebraicLt(a, b)
-
-  proc `<=`*(a, b: Z3Real): bool {.inline.} =
-    ## Algebraic less-or-equal (concrete bool). Alias for `algebraicLe`.
-    algebraicLe(a, b)
-
-  proc `>`*(a, b: Z3Real): bool {.inline.} =
-    ## Algebraic greater-than (concrete bool). Alias for `algebraicGt`.
-    algebraicGt(a, b)
-
-  proc `>=`*(a, b: Z3Real): bool {.inline.} =
-    ## Algebraic greater-or-equal (concrete bool). Alias for `algebraicGe`.
-    algebraicGe(a, b)
-
+  # Algebraic-number ops and arith.nim's symbolic ops both take Z3Real but
+  # mean different things. Even though the algebraic ops return concrete
+  # `bool` / `Z3Real` while symbolic comparisons return `Z3Bool`, Nim's
+  # overload resolution can still pick the wrong one in call sites where the
+  # expected return type is widened (e.g. `$(r >= s)` accepts both `$bool`
+  # and `$Z3Bool`). The result is silent wrong-overload selection.
+  #
+  # First-principles fix is a distinct type for algebraic numbers; until that
+  # lands, callers use the explicit `algebraicAdd` / `algebraicLt` / etc.
+  # forms below.
   # ==========================================================================
   # Root enumeration — returns seq[Z3Real]
   # ==========================================================================

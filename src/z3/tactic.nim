@@ -250,7 +250,8 @@ proc parOr*(ctx: Z3Context, tactics: openArray[Z3Tactic]): Z3Tactic =
   for i, t in tactics:
     raws[i] = t.raw
   wrapTactic(ctx,
-    ctx.checkErr Z3_tactic_par_or(ctx.raw, cuint(raws.len), addr raws[0]))
+    ctx.checkErr Z3_tactic_par_or(ctx.raw, cuint(raws.len),
+      cast[ptr UncheckedArray[RawZ3Tactic]](addr raws[0])))
 
 proc parOr*(tactics: openArray[Z3Tactic]): Z3Tactic =
   ## Current-context overload for `parOr`.

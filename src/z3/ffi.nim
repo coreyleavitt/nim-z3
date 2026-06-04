@@ -932,6 +932,39 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## See v0.2 plan §1 and `z3/optimize` docs for the semantic
     ## differences.
 
+  proc Z3_optimize_assert_and_track(c: RawZ3Context, o: RawZ3Optimize,
+                                    a: RawZ3Ast, t: RawZ3Ast)
+    {.cdecl, header: "z3.h".}
+    ## Assert hard constraint `a` tagged by tracker proposition `t`
+    ## (a fresh Boolean literal). After an unsat `check()`,
+    ## `Z3_optimize_get_unsat_core` returns the subset of trackers
+    ## participating in the contradiction.
+
+  proc Z3_optimize_get_unsat_core(c: RawZ3Context, o: RawZ3Optimize):
+                                   RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Extract the unsat core after `check() == zsUnsat`. Returns an
+    ## `ast_vector` of tracker literals that participate in the
+    ## contradiction. Mirrors `Z3_solver_get_unsat_core`.
+
+  proc Z3_optimize_from_string(c: RawZ3Context, o: RawZ3Optimize, src: cstring)
+    {.cdecl, header: "z3.h".}
+    ## Parse an SMT2 string (with `(maximize ...)` / `(minimize ...)`
+    ## directives) and assert directly into `o`. Mirrors
+    ## `Z3_solver_from_string`.
+
+  proc Z3_optimize_from_file(c: RawZ3Context, o: RawZ3Optimize,
+                              file_name: cstring)
+    {.cdecl, header: "z3.h".}
+    ## File-input twin of `Z3_optimize_from_string`. Mirrors
+    ## `Z3_solver_from_file`.
+
+  proc Z3_optimize_get_help(c: RawZ3Context, o: RawZ3Optimize): cstring
+    {.cdecl, header: "z3.h".}
+    ## Z3's documentation for optimiser parameters. Returns a multiline
+    ## string with each parameter name + meaning. Mirrors
+    ## `Z3_fixedpoint_get_help`.
+
   # --- Fixedpoint / CHC (v0.4 step 5) --------------------------------------
 
   proc Z3_mk_fixedpoint(c: RawZ3Context): RawZ3Fixedpoint

@@ -35,7 +35,7 @@
 ## 6B's `getParamDescrs` returns the schema at runtime), and
 ## `tests/toptimize.nim` for working examples of each mode.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./fp, ./model, ./solver, ./params
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./fp, ./model, ./solver, ./params, ./astvector
 
 # ============================================================================
 # Z3Optimize — lifecycle
@@ -245,6 +245,57 @@ proc getParamDescrs*(o: Z3Optimize): Z3ParamDescrs =
   ## `Z3Tactic.getParamDescrs`; v0.5.0 medium audit (B3).
   wrapParamDescrs(o.ctx,
     o.ctx.checkErr Z3_optimize_get_param_descrs(o.ctx.raw, o.raw))
+
+# ============================================================================
+# assertAndTrack / getUnsatCore (N7.6a)
+# ============================================================================
+
+proc assertAndTrack*(o: Z3Optimize, p: Z3Bool, tracker: Z3Bool) {.discardable.} =
+  ## Assert hard constraint `p` tagged by tracker proposition `tracker`
+  ## (a fresh Boolean literal). After an unsat `check()`, `getUnsatCore`
+  ## returns the subset of tracker propositions whose assertions
+  ## participate in the contradiction. Mirrors
+  ## `Z3Solver.assertConstraintAndTrack`.
+  o.ctx.checkErrVoid Z3_optimize_assert_and_track(o.ctx.raw, o.raw, p.raw,
+                                                   tracker.raw)
+
+proc getUnsatCore*(o: Z3Optimize): seq[Z3Bool] =
+  ## Extract the minimal unsatisfiable core after `check() == zsUnsat`.
+  ## Returns the subset of tracker propositions (the second argument to
+  ## `assertAndTrack`) whose assertions participate in the contradiction.
+  ##
+  ## Returns the empty sequence if no tracked assertions are in the core
+  ## (e.g. if `check()` returned sat / unknown, or if no tracked
+  ## assertions were added). Mirrors `Z3Solver.getUnsatCore`.
+  let raw = o.ctx.checkErr Z3_optimize_get_unsat_core(o.ctx.raw, o.raw)
+  let vec = wrapAstVector(o.ctx, raw)
+  vec.toSeq(Z3Bool)
+
+# ============================================================================
+# fromString / fromFile (N7.6a)
+# ============================================================================
+
+proc fromString*(o: Z3Optimize, s: string) =
+  ## Parse an SMT2 string (which may include `(maximize ...)` /
+  ## `(minimize ...)` directives) and assert the constraints and
+  ## objectives directly into `o`. Mirrors `Z3Solver.fromString` (v0.4
+  ## step 14) for the optimiser API.
+  o.ctx.checkErrVoid Z3_optimize_from_string(o.ctx.raw, o.raw, s.cstring)
+
+proc fromFile*(o: Z3Optimize, path: string) =
+  ## Load an SMT2 file and assert its contents into `o`. File-input twin
+  ## of `fromString`. Mirrors `Z3_solver_from_file` for the optimiser API.
+  o.ctx.checkErrVoid Z3_optimize_from_file(o.ctx.raw, o.raw, path.cstring)
+
+# ============================================================================
+# getHelp (N7.6a)
+# ============================================================================
+
+proc getHelp*(o: Z3Optimize): string =
+  ## Z3's documentation for optimiser parameters. Returns a multiline
+  ## string with each parameter name and its meaning. Mirrors
+  ## `Z3Fixedpoint.getHelp` and `Z3_fixedpoint_get_help`.
+  $Z3_optimize_get_help(o.ctx.raw, o.raw)
 
 # ============================================================================
 # Pretty

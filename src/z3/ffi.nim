@@ -601,6 +601,39 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `if t1 then t2 else t3` — `t1` must be Bool; `t2` and `t3` must
     ## have the same sort.
 
+  # --- Pseudo-boolean / cardinality ----------------------------------------
+  #
+  # atmost/atleast take an *unsigned* k; pble/pbge/pbeq take *signed* k
+  # and a coefficients array (also signed int).
+
+  proc Z3_mk_atmost(c: RawZ3Context, num_args: cuint,
+                    args: ptr UncheckedArray[RawZ3Ast],
+                    k: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_atleast(c: RawZ3Context, num_args: cuint,
+                     args: ptr UncheckedArray[RawZ3Ast],
+                     k: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_pble(c: RawZ3Context, num_args: cuint,
+                  args: ptr UncheckedArray[RawZ3Ast],
+                  coeffs: ptr UncheckedArray[cint],
+                  k: cint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_pbge(c: RawZ3Context, num_args: cuint,
+                  args: ptr UncheckedArray[RawZ3Ast],
+                  coeffs: ptr UncheckedArray[cint],
+                  k: cint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_mk_pbeq(c: RawZ3Context, num_args: cuint,
+                  args: ptr UncheckedArray[RawZ3Ast],
+                  coeffs: ptr UncheckedArray[cint],
+                  k: cint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
   # --- Arithmetic + comparison ---------------------------------------------
 
   proc Z3_mk_add(c: RawZ3Context, num_args: cuint,

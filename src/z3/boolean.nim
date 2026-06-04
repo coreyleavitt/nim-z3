@@ -148,6 +148,94 @@ emitVarargsMonoid(mkOr, Z3_mk_or, mkFalse)
 # `distinct` — pairwise-distinct, generic over sort
 # ----------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------
+# Pseudo-boolean cardinality constraints
+# ----------------------------------------------------------------------------
+#
+# `atMost(lits, k)` — at most k of the literals are true.
+# `atLeast(lits, k)` — at least k of the literals are true.
+# `pbLe(lits, weights, k)` — weighted sum ≤ k.
+# `pbGe(lits, weights, k)` — weighted sum ≥ k.
+# `pbEq(lits, weights, k)` — weighted sum = k.
+#
+# All heap-allocate the args array (Z3 4.15 stack-array crash rule).
+# The pb* variants also heap-allocate the coefficients array.
+
+proc atMost*(lits: openArray[Z3Bool], k: uint): Z3Bool =
+  ## At most `k` of `lits` are true.
+  if lits.len == 0:
+    raise newException(ValueError, "atMost: lits must be non-empty")
+  let ctx = lits[0].ctx
+  var args = newSeq[RawZ3Ast](lits.len)
+  for i, l in lits: args[i] = l.raw
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_atmost(
+    ctx.raw, lits.len.cuint,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]),
+    k.cuint))
+
+proc atLeast*(lits: openArray[Z3Bool], k: uint): Z3Bool =
+  ## At least `k` of `lits` are true.
+  if lits.len == 0:
+    raise newException(ValueError, "atLeast: lits must be non-empty")
+  let ctx = lits[0].ctx
+  var args = newSeq[RawZ3Ast](lits.len)
+  for i, l in lits: args[i] = l.raw
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_atleast(
+    ctx.raw, lits.len.cuint,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]),
+    k.cuint))
+
+proc pbLe*(lits: openArray[Z3Bool], weights: openArray[int], k: int): Z3Bool =
+  ## Weighted pseudo-boolean ≤: `sum(weights[i] * lits[i]) ≤ k`.
+  if lits.len == 0:
+    raise newException(ValueError, "pbLe: lits must be non-empty")
+  if lits.len != weights.len:
+    raise newException(ValueError, "pbLe: lits and weights must have the same length")
+  let ctx = lits[0].ctx
+  var args = newSeq[RawZ3Ast](lits.len)
+  var coeffs = newSeq[cint](weights.len)
+  for i, l in lits: args[i] = l.raw
+  for i, w in weights: coeffs[i] = w.cint
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_pble(
+    ctx.raw, lits.len.cuint,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]),
+    cast[ptr UncheckedArray[cint]](addr coeffs[0]),
+    k.cint))
+
+proc pbGe*(lits: openArray[Z3Bool], weights: openArray[int], k: int): Z3Bool =
+  ## Weighted pseudo-boolean ≥: `sum(weights[i] * lits[i]) ≥ k`.
+  if lits.len == 0:
+    raise newException(ValueError, "pbGe: lits must be non-empty")
+  if lits.len != weights.len:
+    raise newException(ValueError, "pbGe: lits and weights must have the same length")
+  let ctx = lits[0].ctx
+  var args = newSeq[RawZ3Ast](lits.len)
+  var coeffs = newSeq[cint](weights.len)
+  for i, l in lits: args[i] = l.raw
+  for i, w in weights: coeffs[i] = w.cint
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_pbge(
+    ctx.raw, lits.len.cuint,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]),
+    cast[ptr UncheckedArray[cint]](addr coeffs[0]),
+    k.cint))
+
+proc pbEq*(lits: openArray[Z3Bool], weights: openArray[int], k: int): Z3Bool =
+  ## Weighted pseudo-boolean equality: `sum(weights[i] * lits[i]) = k`.
+  if lits.len == 0:
+    raise newException(ValueError, "pbEq: lits must be non-empty")
+  if lits.len != weights.len:
+    raise newException(ValueError, "pbEq: lits and weights must have the same length")
+  let ctx = lits[0].ctx
+  var args = newSeq[RawZ3Ast](lits.len)
+  var coeffs = newSeq[cint](weights.len)
+  for i, l in lits: args[i] = l.raw
+  for i, w in weights: coeffs[i] = w.cint
+  wrap[Z3Bool](ctx, ctx.checkErr Z3_mk_pbeq(
+    ctx.raw, lits.len.cuint,
+    cast[ptr UncheckedArray[RawZ3Ast]](addr args[0]),
+    cast[ptr UncheckedArray[cint]](addr coeffs[0]),
+    k.cint))
+
 proc mkDistinct*[T: Z3Term](xs: varargs[T]): Z3Bool =
   ## `(distinct x_1 ... x_n)` — true iff every pair `(x_i, x_j)` with
   ## `i != j` is unequal. Generic across every typed-AST family

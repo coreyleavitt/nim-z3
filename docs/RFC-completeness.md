@@ -614,6 +614,8 @@ Same as v1: `Z3_get_datatype_sort_num_constructors/_constructor/_recognizer/_con
 
 Same as v1.
 
+**v5.1 implementer correction (N2.5):** `Z3_get_quantifier_id` and `Z3_get_quantifier_skolem_id` return `Z3_symbol` (NOT `int`). Nim surface uses `string` via `Z3_get_symbol_string`, which uniformly handles both int-kind and string-kind symbols. Unnamed quantifiers built via `mk_forall_const` produce int-symbol `"0"`. `substituteVars` already exists generically in `rewrite.nim` as `substituteVars[T: Z3Term](a, replacements)` — no duplication needed.
+
 ### N2.6 — N-ary quantifier escape hatch (NEW per Lens 2 C-B1)
 
 ```nim

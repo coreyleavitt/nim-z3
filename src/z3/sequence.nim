@@ -90,8 +90,16 @@ proc nth*[E](s: Z3Seq[E], index: Z3Int): E =
   ## produce an unspecified value (the SMT-LIB underspecification).
   wrap[E](s.ctx, s.ctx.checkErr Z3_mk_seq_nth(s.ctx.raw, s.raw, index.raw))
 
+proc nth*[E](s: Z3Seq[E], index: int): E {.inline.} =
+  ## `int` overload — lifts `index` via `mkInt` then delegates.
+  nth(s, mkInt(s.ctx, index))
+
 proc `[]`*[E](s: Z3Seq[E], index: Z3Int): E {.inline.} =
   ## `s[i]` aliases `nth(s, i)` — matches Nim's seq-indexing idiom.
+  nth(s, index)
+
+proc `[]`*[E](s: Z3Seq[E], index: int): E {.inline.} =
+  ## `int` overload of `s[i]` — lifts `index` via `mkInt`.
   nth(s, index)
 
 # ============================================================================
@@ -128,11 +136,19 @@ proc at*[E](a: Z3Seq[E], index: Z3Int): Z3Seq[E] =
   let raw = a.ctx.checkErr Z3_mk_seq_at(a.ctx.raw, a.raw, index.raw)
   wrap[Z3Seq[E]](a.ctx, raw)
 
+proc at*[E](a: Z3Seq[E], index: int): Z3Seq[E] {.inline.} =
+  ## `int` overload — lifts `index` via `mkInt` then delegates.
+  at(a, mkInt(a.ctx, index))
+
 proc substr*[E](a: Z3Seq[E], offset, length: Z3Int): Z3Seq[E] =
   ## SMT `(seq.extract a offset length)`. Out-of-range offsets /
   ## lengths yield the empty sequence.
   let raw = a.ctx.checkErr Z3_mk_seq_extract(a.ctx.raw, a.raw, offset.raw, length.raw)
   wrap[Z3Seq[E]](a.ctx, raw)
+
+proc substr*[E](a: Z3Seq[E], offset, length: int): Z3Seq[E] {.inline.} =
+  ## `int` overload — lifts both `offset` and `length` via `mkInt`.
+  substr(a, mkInt(a.ctx, offset), mkInt(a.ctx, length))
 
 proc contains*[E](a, sub: Z3Seq[E]): Z3Bool =
   ## SMT `(seq.contains a sub)`.
@@ -153,6 +169,10 @@ proc indexOf*[E](a, sub: Z3Seq[E], start: Z3Int): Z3Int =
   ## if not found.
   let raw = a.ctx.checkErr Z3_mk_seq_index(a.ctx.raw, a.raw, sub.raw, start.raw)
   wrap[Z3Int](a.ctx, raw)
+
+proc indexOf*[E](a, sub: Z3Seq[E], start: int): Z3Int {.inline.} =
+  ## `int` overload — lifts `start` via `mkInt` then delegates.
+  indexOf(a, sub, mkInt(a.ctx, start))
 
 proc indexOf*[E](a, sub: Z3Seq[E]): Z3Int {.inline.} =
   indexOf(a, sub, mkInt(a.ctx, 0))

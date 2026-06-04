@@ -313,6 +313,10 @@ when not z3WithoutProbeEff:
   import z3/probe
   export probe
 
+when not defined(z3WithoutSimplifierObject):
+  import z3/simplifier
+  export simplifier
+
 when not z3WithoutSeqEff:
   import z3/sequence
   export sequence

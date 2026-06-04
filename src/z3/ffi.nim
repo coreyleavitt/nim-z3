@@ -2849,6 +2849,46 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Register a callback to receive asserted, inferred, and deleted
     ## clauses during Z3's CDCL(T) search. Matches `Z3_solver_register_on_clause`.
 
+  # --- Simplifier object API (N8.7 — Z3 4.12+) --------------------------------
+  # `Z3_simplifier_to_string` does not exist in Z3's C API; `getHelp` is
+  # the nearest equivalent for human-readable descriptions.
+
+  proc Z3_mk_simplifier(c: RawZ3Context, name: cstring): RawZ3Simplifier
+    {.cdecl, header: "z3.h".}
+    ## Return the simplifier associated with `name`. See
+    ## `Z3_get_num_simplifiers` / `Z3_get_simplifier_name` for enumeration.
+
+  proc Z3_simplifier_inc_ref(c: RawZ3Context, s: RawZ3Simplifier)
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_simplifier_dec_ref(c: RawZ3Context, s: RawZ3Simplifier)
+    {.cdecl, header: "z3.h".}
+
+  proc Z3_simplifier_using_params(c: RawZ3Context, s: RawZ3Simplifier,
+                                   p: RawZ3Params): RawZ3Simplifier
+    {.cdecl, header: "z3.h".}
+    ## Return a copy of `s` configured with parameter bag `p`.
+
+  proc Z3_simplifier_and_then(c: RawZ3Context,
+                               s1, s2: RawZ3Simplifier): RawZ3Simplifier
+    {.cdecl, header: "z3.h".}
+    ## Sequential composition: `s1` runs first, then `s2`.
+
+  proc Z3_solver_add_simplifier(c: RawZ3Context, solver: RawZ3Solver,
+                                 simplifier: RawZ3Simplifier): RawZ3Solver
+    {.cdecl, header: "z3.h".}
+    ## Return a new solver that is a copy of `solver` with `simplifier`
+    ## installed for pre-processing assertions.
+
+  proc Z3_simplifier_get_param_descrs(c: RawZ3Context,
+                                       s: RawZ3Simplifier): RawZ3ParamDescrs
+    {.cdecl, header: "z3.h".}
+    ## Return the parameter-schema for `s`.
+
+  proc Z3_simplifier_get_help(c: RawZ3Context, s: RawZ3Simplifier): cstring
+    {.cdecl, header: "z3.h".}
+    ## Human-readable help string listing the simplifier's parameters.
+
 # N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
 # some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).
 # Gate their FFI declarations behind `-d:z3WithSeqReplaceAll` and

@@ -100,13 +100,14 @@ when not defined(z3WithoutSpacer):
 
   proc getReachable*[ArgsTup: tuple, Ret](
       fp: Z3Fixedpoint,
-      pred: Z3FuncDecl[ArgsTup, Ret]): Z3AnyAst =
+      pred: Z3FuncDecl[ArgsTup, Ret]): Z3Bool =
     ## Retrieve the reachable states formula for `pred` after a query.
     ## Spacer computes an over-approximation of the reachable states;
-    ## this proc exposes that approximation as a Z3 formula.
+    ## the formula IS a Boolean reachability predicate, so the return
+    ## type is Z3Bool rather than the erased Z3AnyAst.
     let raw = fp.ctx.checkErr Z3_fixedpoint_get_reachable(
       fp.ctx.raw, fp.raw, pred.raw)
-    wrap[Z3AnyAst](fp.ctx, raw)
+    wrap[Z3Bool](fp.ctx, raw)
 
   # ==========================================================================
   # Ground sat answer + trace
@@ -141,7 +142,7 @@ when not defined(z3WithoutSpacer):
   # Model extrapolation and quantifier elimination
   # ==========================================================================
 
-  proc modelExtrapolate*(model: Z3Model, fml: Z3AnyAst): Z3AnyAst =
+  proc modelExtrapolate*[T: Z3Term](model: Z3Model, fml: T): T =
     ## Extrapolate a model of `fml` to a generalised formula.
     ## Z3 computes a formula `φ` such that:
     ##   1. `model ⊨ φ`  (model satisfies the result)
@@ -149,9 +150,12 @@ when not defined(z3WithoutSpacer):
     ##
     ## This "cube generalisation" is the core step in IC3/PDR lifting.
     ## Useful for computing abstract predecessors in software verification.
+    ##
+    ## The return type matches the input's sort: pass `Z3Bool` and get
+    ## `Z3Bool` back; pass `Z3AnyAst` and get `Z3AnyAst` back.
     let raw = model.ctx.checkErr Z3_model_extrapolate(
       model.ctx.raw, model.raw, fml.raw)
-    wrap[Z3AnyAst](model.ctx, raw)
+    wrap[T](model.ctx, raw)
 
   proc qeLite*(bound: Z3AstVector, body: Z3AnyAst): Z3AnyAst =
     ## Best-effort quantifier elimination. Eliminates the variables in

@@ -150,7 +150,7 @@ else:
       check s.check() == zsSat
       let m = s.model()
       let fml = (x > mkInt(0)) and (x < mkInt(10))
-      let ext = modelExtrapolate(m, fml.toAnyAst)
+      let ext = modelExtrapolate(m, fml)
       check ($ext).len > 0
 
   suite "spacer — qeLite":

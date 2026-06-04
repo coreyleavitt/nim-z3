@@ -1050,6 +1050,79 @@ proc constructorAccessor*[T](dt: Z3DatatypeDecl[T], ctor: int,
                                             cuint(ctor), cuint(accessor))
 
 # ============================================================================
+# mkEnumerationSort — Z3_mk_enumeration_sort convenience wrapper (N7.1)
+# ============================================================================
+#
+# `Z3_mk_enumeration_sort` is a Z3 convenience that builds a single-level
+# enumeration datatype (no accessor fields, all constructors nullary) in one
+# call, without going through the full `mk_constructor` / `mk_datatype`
+# machinery.  It returns the sort directly and fills two caller-allocated
+# output arrays: one of nullary constructor func_decls and one of unary
+# tester (recognizer) func_decls.
+#
+# We expose this at the raw level — same policy as the rest of `datatypes.nim`
+# for its low-level surface — returning a named tuple so callers can
+# destructure with `let (sort, consts, testers) = mkEnumerationSort(...)`.
+
+proc mkEnumerationSort*(
+    ctx: Z3Context,
+    name: string,
+    members: openArray[string]
+): tuple[sort: RawZ3Sort,
+         consts: seq[RawZ3FuncDecl],
+         testers: seq[RawZ3FuncDecl]] =
+  ## Build a named enumeration sort from `members`.
+  ##
+  ## Returns the Z3 sort, a seq of nullary constructor func_decls (one per
+  ## member, in order), and a seq of unary tester (recognizer) func_decls.
+  ## All func_decls are owned by Z3 through the sort's (context's) lifetime;
+  ## callers must not `Z3_dec_ref` them independently.
+  ##
+  ## Example:
+  ## ```nim
+  ## let (colorSort, consts, testers) =
+  ##   mkEnumerationSort(ctx, "Color", @["Red", "Green", "Blue"])
+  ## ```
+  let n = members.len
+  doAssert n >= 1, "mkEnumerationSort: must have at least one member"
+
+  # Build symbol array for member names
+  var nameSyms = newSeq[RawZ3Symbol](n)
+  for i, m in members:
+    nameSyms[i] = ctx.checkErr Z3_mk_string_symbol(ctx.raw, m.cstring)
+
+  # Pre-allocate output arrays — Z3 fills these in place
+  var constsOut = newSeq[RawZ3FuncDecl](n)
+  var testersOut = newSeq[RawZ3FuncDecl](n)
+
+  let sortSym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
+  let sort = ctx.checkErr Z3_mk_enumeration_sort(ctx.raw, sortSym, cuint(n),
+    cast[ptr UncheckedArray[RawZ3Symbol]](addr nameSyms[0]),
+    cast[ptr UncheckedArray[RawZ3FuncDecl]](addr constsOut[0]),
+    cast[ptr UncheckedArray[RawZ3FuncDecl]](addr testersOut[0]))
+
+  # Z3 starts the returned func_decls at refcount 0; inc_ref them now so
+  # they survive until the caller is done. The caller holds them as plain
+  # `RawZ3FuncDecl` values — no destructor fires on the seq elements —
+  # so we do a single balanced inc_ref here. The func_decls remain live
+  # as long as the sort/context is alive, which is the expected contract.
+  for fd in constsOut:
+    incRefFuncDecl(ctx, fd)
+  for fd in testersOut:
+    incRefFuncDecl(ctx, fd)
+
+  (sort: sort, consts: constsOut, testers: testersOut)
+
+proc mkEnumerationSort*(
+    name: string,
+    members: openArray[string]
+): tuple[sort: RawZ3Sort,
+         consts: seq[RawZ3FuncDecl],
+         testers: seq[RawZ3FuncDecl]] =
+  ## Context-free overload; uses `requireCurrentContext()`.
+  mkEnumerationSort(requireCurrentContext(), name, members)
+
+# ============================================================================
 # Equality + pretty
 # ============================================================================
 

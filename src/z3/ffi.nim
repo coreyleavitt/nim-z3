@@ -608,6 +608,19 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Extract the constructor / recognizer / accessor `func_decl`s
     ## from a descriptor after `Z3_mk_datatype` has finalised the sort.
 
+  proc Z3_mk_enumeration_sort(c: RawZ3Context,
+                              name: RawZ3Symbol,
+                              n: cuint,
+                              enum_names: ptr UncheckedArray[RawZ3Symbol],
+                              enum_consts: ptr UncheckedArray[RawZ3FuncDecl],
+                              enum_testers: ptr UncheckedArray[RawZ3FuncDecl]
+                             ): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Build an enumeration sort with `n` members. On return,
+    ## `enum_consts[i]` is the i-th nullary constructor func_decl and
+    ## `enum_testers[i]` is the corresponding recognizer. Both output
+    ## arrays must be pre-allocated by the caller to length `n`.
+
   proc Z3_get_datatype_sort_num_constructors(c: RawZ3Context,
                                              t: RawZ3Sort): cuint
     {.cdecl, header: "z3.h".}

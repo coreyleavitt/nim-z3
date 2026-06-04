@@ -19,41 +19,122 @@ task test, "Run the test suite":
   # Both backends. cpp is a softlink-#12 regression guard. Paths come
   # from the milpa-emitted nim.cfg at the project root, so no manual
   # --path: flags here.
-  for tf in ["tests/tffi.nim", "tests/tcontext.nim",
-             "tests/tsort.nim", "tests/tast.nim",
-             "tests/tboolean.nim", "tests/tarith.nim",
-             "tests/tsolver.nim", "tests/tmodel.nim",
-             "tests/tbitvec.nim", "tests/tpretty.nim",
-             "tests/tproperty.nim", "tests/tversion.nim",
-             "tests/tsimplify.nim", "tests/tbigbitvec.nim",
-             "tests/tarray.nim", "tests/tdatatypes.nim",
-             "tests/tdatatypes_mutual.nim", "tests/tquantifier.nim",
-             "tests/toptimize.nim", "tests/ttactic.nim",
-             "tests/tsemantics.nim", "tests/tchar.nim",
-             "tests/tsequence.nim", "tests/tstring.nim", "tests/tregex.nim",
-             "tests/tfp.nim", "tests/tfuncdecl.nim",
-             "tests/tastvector.nim", "tests/tintrospect.nim",
-             "tests/tdatatype_sortof.nim", "tests/tproof.nim",
-             "tests/tfixedpoint.nim", "tests/tunsat_core.nim",
-             "tests/tstats_consequences.nim", "tests/trewrite.nim",
-             "tests/ttranslate.nim", "tests/tquantifier_intro.nim",
-             "tests/tprobe.nim", "tests/tglobalparams.nim",
-             "tests/tio.nim", "tests/terror.nim",
-             "tests/tparity.nim", "tests/terrortree.nim",
-             "tests/tconcurrency.nim", "tests/tfuncinterp.nim",
-             "tests/tparamdescrs.nim", "tests/tcharbv.nim",
-             "tests/tstringexport.nim", "tests/tinterrupt.nim",
-             "tests/tlambda.nim", "tests/thash.nim",
-             "tests/talgebraic.nim",
-             "tests/tmodel_enum.nim",
-             "tests/tdatatype_introspect.nim"]:
-    # Notes:
-    # * `tproperty.nim` and `tsimplify.nim` depend on proptest (test-only
-    #   dep). CI resolves milpa so the path is on --nimcache.
-    # * `tests/tminimal.nim` is intentionally NOT in this list. It
-    #   verifies the canonical full-`z3WithoutX`-flag configuration and
-    #   needs flag definitions at compile time. Run it via the dedicated
-    #   `nimble testMinimal` task.
+  #
+  # Notes:
+  # * `tproperty.nim` and `tsimplify.nim` depend on proptest (test-only
+  #   dep). CI resolves milpa so the path is on --nimcache.
+  # * `tests/tminimal.nim` is intentionally NOT in this list. It
+  #   verifies the canonical full-`z3WithoutX`-flag configuration and
+  #   needs flag definitions at compile time. Run it via the dedicated
+  #   `nimble testMinimal` task.
+  # * N11.1 (torphan_audit) wired in all tests that were committed during
+  #   N8–N10 slices but never added here. 128 tests total (tminimal excluded).
+  for tf in [
+      # Core / always-on
+      "tests/tffi.nim", "tests/tffi_opaque.nim",
+      "tests/tcontext.nim",
+      "tests/tsort.nim",
+      "tests/tast.nim", "tests/tast_introspect.nim",
+      "tests/tast_print_mode.nim",
+      "tests/tastmap.nim",
+      "tests/tastvector.nim",
+      "tests/tboolean.nim",
+      "tests/tarith.nim", "tests/tarith_conv.nim",
+      "tests/tarith_extractors.nim", "tests/tarith_extras.nim",
+      "tests/tarray.nim", "tests/tarray_extra.nim",
+      "tests/tbitvec.nim", "tests/tbigbitvec.nim",
+      "tests/tbitvec_opt.nim", "tests/tbitvec_overflow.nim",
+      "tests/tbitvec_red_rot.nim", "tests/tbitvec_theory_conv.nim",
+      "tests/tsolver.nim", "tests/tsolver_cube.nim",
+      "tests/tsolver_misc.nim", "tests/tsolver_trail.nim",
+      "tests/tmodel.nim", "tests/tmodel_construction.nim",
+      "tests/tmodel_enum.nim",
+      "tests/tpretty.nim",
+      "tests/tproperty.nim",
+      "tests/tversion.nim",
+      "tests/tsimplify.nim", "tests/tsimplifier.nim",
+      "tests/trewrite.nim",
+      "tests/ttranslate.nim", "tests/ttranslate_generic.nim",
+      "tests/ttranslate_parity.nim",
+      "tests/thash.nim",
+      "tests/tio.nim",
+      "tests/terror.nim", "tests/terrortree.nim",
+      "tests/tintrospect.nim",
+      "tests/tdecl_introspect.nim", "tests/tdecl_params.nim",
+      # Datatypes
+      "tests/tdatatypes.nim", "tests/tdatatypes_mutual.nim",
+      "tests/tdatatypes_nary.nim",
+      "tests/tdatatype_enum.nim",
+      "tests/tdatatype_introspect.nim",
+      "tests/tdatatype_sortof.nim",
+      "tests/tdatatype_tuple.nim",
+      "tests/tdatatype_update_field.nim",
+      "tests/tdatatype_var_readraw.nim",
+      # Quantifiers
+      "tests/tquantifier.nim", "tests/tquantifier_intro.nim",
+      "tests/tquantifier_nary.nim", "tests/tquantifier_ops.nim",
+      # Tactics / probes / goals
+      "tests/ttactic.nim", "tests/ttactic_combinators.nim",
+      "tests/ttactic_enum.nim",
+      "tests/tprobe.nim",
+      "tests/tgoal_introspect.nim",
+      # Optimize / fixedpoint / proof
+      "tests/toptimize.nim", "tests/toptimize_extra.nim",
+      "tests/toptimize_extra2.nim", "tests/toptimize_fp.nim",
+      "tests/tfixedpoint.nim", "tests/tfixedpoint_callbacks.nim",
+      "tests/tfixedpoint_extra.nim",
+      "tests/tproof.nim",
+      # Float (fp)
+      "tests/tfp.nim",
+      "tests/tfp_arith_lifts.nim", "tests/tfp_cmp_lifts.nim",
+      "tests/tfp_eval.nim", "tests/tfp_from_parts.nim",
+      "tests/tfp_numeral_decomp.nim", "tests/tfp_numeral_predicates.nim",
+      "tests/tfp_renames.nim", "tests/tfp_sorts.nim",
+      "tests/treal_float_lift.nim",
+      # Strings / sequences / regex
+      "tests/tstring.nim", "tests/tstring_codepoint.nim",
+      "tests/tstring_introspect.nim", "tests/tstring_ordering.nim",
+      "tests/tstringexport.nim",
+      "tests/tsequence.nim",
+      "tests/tseq_eval.nim", "tests/tseq_hof.nim",
+      "tests/tseq_int_lifts.nim", "tests/tseq_replace.nim",
+      "tests/tregex.nim", "tests/tregex_rename.nim",
+      # Chars / arrays / sets / order / algebraic / RCF / spacer
+      "tests/tchar.nim", "tests/tchar_ordering.nim",
+      "tests/tcharbv.nim",
+      "tests/tsets.nim",
+      "tests/torder.nim",
+      "tests/talgebraic.nim", "tests/talgebraic_introspect.nim",
+      "tests/trcf.nim",
+      "tests/tspacer.nim",
+      # Functions / lambdas / uninterpreted
+      "tests/tfuncdecl.nim", "tests/tfuncinterp.nim",
+      "tests/tlambda.nim",
+      "tests/tuninterpretedval.nim",
+      "tests/trecfun.nim",
+      "tests/tsubst_funs.nim",
+      "tests/tonclause.nim",
+      # Concurrency / global params / interrupts
+      "tests/tconcurrency.nim", "tests/tconcurrency_logging.nim",
+      "tests/tglobalparams.nim",
+      "tests/tinterrupt.nim",
+      "tests/tpseudo_boolean.nim",
+      # Propagators
+      "tests/tpropagator.nim", "tests/tpropagator_advanced.nim",
+      "tests/tpropagator_ffi.nim",
+      # Misc / context
+      "tests/tscratch_ctx.nim",
+      "tests/tsemantics.nim",
+      "tests/tparamdescrs.nim",
+      "tests/tparity.nim",
+      "tests/tstats_consequences.nim",
+      "tests/tunsat_core.nim",
+      # Audit / meta-tests (N11.1 — these must stay wired in)
+      "tests/tdoc_audit.nim",
+      "tests/tinline_audit.nim",
+      "tests/tnaming_audit.nim",
+      "tests/trunnable_audit.nim",
+      "tests/torphan_audit.nim"]:
     exec "nim c -r --threads:on --hints:off " & tf
     exec "nim cpp -r --threads:on --hints:off " & tf
 

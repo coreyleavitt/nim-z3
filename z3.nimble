@@ -44,7 +44,9 @@ task test, "Run the test suite":
              "tests/tparamdescrs.nim", "tests/tcharbv.nim",
              "tests/tstringexport.nim", "tests/tinterrupt.nim",
              "tests/tlambda.nim", "tests/thash.nim",
-             "tests/talgebraic.nim"]:
+             "tests/talgebraic.nim",
+             "tests/tmodel_enum.nim",
+             "tests/tdatatype_introspect.nim"]:
     # Notes:
     # * `tproperty.nim` and `tsimplify.nim` depend on proptest (test-only
     #   dep). CI resolves milpa so the path is on --nimcache.

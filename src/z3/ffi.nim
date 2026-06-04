@@ -565,6 +565,34 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Extract the constructor / recognizer / accessor `func_decl`s
     ## from a descriptor after `Z3_mk_datatype` has finalised the sort.
 
+  proc Z3_get_datatype_sort_num_constructors(c: RawZ3Context,
+                                             t: RawZ3Sort): cuint
+    {.cdecl, header: "z3.h".}
+    ## Number of constructors in a datatype sort.
+    ## Pre: `Z3_get_sort_kind(c, t) == Z3_DATATYPE_SORT`.
+
+  proc Z3_get_datatype_sort_constructor(c: RawZ3Context,
+                                        t: RawZ3Sort,
+                                        idx: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Return the `idx`-th constructor func_decl.
+    ## Pre: `idx < Z3_get_datatype_sort_num_constructors(c, t)`.
+
+  proc Z3_get_datatype_sort_recognizer(c: RawZ3Context,
+                                       t: RawZ3Sort,
+                                       idx: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Return the `idx`-th recognizer func_decl.
+    ## Pre: `idx < Z3_get_datatype_sort_num_constructors(c, t)`.
+
+  proc Z3_get_datatype_sort_constructor_accessor(c: RawZ3Context,
+                                                 t: RawZ3Sort,
+                                                 idx_c: cuint,
+                                                 idx_a: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Return the `idx_a`-th accessor of the `idx_c`-th constructor.
+    ## Pre: `idx_c < numConstructors`; `idx_a < arity of constructor idx_c`.
+
   proc Z3_mk_app(c: RawZ3Context, d: RawZ3FuncDecl,
                  num_args: cuint, args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
     {.cdecl, header: "z3.h".}

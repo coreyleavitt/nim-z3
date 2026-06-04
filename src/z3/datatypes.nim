@@ -994,6 +994,62 @@ proc read*[T, Ret](
   wrap[Ret](a.inner.ctx, readRawAccessor(a, v))
 
 # ============================================================================
+# Datatype sort introspection (N2.3)
+# ============================================================================
+#
+# These four procs expose the Z3 "sort-level" view of a declared
+# datatype: how many constructors it has, and what func_decl Z3 assigned
+# to each constructor / recognizer / accessor slot.  The returned
+# `RawZ3FuncDecl` handles are borrowed — Z3 owns them through the sort's
+# lifetime — so callers must not store them beyond the `Z3DatatypeDecl`.
+#
+# These complement the *name-keyed* `con` / `recognizer` / `accessor`
+# procs above (which walk the Nim-side func_decl cache). The index-keyed
+# introspection surface goes directly to Z3's sort-level API, which is
+# the ground truth for what the solver actually resolved.
+
+proc numConstructors*[T](dt: Z3DatatypeDecl[T]): int =
+  ## Number of constructors in the datatype sort as reported by Z3.
+  ## For a type declared with N `ConstructorSpec` entries this is always N;
+  ## the proc is useful when operating on a `Z3DatatypeDecl[void]` from
+  ## `declareDatatypesN`, where the count isn't statically known.
+  int(Z3_get_datatype_sort_num_constructors(dt.ctx.raw, dt.sort))
+
+proc constructor*[T](dt: Z3DatatypeDecl[T], i: int): RawZ3FuncDecl =
+  ## Return the `i`-th constructor func_decl (0-based).
+  ## Raises `Z3Error` if `i` is out of range.
+  let n = numConstructors(dt)
+  if i < 0 or i >= n:
+    raise newException(Z3InvalidUsageError,
+      "constructor: index " & $i & " out of range [0, " & $n & ")")
+  Z3_get_datatype_sort_constructor(dt.ctx.raw, dt.sort, cuint(i))
+
+proc recognizer*[T](dt: Z3DatatypeDecl[T], i: int): RawZ3FuncDecl =
+  ## Return the `i`-th recognizer func_decl (0-based).
+  ## Overloads the existing `recognizer(dt, cname)` name; the int
+  ## vs string argument disambiguates.
+  let n = numConstructors(dt)
+  if i < 0 or i >= n:
+    raise newException(Z3InvalidUsageError,
+      "recognizer: index " & $i & " out of range [0, " & $n & ")")
+  Z3_get_datatype_sort_recognizer(dt.ctx.raw, dt.sort, cuint(i))
+
+proc constructorAccessor*[T](dt: Z3DatatypeDecl[T], ctor: int,
+                              accessor: int): RawZ3FuncDecl =
+  ## Return the `accessor`-th accessor of the `ctor`-th constructor.
+  ## Both indices are 0-based. Raises `Z3Error` if either is out of range.
+  let n = numConstructors(dt)
+  if ctor < 0 or ctor >= n:
+    raise newException(Z3InvalidUsageError,
+      "constructorAccessor: ctor index " & $ctor & " out of range [0, " & $n & ")")
+  # No Nim-side bound check on `accessor` — Z3's own pre-condition fires
+  # (the arity of constructor `ctor` isn't easily accessible from the decl
+  # without an extra Z3 call); an out-of-range `accessor` will trip Z3's
+  # internal assert via the error handler in checkErr.
+  Z3_get_datatype_sort_constructor_accessor(dt.ctx.raw, dt.sort,
+                                            cuint(ctor), cuint(accessor))
+
+# ============================================================================
 # Equality + pretty
 # ============================================================================
 

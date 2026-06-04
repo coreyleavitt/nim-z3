@@ -1451,6 +1451,20 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `Z3_inc_ref` / `Z3_dec_ref` operate on `ast`; we use this to
     ## keep the func_decls alive while their datatype decl is in scope.
 
+  proc Z3_to_func_decl(c: RawZ3Context, a: RawZ3Ast): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Cast a `Z3_ast` back to `Z3_func_decl`. Safe only when the AST
+    ## was originally produced by `Z3_func_decl_to_ast`. Used internally
+    ## after `Z3_translate` to recover the typed func_decl handle.
+
+  proc Z3_sort_to_ast(c: RawZ3Context, s: RawZ3Sort): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Cast a `Z3_sort` to its underlying `Z3_ast`. Sorts are subtypes
+    ## of ASTs in Z3's C API; this upcast enables `Z3_translate`
+    ## for cross-context sort transfer. The result is cast back to
+    ## `RawZ3Sort` with a Nim `cast` (no dedicated downcast in the API).
+    ## N10.3.
+
   # --- Z3FuncInterp (v0.5 step 6A) -----------------------------------------
   proc Z3_model_get_func_interp(c: RawZ3Context, m: RawZ3Model,
                                 f: RawZ3FuncDecl): RawZ3FuncInterp

@@ -25,7 +25,7 @@
 ## Stick to one context per user-facing task when you can. Cross-
 ## context translation is a real Z3 capability but it's a sharp tool.
 
-import ./ffi, ./context, ./error, ./ast
+import ./ffi, ./context, ./error, ./ast, ./sort, ./funcdecl
 
 # ============================================================================
 # translate — typed cross-context transfer
@@ -47,6 +47,37 @@ proc translate*[T: Z3Term](t: T, targetCtx: Z3Context): T =
 # ============================================================================
 # compatibleWith — smoke-test predicate
 # ============================================================================
+
+proc translate*[ArgsTup: tuple, Ret](
+    f: Z3FuncDecl[ArgsTup, Ret], target: Z3Context): Z3FuncDecl[ArgsTup, Ret] =
+  ## Transfer `f` from its owning context to `target`. The returned handle is
+  ## owned by `target`; the source handle is independent. Phantom types
+  ## `ArgsTup` and `Ret` are preserved — the translated decl has the same
+  ## arity and sort signature.
+  ##
+  ## Implementation: Z3 has no dedicated `Z3_translate_func_decl`; instead,
+  ## `Z3_sort` and `Z3_func_decl` are sub-types of `Z3_ast` in Z3's C API.
+  ## We cast the func_decl to its underlying AST via `Z3_func_decl_to_ast`,
+  ## run it through `Z3_translate`, then cast back with `Z3_to_func_decl`.
+  let asAst = f.ctx.checkErr Z3_func_decl_to_ast(f.ctx.raw, f.raw)
+  let translatedAst = target.checkErr Z3_translate(f.ctx.raw, asAst, target.raw)
+  let rawFd = target.checkErr Z3_to_func_decl(target.raw, translatedAst)
+  wrapFuncDecl[ArgsTup, Ret](target, rawFd)
+
+proc translate*[S: static SortTag](
+    s: Z3Sort[S], target: Z3Context): Z3Sort[S] =
+  ## Transfer `s` from its owning context to `target`. The phantom sort tag `S`
+  ## is preserved.
+  ##
+  ## Implementation: `Z3_sort` is a sub-type of `Z3_ast` in Z3's C API.
+  ## We upcast via `Z3_sort_to_ast`, run through `Z3_translate` for the
+  ## context transfer, then downcast the returned `Z3_ast` back to
+  ## `RawZ3Sort` with a plain Nim `cast` — valid because Z3's memory model
+  ## guarantees the pointer identity is preserved through the upcast/translate
+  ## round-trip. (The C API has no dedicated `Z3_to_sort` downcast function.)
+  let asAst = s.ctx.checkErr Z3_sort_to_ast(s.ctx.raw, s.raw)
+  let translatedAst = target.checkErr Z3_translate(s.ctx.raw, asAst, target.raw)
+  Z3Sort[S](raw: cast[RawZ3Sort](translatedAst), ctx: target)
 
 proc compatibleWith*(ctxA, ctxB: Z3Context): bool =
   ## True iff ASTs from `ctxA` can be translated to `ctxB` (and vice

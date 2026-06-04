@@ -994,6 +994,40 @@ proc read*[T, Ret](
   wrap[Ret](a.inner.ctx, readRawAccessor(a, v))
 
 # ============================================================================
+# updateField — functional record update (N7.4)
+# ============================================================================
+#
+# `Z3_datatype_update_field(c, field_access, t, value)` returns a copy of
+# the datatype value `t` in which the field identified by the accessor
+# func_decl `field_access` has been replaced by `value`; all other fields
+# are unchanged.  The Z3 SMT-LIB encoding is
+#   `((_ update-field <accessor>) <record> <newval>)`.
+#
+# We resolve the accessor func_decl from the `Z3AccessorDecl[T, Ret]` using
+# the same linear walk as `readRawAccessor`, keeping implementation flat.
+
+proc updateField*[T, Ret](
+    a: Z3AccessorDecl[T, Ret],
+    record: Z3DatatypeValue[T],
+    newVal: Ret): Z3DatatypeValue[T] =
+  ## Functional record update: return `{record with <field> = newVal}`.
+  ##
+  ## `a` is the accessor for the field to update; `Ret` is the field's
+  ## sort (same type as `a.read(record)` returns).  All other fields of
+  ## `record` are preserved unchanged in the result.
+  ##
+  ## Wraps `Z3_datatype_update_field`.
+  let ctx = a.inner.ctx
+  var fd: RawZ3FuncDecl
+  for (fname2, decl) in a.inner.accessorsFD:
+    if fname2 == a.fname:
+      fd = decl
+      break
+  let raw = ctx.checkErr Z3_datatype_update_field(ctx.raw, fd,
+                                                   record.raw, newVal.raw)
+  wrap[Z3DatatypeValue[T]](ctx, raw)
+
+# ============================================================================
 # Datatype sort introspection (N2.3)
 # ============================================================================
 #

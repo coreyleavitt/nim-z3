@@ -664,6 +664,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Return the `idx_a`-th accessor of the `idx_c`-th constructor.
     ## Pre: `idx_c < numConstructors`; `idx_a < arity of constructor idx_c`.
 
+  proc Z3_datatype_update_field(c: RawZ3Context,
+                                field_access: RawZ3FuncDecl,
+                                t: RawZ3Ast,
+                                value: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Functional record update: return a copy of the datatype value `t`
+    ## in which the field identified by accessor `field_access` has been
+    ## replaced by `value`, all other fields unchanged.
+    ##
+    ## Pre: Z3_get_sort_kind(Z3_get_sort(c, t)) == Z3_DATATYPE_SORT
+    ## Pre: Z3_get_sort(c, value) == Z3_get_range(c, field_access)
+
   proc Z3_mk_app(c: RawZ3Context, d: RawZ3FuncDecl,
                  num_args: cuint, args: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
     {.cdecl, header: "z3.h".}

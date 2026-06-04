@@ -33,7 +33,7 @@ type
     ## Tags lifted into the type system via `static SortTag` on
     ## `Z3Sort[S]` and `Z3Ast[S]`. Extend this enum when adding new
     ## sort families; type-aliased builders (`Z3Int`, `Z3Bool`, etc.)
-    ## live in `ast.nim` so they share visibility with the AST type.
+    ## live in `z3/ast.nim` so they share visibility with the AST type.
     stInt
     stReal
     stBool

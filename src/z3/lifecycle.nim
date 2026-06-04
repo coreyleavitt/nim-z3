@@ -50,7 +50,7 @@
 ##   `Z3_del_config` directly, not a refcount pair. Stays hand-written.
 ## - **`Z3Pattern`** value lifecycle goes through `Z3_pattern_to_ast`
 ##   before issuing the dec_ref/inc_ref. The templates accept a custom
-##   `decRefSym` / `incRefSym` so `quantifier.nim`'s
+##   `decRefSym` / `incRefSym` so `z3/quantifier.nim`'s
 ##   `decRefPattern` / `incRefPattern` helpers can plug in.
 
 import ./ffi, ./context

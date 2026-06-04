@@ -38,11 +38,11 @@
 ## because floats aren't exact rationals — users wanting a specific
 ## ratio write `r + mkReal(1, 2)` explicitly.
 ##
-## ## Why `==` is split between `ast.nim` and the operator modules
+## ## Why `==` is split between `z3/ast.nim` and the operator modules
 ##
-## The generic same-sort `==` lives in `ast.nim` (it's a property of
+## The generic same-sort `==` lives in `z3/ast.nim` (it's a property of
 ## any AST). Literal-lifting overloads (`x == 5`, `p == true`) live
-## here and in `boolean.nim` because that's where users will look
+## here and in `z3/boolean.nim` because that's where users will look
 ## for them — alongside `<`, `and`, etc. The dispatch is unambiguous:
 ## `==(Z3Int, Z3Int)` resolves to ast.nim's generic; `==(Z3Int, int)`
 ## resolves to this module's lift.

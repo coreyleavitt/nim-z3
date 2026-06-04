@@ -124,23 +124,35 @@ proc `!=`*(a, b: Z3RoundingMode): Z3Bool =
 # a template so the five entry points share one body.
 # ----------------------------------------------------------------------------
 
-template defRm(name: untyped, ffi: untyped, descr: string) =
-  proc name*(ctx: Z3Context): Z3RoundingMode =
-    ## **descr** — `Z3RoundingMode` literal on `ctx`.
-    wrap[Z3RoundingMode](ctx, ctx.checkErr ffi(ctx.raw))
-  proc name*(): Z3RoundingMode =
-    name(requireCurrentContext())
+proc rmRNE*(ctx: Z3Context): Z3RoundingMode =
+  ## `Z3_mk_fpa_round_nearest_ties_to_even`. SMT-LIB long name: `RNE`
+  ## (round nearest, ties to even). Default rounding mode for IEEE 754.
+  wrap[Z3RoundingMode](ctx, ctx.checkErr Z3_mk_fpa_round_nearest_ties_to_even(ctx.raw))
+proc rmRNE*(): Z3RoundingMode = rmRNE(requireCurrentContext())
 
-defRm(rmRNE, Z3_mk_fpa_round_nearest_ties_to_even,
-      "round-nearest, ties to even (IEEE 754 default)")
-defRm(rmRNA, Z3_mk_fpa_round_nearest_ties_to_away,
-      "round-nearest, ties away from zero")
-defRm(rmRTP, Z3_mk_fpa_round_toward_positive,
-      "round toward positive infinity")
-defRm(rmRTN, Z3_mk_fpa_round_toward_negative,
-      "round toward negative infinity")
-defRm(rmRTZ, Z3_mk_fpa_round_toward_zero,
-      "round toward zero (truncation)")
+proc rmRNA*(ctx: Z3Context): Z3RoundingMode =
+  ## `Z3_mk_fpa_round_nearest_ties_to_away`. SMT-LIB long name: `RNA`
+  ## (round nearest, ties away from zero).
+  wrap[Z3RoundingMode](ctx, ctx.checkErr Z3_mk_fpa_round_nearest_ties_to_away(ctx.raw))
+proc rmRNA*(): Z3RoundingMode = rmRNA(requireCurrentContext())
+
+proc rmRTP*(ctx: Z3Context): Z3RoundingMode =
+  ## `Z3_mk_fpa_round_toward_positive`. SMT-LIB long name: `RTP`
+  ## (round toward positive infinity).
+  wrap[Z3RoundingMode](ctx, ctx.checkErr Z3_mk_fpa_round_toward_positive(ctx.raw))
+proc rmRTP*(): Z3RoundingMode = rmRTP(requireCurrentContext())
+
+proc rmRTN*(ctx: Z3Context): Z3RoundingMode =
+  ## `Z3_mk_fpa_round_toward_negative`. SMT-LIB long name: `RTN`
+  ## (round toward negative infinity).
+  wrap[Z3RoundingMode](ctx, ctx.checkErr Z3_mk_fpa_round_toward_negative(ctx.raw))
+proc rmRTN*(): Z3RoundingMode = rmRTN(requireCurrentContext())
+
+proc rmRTZ*(ctx: Z3Context): Z3RoundingMode =
+  ## `Z3_mk_fpa_round_toward_zero`. SMT-LIB long name: `RTZ`
+  ## (round toward zero; truncation).
+  wrap[Z3RoundingMode](ctx, ctx.checkErr Z3_mk_fpa_round_toward_zero(ctx.raw))
+proc rmRTZ*(): Z3RoundingMode = rmRTZ(requireCurrentContext())
 
 proc mkRoundingModeVar*(ctx: Z3Context, name: string): Z3RoundingMode =
   ## Free rounding-mode variable — usable as a bound var under

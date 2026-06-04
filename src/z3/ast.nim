@@ -50,9 +50,9 @@ type
 
   Z3Int*  = Z3Ast[stInt]
     ## Convenience alias for `Z3Ast[stInt]`. Aliases live here so the
-    ## type system + the operator overload modules (`arith.nim`,
-    ## `boolean.nim`) can reference them without depending on
-    ## `builder.nim`.
+    ## type system + the operator overload modules (`z3/arith.nim`,
+    ## `z3/boolean.nim`) can reference them without depending on
+    ## `z3/builder.nim`.
   Z3Real* = Z3Ast[stReal]
   Z3Bool* = Z3Ast[stBool]
 

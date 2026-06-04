@@ -252,7 +252,7 @@ proc subresultants*(p, q, x: Z3Real): Z3AstVector =
   ## representing the subresultant polynomials.
   ##
   ## This is the complete merged N1.5 surface (formerly proposed as a
-  ## separate `polynomial.nim` module). Subresultants are useful for:
+  ## separate `z3/polynomial.nim` module). Subresultants are useful for:
   ##
   ##   - Computing polynomial GCDs over algebraic extensions
   ##   - Cylindrical Algebraic Decomposition preprocessing

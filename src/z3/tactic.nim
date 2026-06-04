@@ -189,6 +189,32 @@ proc withParams*(t: Z3Tactic, p: Z3Params): Z3Tactic =
   wrapTactic(t.ctx,
     t.ctx.checkErr Z3_tactic_using_params(t.ctx.raw, t.raw, p.raw))
 
+proc parOr*(ctx: Z3Context, tactics: openArray[Z3Tactic]): Z3Tactic =
+  ## Run all `tactics` in parallel; return the result of whichever
+  ## succeeds first. Equivalent to Z3's `par-or` combinator.
+  ## Raises `Z3Error` if the array is empty or all branches fail.
+  if tactics.len == 0:
+    var e = newException(Z3InvalidUsageError,
+      "parOr requires at least one tactic.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  var raws = newSeq[RawZ3Tactic](tactics.len)
+  for i, t in tactics:
+    raws[i] = t.raw
+  wrapTactic(ctx,
+    ctx.checkErr Z3_tactic_par_or(ctx.raw, cuint(raws.len), addr raws[0]))
+
+proc parOr*(tactics: openArray[Z3Tactic]): Z3Tactic =
+  ## Current-context overload for `parOr`.
+  parOr(requireCurrentContext(), tactics)
+
+proc parAndThen*(t1, t2: Z3Tactic): Z3Tactic =
+  ## Sequential composition like `andThen`, but `t2` is applied to
+  ## every subgoal produced by `t1` **in parallel**. Equivalent to
+  ## Z3's `par-and-then` combinator.
+  wrapTactic(t1.ctx,
+    t1.ctx.checkErr Z3_tactic_par_and_then(t1.ctx.raw, t1.raw, t2.raw))
+
 # ============================================================================
 # Z3ApplyResult
 # ============================================================================

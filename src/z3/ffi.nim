@@ -910,6 +910,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_tactic_cond(c: RawZ3Context, p: RawZ3Probe,
                       t1, t2: RawZ3Tactic): RawZ3Tactic
     {.cdecl, header: "z3.h".}
+  proc Z3_tactic_when(c: RawZ3Context, p: RawZ3Probe,
+                      t: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  # --- Parallel tactic combinators (N8.6) ----------------------------------
+  proc Z3_tactic_par_or(c: RawZ3Context, num: cuint,
+                         ts: ptr RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
+  proc Z3_tactic_par_and_then(c: RawZ3Context,
+                               t1, t2: RawZ3Tactic): RawZ3Tactic
+    {.cdecl, header: "z3.h".}
   # --- Probe enumeration (N8.5) --------------------------------------------
   proc Z3_get_num_probes(c: RawZ3Context): cuint {.cdecl, header: "z3.h".}
   proc Z3_get_probe_name(c: RawZ3Context, i: cuint): cstring

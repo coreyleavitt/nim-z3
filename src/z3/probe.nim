@@ -146,3 +146,24 @@ proc condTactic*(probe: Z3Probe,
   let raw = probe.ctx.checkErr Z3_tactic_cond(
     probe.ctx.raw, probe.raw, ifTactic.raw, elseTactic.raw)
   wrapTactic(probe.ctx, raw)
+
+proc cond*(probe: Z3Probe, thenTactic, elseTactic: Z3Tactic): Z3Tactic =
+  ## Ergonomic alias for `condTactic`. Applies `thenTactic` when
+  ## `probe` evaluates non-zero, `elseTactic` otherwise.
+  ##
+  ## ```nim
+  ## let t = cond(mkProbe("size") > 0.0, mkTactic("smt"), tacticSkip())
+  ## ```
+  condTactic(probe, thenTactic, elseTactic)
+
+proc tacticWhen*(probe: Z3Probe, t: Z3Tactic): Z3Tactic =
+  ## Apply `t` only when `probe` evaluates non-zero; otherwise act as
+  ## `tacticSkip` (return the goal unchanged). Equivalent to Z3's
+  ## `when` combinator.
+  ##
+  ## ```nim
+  ## let t = tacticWhen(mkProbe("size") > 0.0, mkTactic("smt"))
+  ## ```
+  let raw = probe.ctx.checkErr Z3_tactic_when(
+    probe.ctx.raw, probe.raw, t.raw)
+  wrapTactic(probe.ctx, raw)

@@ -278,7 +278,8 @@ import z3/ffi, z3/context, z3/error, z3/sort, z3/sortdispatch, z3/ast,
        z3/globalparams, z3/io,
        z3/uninterpretedval,
        z3/rcf,
-       z3/algebraic
+       z3/algebraic,
+       z3/propagator
 export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
        solver, model, bitvec, pretty, simplify, arrays, sets, quantifier,
        params, semantics, chars,
@@ -287,7 +288,8 @@ export ffi, context, error, sort, sortdispatch, ast, builder, boolean, arith,
        translate, globalparams, io,
        uninterpretedval,
        rcf,
-       algebraic
+       algebraic,
+       propagator
 
 # ============================================================================
 # Gateable theories (re-exported only when the corresponding flag is off)

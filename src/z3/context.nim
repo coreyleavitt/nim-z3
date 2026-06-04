@@ -61,6 +61,11 @@ type
   Z3ContextOwn = object
     raw: RawZ3Context
     cfg: RawZ3Config
+    borrowed: bool
+      ## When true, this `Z3Context` is a non-owning view of a context
+      ## that Z3 itself manages (e.g. the fresh context passed to a
+      ## propagator's `fresh_eh`). `=destroy` skips `Z3_del_context`
+      ## for borrowed contexts. See `wrapContextBorrowed` in N8.4b.
     datatypeRegistry*: Table[string, RawZ3Sort]
       ## **v0.4 step 3.** Per-context lookup table keyed by marker-type
       ## name (`$T`), populated by `declareDatatype[T]` / `declareDatatypes`
@@ -101,6 +106,7 @@ proc nimNoopErrorHandler(c: RawZ3Context, e: Z3ErrorCode) {.cdecl.} =
 
 proc `=destroy`(c: Z3ContextOwn) {.raises: [].} =
   try:
+    if c.borrowed: return   # Z3 owns this context; don't free it.
     if not c.raw.isNil: Z3_del_context(c.raw)
     if not c.cfg.isNil: Z3_del_config(c.cfg)
   except CatchableError:
@@ -275,6 +281,17 @@ proc raw*(ctx: Z3Context): RawZ3Context {.inline.} =
   ## the context has already been finalized — callers should check
   ## with `not ctx.raw.isNil` before passing to FFI.
   if ctx == nil: result else: ctx.raw
+
+proc wrapContextBorrowed*(rawCtx: RawZ3Context): Z3Context =
+  ## Wrap a raw Z3 context that Z3 itself owns (e.g. the `newContext`
+  ## pointer passed to a propagator's `fresh_eh` callback). The returned
+  ## `Z3Context` is a non-owning view: its `=destroy` will NOT call
+  ## `Z3_del_context`, preventing double-free with Z3's own cleanup.
+  ##
+  ## Use exclusively for short-lived wrapping inside propagator shims and
+  ## similar FFI callbacks where Z3 controls the context lifetime.
+  ## N8.4b.
+  Z3Context(raw: rawCtx, borrowed: true)
 
 # Error handling (`Z3Error`, `raiseZ3Error`, `checkErr`, `checkErrVoid`)
 # moved to `z3/error` in v0.5 step 1. Cross-cutting modules import

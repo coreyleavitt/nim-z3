@@ -394,6 +394,82 @@ proc toUint*[W: static int](a: Z3BitVec[W]): uint64 =
     raise e
   v
 
+proc toUintOpt*[W: static int](a: Z3BitVec[W]): Option[uint] =
+  ## Unsigned extraction as `Option[uint]`. Returns `none` instead of
+  ## raising when the AST doesn't reduce to a literal BV numeral (e.g.
+  ## a free variable or a symbolic expression). Requires `W <= 64`.
+  ##
+  ## Internally calls `Z3_simplify` first, so concrete expression trees
+  ## fold to their literal value before extraction.
+  static: assert W <= 64,
+    "toUintOpt requires W <= 64; use `toBigUintStr` for wider BVs"
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  var v: uint64
+  if Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
+    some(uint(v))
+  else:
+    none(uint)
+
+proc toIntOpt*[W: static int](a: Z3BitVec[W]): Option[int] =
+  ## Signed (two's-complement) extraction as `Option[int]`. Returns
+  ## `none` instead of raising when the AST doesn't reduce to a literal
+  ## BV numeral (e.g. a free variable), or when the signed value doesn't
+  ## fit in platform `int`. Requires `W <= 64`.
+  ##
+  ## Applies the same two's-complement transform as `toInt` (which
+  ## returns `int64`). On 64-bit platforms `int` and `int64` have the
+  ## same range, so the overflow guard never fires; on a hypothetical
+  ## 32-bit Nim `int` it would filter large BV values.
+  ##
+  ## Internally calls `Z3_simplify` first.
+  static: assert W <= 64,
+    "toIntOpt requires W <= 64; use `toBigIntStr` for wider BVs"
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  var v: uint64
+  if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
+    return none(int)
+  let signed: int64 =
+    when W == 64:
+      cast[int64](v)
+    else:
+      const signBit = 1'u64 shl (W - 1)
+      const modulusU = 1'u64 shl W
+      if (v and signBit) != 0:
+        cast[int64](v - modulusU)
+      else:
+        int64(v)
+  if signed < int64(int.low) or signed > int64(int.high):
+    none(int)
+  else:
+    some(int(signed))
+
+proc toInt64Opt*[W: static int](a: Z3BitVec[W]): Option[int64] =
+  ## Signed (two's-complement) extraction as `Option[int64]`. Returns
+  ## `none` instead of raising when the AST doesn't reduce to a literal
+  ## BV numeral (e.g. a free variable). Requires `W <= 64`.
+  ##
+  ## Unlike `toIntOpt`, the return type is an explicit `int64`
+  ## — no platform-width ambiguity.
+  ##
+  ## Internally calls `Z3_simplify` first.
+  static: assert W <= 64,
+    "toInt64Opt requires W <= 64; use `toBigIntStr` for wider BVs"
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  var v: uint64
+  if not Z3_get_numeral_uint64(a.ctx.raw, folded, addr v):
+    return none(int64)
+  let signed: int64 =
+    when W == 64:
+      cast[int64](v)
+    else:
+      const signBit = 1'u64 shl (W - 1)
+      const modulusU = 1'u64 shl W
+      if (v and signBit) != 0:
+        cast[int64](v - modulusU)
+      else:
+        int64(v)
+  some(signed)
+
 proc toBigIntStr*[W: static int](a: Z3BitVec[W]): string =
   ## Signed-2's-complement decimal string of an arbitrary-width BV
   ## numeral. Works for any `W`; for `W <= 64` `toInt` is the typed-

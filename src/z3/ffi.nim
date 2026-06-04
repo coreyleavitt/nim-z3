@@ -324,6 +324,20 @@ type
     Z3_PK_OTHER   = 5
     Z3_PK_INVALID = 6
 
+  Z3ParameterKindFFI* {.importc: "Z3_parameter_kind", header: "z3.h",
+                        size: sizeof(cint).} = enum
+    ## Mirrors `Z3_parameter_kind` from z3_api.h.  Describes the variant
+    ## of a decl's sort/value parameter.  `Z3_PARAMETER_INTERNAL` cannot
+    ## be read via any public API accessor; it is included for completeness.
+    Z3_PARAMETER_INT        = 0
+    Z3_PARAMETER_DOUBLE     = 1
+    Z3_PARAMETER_RATIONAL   = 2
+    Z3_PARAMETER_SYMBOL     = 3
+    Z3_PARAMETER_SORT       = 4
+    Z3_PARAMETER_AST        = 5
+    Z3_PARAMETER_FUNC_DECL  = 6
+    Z3_PARAMETER_INTERNAL   = 7
+
 # ============================================================================
 # Z3 callback types
 # ============================================================================
@@ -1630,6 +1644,49 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Number of *sort parameters* in the declaration (not the domain
     ## arity of the function).  Used internally; `Z3_get_domain_size`
     ## is the correct arity accessor.
+
+  # --- Decl parameter introspection (N2.4b) ---------------------------------
+
+  proc Z3_get_decl_parameter_kind(c: RawZ3Context, d: RawZ3FuncDecl,
+                                   idx: cuint): Z3ParameterKindFFI
+    {.cdecl, header: "z3.h".}
+    ## Kind of the idx-th parameter of `d`.
+  proc Z3_get_decl_int_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                  idx: cuint): cint
+    {.cdecl, header: "z3.h".}
+    ## Integer value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_INT.
+  proc Z3_get_decl_double_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                     idx: cuint): cdouble
+    {.cdecl, header: "z3.h".}
+    ## Double value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_DOUBLE.
+  proc Z3_get_decl_symbol_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                     idx: cuint): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+    ## Symbol value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_SYMBOL.
+  proc Z3_get_decl_sort_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                   idx: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Sort value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_SORT.
+  proc Z3_get_decl_ast_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                  idx: cuint): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## AST value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_AST.
+  proc Z3_get_decl_func_decl_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                        idx: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## FuncDecl value of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_FUNC_DECL.
+  proc Z3_get_decl_rational_parameter(c: RawZ3Context, d: RawZ3FuncDecl,
+                                       idx: cuint): cstring
+    {.cdecl, header: "z3.h".}
+    ## Rational value (as a decimal string) of the idx-th parameter.
+    ## Pre: kind == Z3_PARAMETER_RATIONAL.
+
   proc Z3_get_domain_size(c: RawZ3Context, d: RawZ3FuncDecl): cuint
     {.cdecl, header: "z3.h".}
     ## Number of domain sorts — the arity of the function declaration.

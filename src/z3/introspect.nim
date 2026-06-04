@@ -410,3 +410,91 @@ proc declFuncId*(ctx: Z3Context, d: RawZ3FuncDecl): int =
   ## Non-zero and stable for the lifetime of the context.
   int(Z3_get_func_decl_id(ctx.raw, d))
 
+# ============================================================================
+# Decl parameter introspection (N2.4b)
+# ============================================================================
+#
+# Z3 function declarations can carry *sort parameters* — distinct from the
+# domain arity.  They appear on Z3-internal/built-in decls such as the BV
+# `extract` operator (2 int parameters: hi and lo), FPA numerals, and
+# polymorphic array/sequence operations.  User-declared func_decls
+# (created via `mkFuncDecl`) always have 0 parameters.
+#
+# Design: a variant object (`Z3DeclParam`) tagged by `Z3ParamKind` mirrors
+# Z3's `Z3_parameter_kind` union.  `symbolVal` is materialised as a Nim
+# string for ergonomics; all other complex variants expose their raw handle
+# so callers can dispatch further through the normal introspect / sort /
+# funcDecl surface.
+
+type
+  Z3ParamKind* = enum
+    pkInt       ## Integer constant (e.g. BV extract hi/lo)
+    pkDouble    ## IEEE-754 double
+    pkSymbol    ## Z3 symbol, returned as a Nim string
+    pkSort      ## Sort handle
+    pkAst       ## Arbitrary AST handle
+    pkFuncDecl  ## Function declaration handle
+    pkRational  ## Rational number, returned as a decimal string
+
+  Z3DeclParam* = object
+    ## Tagged-union representation of a single decl parameter.
+    case kind*: Z3ParamKind
+    of pkInt:      intVal*:      int
+    of pkDouble:   doubleVal*:   float
+    of pkSymbol:   symbolVal*:   string
+    of pkSort:     sortVal*:     RawZ3Sort
+    of pkAst:      astVal*:      RawZ3Ast
+    of pkFuncDecl: funcDeclVal*: RawZ3FuncDecl
+    of pkRational: rationalVal*: string
+
+proc toZ3ParamKind(k: Z3ParameterKindFFI): Z3ParamKind {.inline.} =
+  case k
+  of Z3_PARAMETER_INT:       pkInt
+  of Z3_PARAMETER_DOUBLE:    pkDouble
+  of Z3_PARAMETER_SYMBOL:    pkSymbol
+  of Z3_PARAMETER_SORT:      pkSort
+  of Z3_PARAMETER_AST:       pkAst
+  of Z3_PARAMETER_FUNC_DECL: pkFuncDecl
+  of Z3_PARAMETER_RATIONAL:  pkRational
+  of Z3_PARAMETER_INTERNAL:
+    raise newException(ValueError,
+      "declParameter: Z3_PARAMETER_INTERNAL cannot be accessed via the public API")
+
+proc declNumParameters*(ctx: Z3Context, d: RawZ3FuncDecl): int =
+  ## Number of sort/value parameters carried by declaration `d`.
+  ## User-declared func_decls always return 0.  Built-in decls such
+  ## as the BV `extract` operator return ≥ 1.
+  int(Z3_get_decl_num_parameters(ctx.raw, d))
+
+proc declParameter*(ctx: Z3Context, d: RawZ3FuncDecl, i: int): Z3DeclParam =
+  ## Returns the i-th parameter of declaration `d` as a tagged union.
+  ## Raises `AssertionDefect` if i is out of bounds.
+  let n = declNumParameters(ctx, d)
+  doAssert i >= 0 and i < n,
+    "declParameter: index " & $i & " out of bounds [0, " & $n & ")"
+  let kind = toZ3ParamKind(Z3_get_decl_parameter_kind(ctx.raw, d, cuint(i)))
+  case kind
+  of pkInt:
+    Z3DeclParam(kind: pkInt,
+                intVal: int(Z3_get_decl_int_parameter(ctx.raw, d, cuint(i))))
+  of pkDouble:
+    Z3DeclParam(kind: pkDouble,
+                doubleVal: float(Z3_get_decl_double_parameter(ctx.raw, d, cuint(i))))
+  of pkSymbol:
+    let sym = Z3_get_decl_symbol_parameter(ctx.raw, d, cuint(i))
+    Z3DeclParam(kind: pkSymbol,
+                symbolVal: $Z3_get_symbol_string(ctx.raw, sym))
+  of pkSort:
+    Z3DeclParam(kind: pkSort,
+                sortVal: ctx.checkErr Z3_get_decl_sort_parameter(ctx.raw, d, cuint(i)))
+  of pkAst:
+    Z3DeclParam(kind: pkAst,
+                astVal: ctx.checkErr Z3_get_decl_ast_parameter(ctx.raw, d, cuint(i)))
+  of pkFuncDecl:
+    Z3DeclParam(kind: pkFuncDecl,
+                funcDeclVal: ctx.checkErr Z3_get_decl_func_decl_parameter(ctx.raw, d, cuint(i)))
+  of pkRational:
+    let s = Z3_get_decl_rational_parameter(ctx.raw, d, cuint(i))
+    Z3DeclParam(kind: pkRational,
+                rationalVal: $s)
+

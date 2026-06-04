@@ -154,7 +154,7 @@
 ## - `z3/fp` — IEEE 754 / SMT-LIB FloatingPoint theory. `Z3Fp[Ebits,
 ##   Sbits]` phantom-typed over the encoding widths, with `Z3Float16`
 ##   / `Z3Float32` / `Z3Float64` / `Z3Float128` aliases. `mkFp` /
-##   `mkFloat32` / `mkFloat64` / `mkNaN` / `mkInf` / `mkZero` and
+##   `mkFloat32` / `mkFloat64` / `mkFpNaN` / `mkFpInf` / `mkFpZero` and
 ##   matching `Var` forms. Operators `+` `-` `*` `/` default to
 ##   round-nearest-ties-to-even rounding; explicit forms `fpAdd` /
 ##   `fpSub` / `fpMul` / `fpDiv` accept a `Z3RoundingMode` AST built

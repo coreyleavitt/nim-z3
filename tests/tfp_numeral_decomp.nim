@@ -31,11 +31,11 @@ suite "getNumeralSign — N6.4b":
 
   test "+0 → some(false)":
     let ctx = newContext()
-    check getNumeralSign(mkZero[11, 53]()) == some(false)
+    check getNumeralSign(mkFpZero[11, 53]()) == some(false)
 
   test "-0 → some(true)":
     let ctx = newContext()
-    check getNumeralSign(mkZero[11, 53](negative = true)) == some(true)
+    check getNumeralSign(mkFpZero[11, 53](negative = true)) == some(true)
 
 # ---------------------------------------------------------------------------
 # getNumeralSignificandUint64

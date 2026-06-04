@@ -35,7 +35,7 @@
 ## 6B's `getParamDescrs` returns the schema at runtime), and
 ## `tests/toptimize.nim` for working examples of each mode.
 
-import ./ffi, ./context, ./error, ./ast, ./bitvec, ./model, ./solver, ./params
+import ./ffi, ./context, ./error, ./ast, ./bitvec, ./fp, ./model, ./solver, ./params
 
 # ============================================================================
 # Z3Optimize — lifecycle
@@ -130,12 +130,28 @@ proc maximize*[T: Z3Int | Z3Real | Z3BitVec](
   let idx = o.ctx.checkErr Z3_optimize_maximize(o.ctx.raw, o.raw, t.raw)
   Z3OptHandle[T](idx: idx, parent: o)
 
+proc maximize*[E, S: static int](
+    o: Z3Optimize, t: Z3Fp[E, S]): Z3OptHandle[Z3Fp[E, S]] =
+  ## Register a `Z3Fp[E, S]` FP expression as a maximisation objective.
+  ## Z3's C `Z3_optimize_maximize` accepts any AST sort; this overload
+  ## exposes the FP variant with correct phantom typing.
+  let idx = o.ctx.checkErr Z3_optimize_maximize(o.ctx.raw, o.raw, t.raw)
+  Z3OptHandle[Z3Fp[E, S]](idx: idx, parent: o)
+
 proc minimize*[T: Z3Int | Z3Real | Z3BitVec](
     o: Z3Optimize, t: T): Z3OptHandle[T] =
   ## Register `t` as a minimisation objective. Same type constraints
   ## as `maximize`.
   let idx = o.ctx.checkErr Z3_optimize_minimize(o.ctx.raw, o.raw, t.raw)
   Z3OptHandle[T](idx: idx, parent: o)
+
+proc minimize*[E, S: static int](
+    o: Z3Optimize, t: Z3Fp[E, S]): Z3OptHandle[Z3Fp[E, S]] =
+  ## Register a `Z3Fp[E, S]` FP expression as a minimisation objective.
+  ## Z3's C `Z3_optimize_minimize` accepts any AST sort; this overload
+  ## exposes the FP variant with correct phantom typing.
+  let idx = o.ctx.checkErr Z3_optimize_minimize(o.ctx.raw, o.raw, t.raw)
+  Z3OptHandle[Z3Fp[E, S]](idx: idx, parent: o)
 
 # ============================================================================
 # check / model / reasonUnknown

@@ -94,14 +94,14 @@ suite "Z3Fp literal lifts — == IEEE (N6.5a)":
     check smtValid(not (mkFloat64(1.0) == 2.0))
 
   test "NaN == 0.0 is UNSAT (IEEE NaN semantics)":
-    ## mkFpNaN[Z3Float64] expressed via existing mkNaN[11, 53]()
+    ## mkFpNaN[Z3Float64] expressed via existing mkFpNaN[11, 53]()
     let ctx = newContext()
-    let nan = mkNaN[11, 53]()
+    let nan = mkFpNaN[11, 53]()
     check smtValid(not (nan == 0.0))
 
   test "+0 == -0 via literal lift (IEEE +0 == -0)":
     let ctx = newContext()
-    let negZero = mkZero[11, 53](negative = true)
+    let negZero = mkFpZero[11, 53](negative = true)
     check smtValid(negZero == 0.0)
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ suite "Z3Fp literal lifts — != IEEE (N6.5a)":
 
   test "NaN != NaN is SAT via literal (NaN != anything)":
     let ctx = newContext()
-    let nan = mkNaN[11, 53]()
+    let nan = mkFpNaN[11, 53]()
     check smtValid(nan != 0.0)
 
 # ---------------------------------------------------------------------------

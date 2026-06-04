@@ -9,9 +9,9 @@ import std/unittest
 import z3
 
 suite "isNumeralNaN — N6.4a":
-  test "isNumeralNaN(mkNaN) is true":
+  test "isNumeralNaN(mkFpNaN) is true":
     let ctx = newContext()
-    check isNumeralNaN(mkNaN[8, 24]())
+    check isNumeralNaN(mkFpNaN[8, 24]())
 
   test "isNumeralNaN(1.0) is false":
     let ctx = newContext()
@@ -20,11 +20,11 @@ suite "isNumeralNaN — N6.4a":
 suite "isNumeralInf — N6.4a":
   test "isNumeralInf(+Inf) is true":
     let ctx = newContext()
-    check isNumeralInf(mkInf[8, 24]())
+    check isNumeralInf(mkFpInf[8, 24]())
 
   test "isNumeralInf(-Inf) is true":
     let ctx = newContext()
-    check isNumeralInf(mkInf[8, 24](negative = true))
+    check isNumeralInf(mkFpInf[8, 24](negative = true))
 
   test "isNumeralInf(1.0) is false":
     let ctx = newContext()
@@ -37,7 +37,7 @@ suite "isNumeralZero — N6.4a":
 
   test "isNumeralZero(-0) is true":
     let ctx = newContext()
-    check isNumeralZero(mkZero[8, 24](negative = true))
+    check isNumeralZero(mkFpZero[8, 24](negative = true))
 
   test "isNumeralZero(1.0) is false":
     let ctx = newContext()

@@ -25,21 +25,21 @@ suite "Z3Fp — width aliases":
     check compiles((mkFloat64(0.0).toIeeeBv == mkBitVec[64](0'u64)))
 
 suite "Z3Fp — special values + predicates":
-  test "isNaN(mkNaN()) is true; isNaN of a normal value is false":
+  test "isNaN(mkFpNaN()) is true; isNaN of a normal value is false":
     let ctx = newContext()
-    check smtValid(isNaN(mkNaN[8, 24]()))
+    check smtValid(isNaN(mkFpNaN[8, 24]()))
     check smtValid(not isNaN(mkFloat32(1.0'f32)))
 
   test "isInf / +Inf / -Inf":
     let ctx = newContext()
-    check smtValid(isInf(mkInf[8, 24]()))
-    check smtValid(isInf(mkInf[8, 24](negative = true)))
+    check smtValid(isInf(mkFpInf[8, 24]()))
+    check smtValid(isInf(mkFpInf[8, 24](negative = true)))
     check smtValid(not isInf(mkFloat32(0.0'f32)))
 
   test "isZero on +0 and -0":
     let ctx = newContext()
-    check smtValid(isZero(mkZero[8, 24]()))
-    check smtValid(isZero(mkZero[8, 24](negative = true)))
+    check smtValid(isZero(mkFpZero[8, 24]()))
+    check smtValid(isZero(mkFpZero[8, 24](negative = true)))
 
   test "isPositive / isNegative":
     let ctx = newContext()
@@ -55,14 +55,14 @@ suite "Z3Fp — special values + predicates":
 suite "Z3Fp — IEEE equality semantics":
   test "NaN == NaN is FALSE under IEEE (the headline divergence)":
     let ctx = newContext()
-    let nan = mkNaN[8, 24]()
+    let nan = mkFpNaN[8, 24]()
     check smtValid(not (nan == nan))
     check smtValid(nan != nan)
 
   test "+0 == -0 is TRUE":
     let ctx = newContext()
-    let pZero = mkZero[8, 24]()
-    let nZero = mkZero[8, 24](negative = true)
+    let pZero = mkFpZero[8, 24]()
+    let nZero = mkFpZero[8, 24](negative = true)
     check smtValid(pZero == nZero)
 
   test "normal values equate structurally":
@@ -80,7 +80,7 @@ suite "Z3Fp — signaling comparisons":
 
   test "NaN ordered with nothing":
     let ctx = newContext()
-    let nan = mkNaN[8, 24]()
+    let nan = mkFpNaN[8, 24]()
     let one = mkFloat32(1.0'f32)
     check smtValid(not (nan < one))
     check smtValid(not (nan > one))
@@ -168,11 +168,11 @@ suite "Z3Fp — roundToIntegral":
       roundToIntegral(rmRTN(), mkFloat32(3.7'f32)) == mkFloat32(3.0'f32))
 
 suite "Z3Fp — conversions":
-  test "toIeeeBv + toFp(bv) round-trips":
+  test "toIeeeBv + bvToFpBits round-trips":
     let ctx = newContext()
     let f = mkFloat32(3.5'f32)
     let bv = f.toIeeeBv
-    let f2 = toFp(bv, Z3Float32)
+    let f2 = bvToFpBits(bv, Z3Float32)
     check smtValid(f == f2)
 
   test "toReal of a representable FP":

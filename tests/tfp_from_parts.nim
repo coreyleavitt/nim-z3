@@ -36,7 +36,7 @@ suite "mkFpFromParts — N6.3":
     let exp = mkBitVec[8](0xFF'u32)
     let sig = mkBitVec[23](0'u32)
     let fp  = mkFpFromParts[8, 24](sgn, exp, sig)
-    check smtValid(fp == mkInf[8, 24]())
+    check smtValid(fp == mkFpInf[8, 24]())
 
   test "sgn=1, exp=0, sig=0 → negative zero (isZero AND isNegative)":
     ## sign=1, exp=0, sig=0 ⇒ −0 per IEEE 754.

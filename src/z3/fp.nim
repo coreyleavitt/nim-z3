@@ -356,27 +356,27 @@ proc mkFpFromParts*[E, S: static int](sgn: Z3BitVec[1],
   wrap[Z3Fp[E, S]](sgn.ctx,
     sgn.ctx.checkErr Z3_mk_fpa_fp(sgn.ctx.raw, sgn.raw, exp.raw, sig.raw))
 
-proc mkNaN*[E, S: static int](ctx: Z3Context): Z3Fp[E, S] =
+proc mkFpNaN*[E, S: static int](ctx: Z3Context): Z3Fp[E, S] =
   ## Not-a-number literal. Note: there's an entire space of NaN bit
   ## patterns in IEEE 754; this builds *a* NaN, not a specific one.
   wrap[Z3Fp[E, S]](ctx,
     ctx.checkErr Z3_mk_fpa_nan(ctx.raw, fpSort[E, S](ctx)))
-proc mkNaN*[E, S: static int](): Z3Fp[E, S] =
-  mkNaN[E, S](requireCurrentContext())
+proc mkFpNaN*[E, S: static int](): Z3Fp[E, S] =
+  mkFpNaN[E, S](requireCurrentContext())
 
-proc mkInf*[E, S: static int](ctx: Z3Context, negative = false): Z3Fp[E, S] =
+proc mkFpInf*[E, S: static int](ctx: Z3Context, negative = false): Z3Fp[E, S] =
   ## ±Infinity. Pass `negative = true` for −∞.
   wrap[Z3Fp[E, S]](ctx,
     ctx.checkErr Z3_mk_fpa_inf(ctx.raw, fpSort[E, S](ctx), negative))
-proc mkInf*[E, S: static int](negative = false): Z3Fp[E, S] =
-  mkInf[E, S](requireCurrentContext(), negative)
+proc mkFpInf*[E, S: static int](negative = false): Z3Fp[E, S] =
+  mkFpInf[E, S](requireCurrentContext(), negative)
 
-proc mkZero*[E, S: static int](ctx: Z3Context, negative = false): Z3Fp[E, S] =
+proc mkFpZero*[E, S: static int](ctx: Z3Context, negative = false): Z3Fp[E, S] =
   ## ±0. `+0 == -0` under IEEE equality (our `==`).
   wrap[Z3Fp[E, S]](ctx,
     ctx.checkErr Z3_mk_fpa_zero(ctx.raw, fpSort[E, S](ctx), negative))
-proc mkZero*[E, S: static int](negative = false): Z3Fp[E, S] =
-  mkZero[E, S](requireCurrentContext(), negative)
+proc mkFpZero*[E, S: static int](negative = false): Z3Fp[E, S] =
+  mkFpZero[E, S](requireCurrentContext(), negative)
 
 template predicate(name, ffi: untyped) =
   proc name*[E, S: static int](a: Z3Fp[E, S]): Z3Bool =
@@ -572,13 +572,14 @@ proc toIeeeBv*[E, S: static int](a: Z3Fp[E, S]): Z3BitVec[E + S] =
   wrap[Z3BitVec[E + S]](a.ctx,
     a.ctx.checkErr Z3_mk_fpa_to_ieee_bv(a.ctx.raw, a.raw))
 
-proc toFp*[Bw, E, S: static int](bv: Z3BitVec[Bw],
-                                 _: typedesc[Z3Fp[E, S]]): Z3Fp[E, S] =
+proc bvToFpBits*[Bw, E, S: static int](bv: Z3BitVec[Bw],
+                                       _: typedesc[Z3Fp[E, S]]): Z3Fp[E, S] =
   ## Re-interpret the BV bits as an FP value of sort `Z3Fp[E, S]`. The
   ## BV width must equal `E + S`; mismatches are rejected at compile
-  ## time.
+  ## time. This is the bit-pattern reinterpret cast (no rounding).
+  ## For lossy float-to-FP conversion, use `toFp(rm, fp, _)` instead.
   static: assert Bw == E + S,
-    "toFp[Z3Fp[E,S]]: BV width must equal E + S"
+    "bvToFpBits[Z3Fp[E,S]]: BV width must equal E + S"
   wrap[Z3Fp[E, S]](bv.ctx,
     bv.ctx.checkErr Z3_mk_fpa_to_fp_bv(bv.ctx.raw, bv.raw, fpSort[E, S](bv.ctx)))
 

@@ -2139,6 +2139,29 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   # FP literals. The path is via `Z3_mk_fpa_to_ieee_bv` → simplify →
   # `Z3_get_numeral_uint64`, then reinterpret-cast in Nim.
 
+  # Numeral decomposition — N6.4b
+  proc Z3_fpa_get_numeral_sign(c: RawZ3Context, t: RawZ3Ast,
+                                sgn: ptr cint): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_significand_string(c: RawZ3Context,
+                                              t: RawZ3Ast): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_significand_bv(c: RawZ3Context,
+                                          t: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_significand_uint64(c: RawZ3Context, t: RawZ3Ast,
+                                              n: ptr uint64): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_exponent_string(c: RawZ3Context, t: RawZ3Ast,
+                                           biased: bool): cstring
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_exponent_int64(c: RawZ3Context, t: RawZ3Ast,
+                                          n: ptr int64, biased: bool): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_get_numeral_exponent_bv(c: RawZ3Context, t: RawZ3Ast,
+                                       biased: bool): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+
   # --- Regular expressions (v0.3 step 4) -----------------------------------
 
   proc Z3_mk_re_sort(c: RawZ3Context, basis: RawZ3Sort): RawZ3Sort

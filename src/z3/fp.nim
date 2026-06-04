@@ -53,6 +53,7 @@
 ## lifter) collapsed into one family. Source delta is mostly
 ## `rmRNE` → `rmRNE()` and `mkRoundingMode(rmX)` → `rmX()`.
 
+import std/options
 import ./ffi, ./context, ./error, ./ast, ./model, ./bitvec, ./sort
 
 # ============================================================================
@@ -521,3 +522,80 @@ proc `$`*[E, S: static int](a: Z3Fp[E, S]): string = termToSmt2(a)
 
 proc `$`*(rm: Z3RoundingMode): string = termToSmt2(rm)
   ## SMT-LIB rendering of the rounding-mode AST.
+
+# ============================================================================
+# N6.4b — FPA numeral decomposition
+# ============================================================================
+#
+# These procs extract components from *concrete* FP numerals. The C API
+# uses bool success-flag + pointer-output for most values; the Nim wrappers
+# translate failure → `none(T)`, success → `some(v)`.
+#
+# Note on `Option` vs direct return:
+#   - bool-success APIs → `Option[T]`
+#   - direct-return APIs (strings, BV nodes) → plain return (callers should
+#     only invoke on actual numerals; misuse raises Z3Error via the context).
+
+proc getNumeralSign*[E, S: static int](a: Z3Fp[E, S]): Option[bool] =
+  ## Extract the sign of a concrete FP numeral.
+  ## Returns `some(false)` for positive, `some(true)` for negative.
+  ## Returns `none` when `a` is not a numeral (e.g. a free variable).
+  ## NaN is not a valid argument; results are unspecified.
+  var sgn: cint
+  if Z3_fpa_get_numeral_sign(a.ctx.raw, a.raw, addr sgn):
+    some(sgn != 0)
+  else:
+    none(bool)
+
+proc getNumeralSignificandString*[E, S: static int](a: Z3Fp[E, S]): string =
+  ## Return the significand of a concrete FP numeral as a decimal string.
+  ## The value is in the range [0.0, 2.0). Callers should only invoke on
+  ## concrete numerals; behaviour on free variables is unspecified.
+  $Z3_fpa_get_numeral_significand_string(a.ctx.raw, a.raw)
+
+proc getNumeralSignificandBv*[E, S: static int](a: Z3Fp[E, S]): Z3BitVec[S - 1] =
+  ## Return the significand of a concrete FP numeral as a `Z3BitVec[S-1]`.
+  ## The `S-1` width is because `S` includes the implicit hidden bit per the
+  ## N6.3 convention; the returned BV holds the explicit (non-hidden) bits.
+  ## Callers should only invoke on concrete numerals.
+  wrap[Z3BitVec[S - 1]](a.ctx,
+    a.ctx.checkErr Z3_fpa_get_numeral_significand_bv(a.ctx.raw, a.raw))
+
+proc getNumeralSignificandUint64*[E, S: static int](
+    a: Z3Fp[E, S]): Option[uint64] =
+  ## Return the significand of a concrete FP numeral as a `uint64`.
+  ## Returns `none` when `a` is not a numeral, or when the significand
+  ## bits do not fit into a `uint64` (e.g. >64-bit FP sorts).
+  ## NaN is an invalid argument.
+  var n: uint64
+  if Z3_fpa_get_numeral_significand_uint64(a.ctx.raw, a.raw, addr n):
+    some(n)
+  else:
+    none(uint64)
+
+proc getNumeralExponentString*[E, S: static int](
+    a: Z3Fp[E, S], biased: bool = false): string =
+  ## Return the exponent of a concrete FP numeral as a decimal string.
+  ## Pass `biased = true` for the biased (stored) exponent;
+  ## `biased = false` (the default) for the unbiased mathematical exponent.
+  ## Callers should only invoke on concrete numerals.
+  $Z3_fpa_get_numeral_exponent_string(a.ctx.raw, a.raw, biased)
+
+proc getNumeralExponentInt64*[E, S: static int](
+    a: Z3Fp[E, S], biased: bool = false): Option[int64] =
+  ## Return the exponent of a concrete FP numeral as an `int64`.
+  ## Returns `none` when `a` is not a numeral or the exponent overflows
+  ## `int64`. Pass `biased = true` for the stored biased exponent.
+  var n: int64
+  if Z3_fpa_get_numeral_exponent_int64(a.ctx.raw, a.raw, addr n, biased):
+    some(n)
+  else:
+    none(int64)
+
+proc getNumeralExponentBv*[E, S: static int](
+    a: Z3Fp[E, S], biased: bool = false): Z3BitVec[E] =
+  ## Return the exponent of a concrete FP numeral as a `Z3BitVec[E]`.
+  ## Pass `biased = true` for the stored biased exponent.
+  ## Callers should only invoke on concrete numerals.
+  wrap[Z3BitVec[E]](a.ctx,
+    a.ctx.checkErr Z3_fpa_get_numeral_exponent_bv(a.ctx.raw, a.raw, biased))

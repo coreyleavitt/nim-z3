@@ -69,8 +69,14 @@ proc `=destroy`*[E](s: Z3Set[E]) {.raises: [].} =
   termDestroy(Z3Array[E, Z3Bool](s), Z3_dec_ref)
 
 proc `=copy`*[E](dst: var Z3Set[E], src: Z3Set[E]) {.raises: [].} =
-  termCopy(Z3Array[E, Z3Bool](dst), Z3Array[E, Z3Bool](src),
-           Z3_dec_ref, Z3_inc_ref)
+  # Cannot call termCopy with `Z3Array[E,Z3Bool](dst)` because the cast
+  # produces an rvalue — writes through the cast don't land on `dst`.
+  # Instead, reach through to the underlying fields directly using a
+  # pointer cast that gives us a mutable alias to the same memory.
+  # Z3Set[E] and Z3Array[E,Z3Bool] share identical memory layout (distinct
+  # types with the same underlying struct), so this is safe and zero-cost.
+  let dstArr = cast[ptr Z3Array[E, Z3Bool]](addr dst)
+  termCopy(dstArr[], Z3Array[E, Z3Bool](src), Z3_dec_ref, Z3_inc_ref)
 
 proc `=dup`*[E](src: Z3Set[E]): Z3Set[E] {.raises: [].} =
   var arr: Z3Array[E, Z3Bool]

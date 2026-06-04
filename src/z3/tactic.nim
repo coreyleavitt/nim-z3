@@ -120,12 +120,6 @@ proc precision*(g: Z3Goal): Z3GoalPrec =
   ## tactic introduced an under- or over-approximation.
   Z3_goal_precision(g.ctx.raw, g.raw)
 
-proc assertConstraint*(g: Z3Goal, c: Z3Bool) =
-  ## Add constraint `c` to the goal. Alias for `add`; provided so the
-  ## N8.8 surface is complete and callers can use the more explicit name
-  ## when the distinction matters.
-  g.ctx.checkErrVoid Z3_goal_assert(g.ctx.raw, g.raw, c.raw)
-
 proc reset*(g: Z3Goal) =
   ## Remove all formulas from the goal, leaving it empty. Does not
   ## change the goal's model/unsat-core/proof flags.

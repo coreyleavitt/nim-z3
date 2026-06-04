@@ -308,6 +308,31 @@ proc enableConcurrentDecRef*(ctx: Z3Context) =
   ## of ASTs from the same context.
   Z3_enable_concurrent_dec_ref(ctx.raw)
 
+proc newScratchContext*(params: varargs[(string, string)]): Z3Context =
+  ## Allocate a fresh Z3 context with concurrent dec_ref already enabled,
+  ## ready to use as a worker-thread scratch space without a separate
+  ## `enableConcurrentDecRef` call. Equivalent to:
+  ##
+  ## ```nim
+  ## let ctx = newContext(params...)
+  ## enableConcurrentDecRef(ctx)
+  ## ctx
+  ## ```
+  ##
+  ## Accepts the same optional `params` as `newContext` (key/value pairs
+  ## passed to `Z3_set_param_value` before construction). Like `newContext`,
+  ## the new context becomes this thread's current context on return.
+  ##
+  ## **Intended use:** spawn a thread, call `newScratchContext()` inside
+  ## it, and work entirely within that thread. The concurrent-dec_ref flag
+  ## makes it safe for ASTs to be released from sibling threads (e.g. via
+  ## a shared ref-counting scheme), which is the common pattern when a
+  ## scratch context's results are passed back to a coordinating thread.
+  ##
+  ## N10.12.
+  result = newContext(params)
+  enableConcurrentDecRef(result)
+
 # Error handling (`Z3Error`, `raiseZ3Error`, `checkErr`, `checkErrVoid`)
 # moved to `z3/error` in v0.5 step 1. Cross-cutting modules import
 # `./error` directly; this module no longer owns the error surface.

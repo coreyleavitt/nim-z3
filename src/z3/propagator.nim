@@ -1,7 +1,7 @@
 ## `z3/propagator` — typed `Z3Propagator` + `PropagatorCtxBox` + sub-solver
 ## registration.
 ##
-## Implements RFC ADR-N0004 slice N8.4b. Wraps the raw N8.4a FFI surface with:
+## Implements RFC ADR-N0004 slices N8.4b and N8.4c. Wraps the raw N8.4a FFI surface with:
 ##
 ## - `Z3PropagatorHandlers` — a record of Nim closures, one per Z3 callback
 ##   event. The closures receive typed `Z3SolverCallback` / `Z3AnyAst`
@@ -28,7 +28,7 @@
 ## `nextSplit(cb, newT, newIdx, newPhase)` from within the handler.
 ## The `var` forms in the original spec note were misleading.
 
-import ./ffi, ./context, ./ast, ./solver, ./introspect
+import ./ffi, ./context, ./ast, ./solver, ./introspect, ./builder
 
 export Z3AnyAst   # handlers receive Z3AnyAst; re-export so callers don't
                   # need an extra import.
@@ -315,6 +315,26 @@ proc nextSplit*(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) =
   let ctx   = currentBox.ctx
   let lbool = Z3LBool(phase)
   discard Z3_solver_next_split(ctx.raw, cb, t.raw, cuint(idx), lbool)
+
+# ---------------------------------------------------------------------------
+# propagateConflict — assert a contradiction inside a callback
+# ---------------------------------------------------------------------------
+
+proc propagateConflict*(cb: Z3SolverCallback, lits, eqs: seq[Z3AnyAst]) =
+  ## Assert a contradiction (UNSAT) by propagating `false` as the consequence
+  ## of the given premises. Equivalent to calling `consequence` with
+  ## `conseq = mkFalse(ctx)`.
+  ##
+  ## `lits` — fixed literals that, together with `eqs`, imply contradiction.
+  ## `eqs`  — equal-pair list (length must be even: lhs0, rhs0, lhs1, rhs1 …).
+  ##
+  ## Valid only inside a callback; the context is recovered from the
+  ## thread-local `currentBox`.
+  doAssert currentBox != nil,
+    "propagateConflict: called outside a propagator callback (currentBox is nil)"
+  let ctx = currentBox.ctx
+  let falseLit = mkFalse(ctx)
+  consequence(cb, lits, eqs, toAnyAst(falseLit))
 
 # ---------------------------------------------------------------------------
 # clearSubBoxes — release accumulated sub-solver boxes

@@ -18,7 +18,7 @@
 ##   built via `Z3_mk_lstring` so embedded NULs are preserved.
 ## - `mkStringVar(name)` — free string variable.
 ## - `toStr` / `evalStr` — `Z3_get_lstring`-backed model extraction.
-## - `strToInt` / `intToStr` — int interop unique to strings.
+## - `Z3String.toInt` / `Z3Int.toStr` — int interop unique to strings.
 ## - Nim-`string`-literal lifts on `==` / `!=` / `&` / `contains` /
 ##   `startsWith` / `endsWith` so `x == "hello"`, `"prefix" & x`, etc.
 ##   Just Work for the `Z3Seq[Z3Char]` instantiation only.
@@ -123,14 +123,20 @@ proc fromCode*(c: Z3Int): Z3String =
   ## Context-free variant — uses the current implicit context.
   fromCode(c.ctx, c)
 
-proc strToInt*(s: Z3String): Z3Int =
+proc toInt*(s: Z3String): Z3Int =
   ## SMT `(str.to.int s)`. Non-negative integer the digits of `s`
   ## represent, or `-1` if `s` isn't a non-empty digit string.
+  ##
+  ## **ADR-N0005 hard break**: renamed from `strToInt` in N5.7; no
+  ## deprecation alias.
   wrap[Z3Int](s.ctx, s.ctx.checkErr Z3_mk_str_to_int(s.ctx.raw, s.raw))
 
-proc intToStr*(i: Z3Int): Z3String =
+proc toStr*(i: Z3Int): Z3String =
   ## SMT `(str.from.int i)`. Decimal representation of `i`; empty
   ## string for negative `i`.
+  ##
+  ## **ADR-N0005 hard break**: renamed from `intToStr` in N5.7; no
+  ## deprecation alias.
   wrap[Z3String](i.ctx, i.ctx.checkErr Z3_mk_int_to_str(i.ctx.raw, i.raw))
 
 # ============================================================================

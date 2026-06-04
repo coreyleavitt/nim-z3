@@ -70,11 +70,11 @@ suite "Z3String — primitive ops":
     check smtValid(at(mkString("abc"), mkInt(1)) == mkString("b"))
     check smtValid(at(mkString("abc"), mkInt(10)) == mkString(""))
 
-  test "strToInt / intToStr round-trip":
+  test "Z3String.toInt / Z3Int.toStr round-trip":
     let ctx = newContext()
-    check smtValid(strToInt(mkString("42")) == mkInt(42))
-    check smtValid(strToInt(mkString("abc")) == mkInt(-1))
-    check smtValid(intToStr(mkInt(42)) == mkString("42"))
+    check smtValid(mkString("42").toInt == mkInt(42))
+    check smtValid(mkString("abc").toInt == mkInt(-1))
+    check smtValid(mkInt(42).toStr == mkString("42"))
 
 suite "Z3String — Nim-literal lifts":
   test "x == \"literal\" compiles and produces a Z3Bool":

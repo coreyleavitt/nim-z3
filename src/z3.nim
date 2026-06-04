@@ -146,8 +146,8 @@
 ##   `Z3Seq[E']`). **v0.3 step 5.**
 ## - `z3/strings` — **alias `Z3String = Z3Seq[Z3Char]`** plus the
 ##   string-specific surface only: `mkString` (via `Z3_mk_lstring`),
-##   `mkStringVar`, `toStr` / `evalStr` model extraction, `strToInt`
-##   / `intToStr` int interop, Nim-`string`-literal lifts on `==` /
+##   `mkStringVar`, `toStr` / `evalStr` model extraction,
+##   `Z3String.toInt` / `Z3Int.toStr` int interop, Nim-`string`-literal lifts on `==` /
 ##   `!=` / `&` / `contains` / `startsWith` / `endsWith`. All generic
 ##   sequence ops (len, concat, nth, at, substr, …) flow through the
 ##   alias from `z3/sequence`. **v0.3 steps 4 + 5.**

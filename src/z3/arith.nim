@@ -75,36 +75,36 @@ template binaryVararg[S: static SortTag](
 # Int arithmetic
 # ============================================================================
 
-proc `+`*(a, b: Z3Int): Z3Int = binaryVararg[stInt](Z3_mk_add, a, b)
+proc `+`*(a, b: Z3Int): Z3Int {.inline.} = binaryVararg[stInt](Z3_mk_add, a, b)
 proc `+`*(a: Z3Int, b: int): Z3Int {.inline.} = a + mkInt(a.ctx, b)
 proc `+`*(a: int, b: Z3Int): Z3Int {.inline.} = mkInt(b.ctx, a) + b
 
-proc `-`*(a, b: Z3Int): Z3Int = binaryVararg[stInt](Z3_mk_sub, a, b)
+proc `-`*(a, b: Z3Int): Z3Int {.inline.} = binaryVararg[stInt](Z3_mk_sub, a, b)
 proc `-`*(a: Z3Int, b: int): Z3Int {.inline.} = a - mkInt(a.ctx, b)
 proc `-`*(a: int, b: Z3Int): Z3Int {.inline.} = mkInt(b.ctx, a) - b
-proc `-`*(a: Z3Int): Z3Int =
+proc `-`*(a: Z3Int): Z3Int {.inline.} =
   ## Unary negation.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_unary_minus(a.ctx.raw, a.raw))
 
-proc `*`*(a, b: Z3Int): Z3Int = binaryVararg[stInt](Z3_mk_mul, a, b)
+proc `*`*(a, b: Z3Int): Z3Int {.inline.} = binaryVararg[stInt](Z3_mk_mul, a, b)
 proc `*`*(a: Z3Int, b: int): Z3Int {.inline.} = a * mkInt(a.ctx, b)
 proc `*`*(a: int, b: Z3Int): Z3Int {.inline.} = mkInt(b.ctx, a) * b
 
-proc `div`*(a, b: Z3Int): Z3Int =
+proc `div`*(a, b: Z3Int): Z3Int {.inline.} =
   ## Integer division. `0` divisor is a sort error caught by Z3 and
   ## surfaced as `Z3Error`.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_div(a.ctx.raw, a.raw, b.raw))
 proc `div`*(a: Z3Int, b: int): Z3Int {.inline.} = a div mkInt(a.ctx, b)
 proc `div`*(a: int, b: Z3Int): Z3Int {.inline.} = mkInt(b.ctx, a) div b
 
-proc `mod`*(a, b: Z3Int): Z3Int =
+proc `mod`*(a, b: Z3Int): Z3Int {.inline.} =
   ## Euclidean modulo (Z3's `mod`). Result has the same sign as `b`.
   ## For truncated remainder, use `rem`.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_mod(a.ctx.raw, a.raw, b.raw))
 proc `mod`*(a: Z3Int, b: int): Z3Int {.inline.} = a mod mkInt(a.ctx, b)
 proc `mod`*(a: int, b: Z3Int): Z3Int {.inline.} = mkInt(b.ctx, a) mod b
 
-proc rem*(a, b: Z3Int): Z3Int =
+proc rem*(a, b: Z3Int): Z3Int {.inline.} =
   ## Truncated remainder (Z3's `rem`). Differs from `mod` for negative
   ## operands.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_rem(a.ctx.raw, a.raw, b.raw))
@@ -115,27 +115,27 @@ proc rem*(a: int, b: Z3Int): Z3Int {.inline.} = rem(mkInt(b.ctx, a), b)
 # Real arithmetic
 # ============================================================================
 
-proc `+`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_add, a, b)
+proc `+`*(a, b: Z3Real): Z3Real {.inline.} = binaryVararg[stReal](Z3_mk_add, a, b)
 proc `+`*(a: Z3Real, b: int): Z3Real {.inline.} = a + mkReal(a.ctx, b)
 proc `+`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) + b
 proc `+`*(a: Z3Real, b: float64): Z3Real {.inline.} = a + mkReal(a.ctx, b)
 proc `+`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) + b
 
-proc `-`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_sub, a, b)
+proc `-`*(a, b: Z3Real): Z3Real {.inline.} = binaryVararg[stReal](Z3_mk_sub, a, b)
 proc `-`*(a: Z3Real, b: int): Z3Real {.inline.} = a - mkReal(a.ctx, b)
 proc `-`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) - b
-proc `-`*(a: Z3Real): Z3Real =
+proc `-`*(a: Z3Real): Z3Real {.inline.} =
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_unary_minus(a.ctx.raw, a.raw))
 proc `-`*(a: Z3Real, b: float64): Z3Real {.inline.} = a - mkReal(a.ctx, b)
 proc `-`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) - b
 
-proc `*`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_mul, a, b)
+proc `*`*(a, b: Z3Real): Z3Real {.inline.} = binaryVararg[stReal](Z3_mk_mul, a, b)
 proc `*`*(a: Z3Real, b: int): Z3Real {.inline.} = a * mkReal(a.ctx, b)
 proc `*`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) * b
 proc `*`*(a: Z3Real, b: float64): Z3Real {.inline.} = a * mkReal(a.ctx, b)
 proc `*`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) * b
 
-proc `/`*(a, b: Z3Real): Z3Real =
+proc `/`*(a, b: Z3Real): Z3Real {.inline.} =
   ## Real division. `0` divisor is a sort error caught by Z3 and
   ## surfaced as `Z3Error`.
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_div(a.ctx.raw, a.raw, b.raw))
@@ -162,13 +162,13 @@ template orderingOp[S: static SortTag](
                "numeric sorts (Z3Int, Z3Real)".}
     wrap[Z3Bool](a.ctx, a.ctx.checkErr zfn(a.ctx.raw, a.raw, b.raw))
 
-proc `<`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+proc `<`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool {.inline.} =
   orderingOp[S](Z3_mk_lt, a, b)
-proc `<=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+proc `<=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool {.inline.} =
   orderingOp[S](Z3_mk_le, a, b)
-proc `>`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+proc `>`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool {.inline.} =
   orderingOp[S](Z3_mk_gt, a, b)
-proc `>=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool =
+proc `>=`*[S: static SortTag](a, b: Z3Ast[S]): Z3Bool {.inline.} =
   orderingOp[S](Z3_mk_ge, a, b)
 
 # --- ordering literal lifts (Int) ---
@@ -215,11 +215,11 @@ proc `!=`*(a: float64, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) != b
 # abs — absolute value
 # ============================================================================
 
-proc abs*(a: Z3Int): Z3Int =
+proc abs*(a: Z3Int): Z3Int {.inline.} =
   ## Absolute value of an integer term: `|a|`.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_abs(a.ctx.raw, a.raw))
 
-proc abs*(a: Z3Real): Z3Real =
+proc abs*(a: Z3Real): Z3Real {.inline.} =
   ## Absolute value of a real term: `|a|`.
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_abs(a.ctx.raw, a.raw))
 
@@ -227,7 +227,7 @@ proc abs*(a: Z3Real): Z3Real =
 # power — exponentiation
 # ============================================================================
 
-proc power*(a, b: Z3Real): Z3Real =
+proc power*(a, b: Z3Real): Z3Real {.inline.} =
   ## Real exponentiation: `a ^ b`. Both arguments must be `Z3Real`.
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_power(a.ctx.raw, a.raw, b.raw))
 
@@ -239,7 +239,7 @@ proc `^`*(a, b: Z3Real): Z3Real {.inline.} =
 # divides — integer divisibility predicate
 # ============================================================================
 
-proc divides*(d, n: Z3Int): Z3Bool =
+proc divides*(d, n: Z3Int): Z3Bool {.inline.} =
   ## Boolean predicate: true iff integer `d` divides integer `n`.
   ## Maps to Z3's `divisible` constraint: `n mod d == 0`.
   wrap[Z3Bool](d.ctx, d.ctx.checkErr Z3_mk_divides(d.ctx.raw, d.raw, n.raw))
@@ -248,7 +248,7 @@ proc divides*(d, n: Z3Int): Z3Bool =
 # isInt — real-is-integer predicate
 # ============================================================================
 
-proc isInt*(r: Z3Real): Z3Bool =
+proc isInt*(r: Z3Real): Z3Bool {.inline.} =
   ## Boolean predicate: true iff real `r` has an integer value.
   wrap[Z3Bool](r.ctx, r.ctx.checkErr Z3_mk_is_int(r.ctx.raw, r.raw))
 
@@ -256,12 +256,12 @@ proc isInt*(r: Z3Real): Z3Bool =
 # intToReal / realToInt — coercions between Int and Real sorts
 # ============================================================================
 
-proc intToReal*(a: Z3Int): Z3Real =
+proc intToReal*(a: Z3Int): Z3Real {.inline.} =
   ## Coerce an Int-sort term to a Real-sort term.
   ## Maps to `Z3_mk_int2real`.
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_int2real(a.ctx.raw, a.raw))
 
-proc realToInt*(a: Z3Real): Z3Int =
+proc realToInt*(a: Z3Real): Z3Int {.inline.} =
   ## Floor of a Real-sort term as an Int-sort term.
   ## Z3 semantics: `realToInt(r) = floor(r)` (rounds towards negative infinity).
   ## Maps to `Z3_mk_real2int`.
@@ -271,7 +271,7 @@ proc realToInt*(a: Z3Real): Z3Int =
 # mkRealInt64 — exact rational from int64 numerator / denominator
 # ============================================================================
 
-proc mkRealInt64*(ctx: Z3Context, num, den: int64): Z3Real =
+proc mkRealInt64*(ctx: Z3Context, num, den: int64): Z3Real {.inline.} =
   ## Exact rational `num / den` in Z3's `Real` sort, using 64-bit precision.
   ## Prefer over `mkReal(num, den)` when values exceed `cint` (32-bit) range.
   ##

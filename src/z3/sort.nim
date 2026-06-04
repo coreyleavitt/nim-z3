@@ -91,15 +91,15 @@ type
 
 proc mkIntSort*(ctx: Z3Context): Z3Sort[stInt] =
   Z3Sort[stInt](raw: ctx.checkErr Z3_mk_int_sort(ctx.raw), ctx: ctx)
-proc mkIntSort*(): Z3Sort[stInt] = mkIntSort(requireCurrentContext())
+proc mkIntSort*(): Z3Sort[stInt] {.inline.} = mkIntSort(requireCurrentContext())
 
 proc mkRealSort*(ctx: Z3Context): Z3Sort[stReal] =
   Z3Sort[stReal](raw: ctx.checkErr Z3_mk_real_sort(ctx.raw), ctx: ctx)
-proc mkRealSort*(): Z3Sort[stReal] = mkRealSort(requireCurrentContext())
+proc mkRealSort*(): Z3Sort[stReal] {.inline.} = mkRealSort(requireCurrentContext())
 
 proc mkBoolSort*(ctx: Z3Context): Z3Sort[stBool] =
   Z3Sort[stBool](raw: ctx.checkErr Z3_mk_bool_sort(ctx.raw), ctx: ctx)
-proc mkBoolSort*(): Z3Sort[stBool] = mkBoolSort(requireCurrentContext())
+proc mkBoolSort*(): Z3Sort[stBool] {.inline.} = mkBoolSort(requireCurrentContext())
 
 proc mkBitVecSort*(ctx: Z3Context, w: cuint): Z3Sort[stBitVec] =
   ## Fixed-width bit-vector sort of `w` bits. Width is a runtime cuint
@@ -107,7 +107,7 @@ proc mkBitVecSort*(ctx: Z3Context, w: cuint): Z3Sort[stBitVec] =
   ## on `Z3BitVec[W]` (see `z3/bitvec`) which calls into this with a
   ## `static int` width converted at the call site.
   Z3Sort[stBitVec](raw: ctx.checkErr Z3_mk_bv_sort(ctx.raw, w), ctx: ctx)
-proc mkBitVecSort*(w: cuint): Z3Sort[stBitVec] =
+proc mkBitVecSort*(w: cuint): Z3Sort[stBitVec] {.inline.} =
   mkBitVecSort(requireCurrentContext(), w)
 
 proc mkUninterpretedSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted] =
@@ -124,7 +124,7 @@ proc mkUninterpretedSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted]
     raw: ctx.checkErr Z3_mk_uninterpreted_sort(ctx.raw, sym),
     ctx: ctx)
 
-proc mkUninterpretedSort*(name: string): Z3Sort[stUninterpreted] =
+proc mkUninterpretedSort*(name: string): Z3Sort[stUninterpreted] {.inline.} =
   mkUninterpretedSort(requireCurrentContext(), name)
 
 proc declareSort*(ctx: Z3Context, name: string): Z3Sort[stUninterpreted]

@@ -51,12 +51,12 @@ type
 # Literals + variables
 # ============================================================================
 
-proc mkString*(ctx: Z3Context, s: string): Z3String =
+proc mkString*(ctx: Z3Context, s: string): Z3String {.inline.} =
   ## String literal carrying the bytes of `s`. Uses `Z3_mk_lstring` so
   ## embedded NULs are preserved.
   wrap[Z3String](ctx,
     ctx.checkErr Z3_mk_lstring(ctx.raw, cuint(s.len), s.cstring))
-proc mkString*(s: string): Z3String =
+proc mkString*(s: string): Z3String {.inline.} =
   mkString(requireCurrentContext(), s)
 
 proc mkStringVar*(ctx: Z3Context, name: string): Z3String =
@@ -104,14 +104,14 @@ proc evalStr*(m: Z3Model, a: Z3String, modelCompletion = true): string {.inline.
 # Codepoint conversion — string-specific (N5.2)
 # ============================================================================
 
-proc toCode*(s: Z3String): Z3Int =
+proc toCode*(s: Z3String): Z3Int {.inline.} =
   ## SMT `(str.to_code s)`. The Unicode codepoint of the single character
   ## in `s`, or `-1` if `s` is empty or has length > 1.
   ##
   ## Wraps `Z3_mk_string_to_code`.
   wrap[Z3Int](s.ctx, s.ctx.checkErr Z3_mk_string_to_code(s.ctx.raw, s.raw))
 
-proc fromCode*(ctx: Z3Context, c: Z3Int): Z3String =
+proc fromCode*(ctx: Z3Context, c: Z3Int): Z3String {.inline.} =
   ## SMT `(str.from_code c)`. A single-character string whose codepoint
   ## equals `c`. For `c` outside the valid Unicode range Z3 returns the
   ## empty string.
@@ -119,11 +119,11 @@ proc fromCode*(ctx: Z3Context, c: Z3Int): Z3String =
   ## Wraps `Z3_mk_string_from_code`.
   wrap[Z3String](ctx, ctx.checkErr Z3_mk_string_from_code(ctx.raw, c.raw))
 
-proc fromCode*(c: Z3Int): Z3String =
+proc fromCode*(c: Z3Int): Z3String {.inline.} =
   ## Context-free variant — uses the current implicit context.
   fromCode(c.ctx, c)
 
-proc toInt*(s: Z3String): Z3Int =
+proc toInt*(s: Z3String): Z3Int {.inline.} =
   ## SMT `(str.to.int s)`. Non-negative integer the digits of `s`
   ## represent, or `-1` if `s` isn't a non-empty digit string.
   ##
@@ -131,7 +131,7 @@ proc toInt*(s: Z3String): Z3Int =
   ## deprecation alias.
   wrap[Z3Int](s.ctx, s.ctx.checkErr Z3_mk_str_to_int(s.ctx.raw, s.raw))
 
-proc toStr*(i: Z3Int): Z3String =
+proc toStr*(i: Z3Int): Z3String {.inline.} =
   ## SMT `(str.from.int i)`. Decimal representation of `i`; empty
   ## string for negative `i`.
   ##

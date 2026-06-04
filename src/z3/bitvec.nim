@@ -91,7 +91,7 @@ proc mkBitVecVar*[W: static int](ctx: Z3Context, name: string): Z3BitVec[W] =
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_const(ctx.raw, sym, s))
-proc mkBitVecVar*[W: static int](name: string): Z3BitVec[W] =
+proc mkBitVecVar*[W: static int](name: string): Z3BitVec[W] {.inline.} =
   mkBitVecVar[W](requireCurrentContext(), name)
 
 proc mkBitVec*[W: static int](
@@ -114,7 +114,7 @@ proc mkBitVec*[W: static int](
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, uint64(v), s))
-proc mkBitVec*[W: static int](v: SomeInteger): Z3BitVec[W] =
+proc mkBitVec*[W: static int](v: SomeInteger): Z3BitVec[W] {.inline.} =
   mkBitVec[W](requireCurrentContext(), v)
 
 proc mkBigBitVec*[W: static int](
@@ -134,7 +134,7 @@ proc mkBigBitVec*[W: static int](
   static: assert W > 0, "BitVec width must be positive"
   let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, cuint(W))
   wrap[Z3BitVec[W]](ctx, ctx.checkErr Z3_mk_numeral(ctx.raw, numeral.cstring, s))
-proc mkBigBitVec*[W: static int](numeral: string): Z3BitVec[W] =
+proc mkBigBitVec*[W: static int](numeral: string): Z3BitVec[W] {.inline.} =
   mkBigBitVec[W](requireCurrentContext(), numeral)
 
 # ============================================================================
@@ -614,53 +614,53 @@ proc `$`*[W: static int](a: Z3BitVec[W]): string = termToSmt2(a)
 #   sdivNoOverflow (a, b)         — signed-only (INT_MIN / -1 case)
 # ============================================================================
 
-proc addNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+proc addNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool {.inline.} =
   ## True iff `a + b` does not overflow under the chosen sign interpretation.
   ## `signed = false` checks unsigned overflow (result > 2^W - 1);
   ## `signed = true` checks signed overflow (result > INT_MAX for W bits).
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvadd_no_overflow(a.ctx.raw, a.raw, b.raw, signed))
 
-proc addNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+proc addNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool {.inline.} =
   ## True iff signed `a + b` does not underflow (result >= INT_MIN for W bits).
   ## Signed-only — unsigned addition cannot underflow.
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvadd_no_underflow(a.ctx.raw, a.raw, b.raw))
 
-proc subNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+proc subNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool {.inline.} =
   ## True iff signed `a - b` does not overflow (result <= INT_MAX for W bits).
   ## Signed-only — unsigned subtraction overflow manifests as underflow.
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvsub_no_overflow(a.ctx.raw, a.raw, b.raw))
 
-proc subNoUnderflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+proc subNoUnderflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool {.inline.} =
   ## True iff `a - b` does not underflow under the chosen sign interpretation.
   ## `signed = false` checks unsigned underflow (borrow, result < 0);
   ## `signed = true` checks signed underflow (result < INT_MIN for W bits).
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvsub_no_underflow(a.ctx.raw, a.raw, b.raw, signed))
 
-proc mulNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool =
+proc mulNoOverflow*[W: static int](a, b: Z3BitVec[W], signed: bool): Z3Bool {.inline.} =
   ## True iff `a * b` does not overflow under the chosen sign interpretation.
   ## `signed = false` checks unsigned overflow (result > 2^W - 1);
   ## `signed = true` checks signed overflow (result > INT_MAX for W bits).
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvmul_no_overflow(a.ctx.raw, a.raw, b.raw, signed))
 
-proc mulNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+proc mulNoUnderflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool {.inline.} =
   ## True iff signed `a * b` does not underflow (result >= INT_MIN for W bits).
   ## Signed-only — unsigned multiplication cannot produce values below zero.
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvmul_no_underflow(a.ctx.raw, a.raw, b.raw))
 
-proc negNoOverflow*[W: static int](a: Z3BitVec[W]): Z3Bool =
+proc negNoOverflow*[W: static int](a: Z3BitVec[W]): Z3Bool {.inline.} =
   ## True iff the signed negation of `a` does not overflow.
   ## The only overflowing case is `neg(INT_MIN)`: `-(- 2^(W-1))` = 2^(W-1),
   ## which exceeds INT_MAX. Signed-only.
   wrap[Z3Bool](a.ctx,
     a.ctx.checkErr Z3_mk_bvneg_no_overflow(a.ctx.raw, a.raw))
 
-proc sdivNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
+proc sdivNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool {.inline.} =
   ## True iff signed `a / b` does not overflow.
   ## The only overflowing case is `INT_MIN / -1`. Signed-only.
   wrap[Z3Bool](a.ctx,
@@ -675,13 +675,13 @@ proc sdivNoOverflow*[W: static int](a, b: Z3BitVec[W]): Z3Bool =
 # SMT-LIB equivalent: `(_ bvredand ...)` / `(_ bvredor ...)`.
 # ============================================================================
 
-proc redAnd*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] =
+proc redAnd*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] {.inline.} =
   ## AND-reduction: BV[W] → BV[1]. Result is `1` iff every bit of `a` is `1`.
   ## Equivalent to SMT-LIB `(bvredand a)`.
   wrap[Z3BitVec[1]](a.ctx,
     a.ctx.checkErr Z3_mk_bvredand(a.ctx.raw, a.raw))
 
-proc redOr*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] =
+proc redOr*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] {.inline.} =
   ## OR-reduction: BV[W] → BV[1]. Result is `1` iff at least one bit of `a`
   ## is `1`. Equivalent to SMT-LIB `(bvredor a)`.
   wrap[Z3BitVec[1]](a.ctx,
@@ -697,13 +697,13 @@ proc redOr*[W: static int](a: Z3BitVec[W]): Z3BitVec[1] =
 # SMT-LIB equivalent: `(ext_rotate_left a b)` / `(ext_rotate_right a b)`.
 # ============================================================================
 
-proc extRotateLeft*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
+proc extRotateLeft*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] {.inline.} =
   ## Rotate `a` left by the (symbolic) amount `b` — both are BV[W].
   ## Bits shifted out of the MSB wrap around to the LSB.
   wrap[Z3BitVec[W]](a.ctx,
     a.ctx.checkErr Z3_mk_ext_rotate_left(a.ctx.raw, a.raw, b.raw))
 
-proc extRotateRight*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
+proc extRotateRight*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] {.inline.} =
   ## Rotate `a` right by the (symbolic) amount `b` — both are BV[W].
   ## Bits shifted out of the LSB wrap around to the MSB.
   wrap[Z3BitVec[W]](a.ctx,
@@ -730,7 +730,7 @@ proc extRotateRight*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
 # reference free variables and participates in further symbolic reasoning.
 # ============================================================================
 
-proc bvToInt*[W: static int](a: Z3BitVec[W], signed: bool = false): Z3Int =
+proc bvToInt*[W: static int](a: Z3BitVec[W], signed: bool = false): Z3Int {.inline.} =
   ## Theory-level BV → Int conversion. Returns a `Z3Int` AST whose value
   ## is the unsigned (default) or signed two's-complement interpretation
   ## of `a`.

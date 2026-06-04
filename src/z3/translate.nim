@@ -31,7 +31,7 @@ import ./ffi, ./context, ./error, ./ast, ./sort, ./funcdecl
 # translate — typed cross-context transfer
 # ============================================================================
 
-proc translate*[T: Z3Term](t: T, targetCtx: Z3Context): T =
+proc translate*[T: Z3Term](t: T, targetCtx: Z3Context): T {.inline.} =
   ## Transfer `t` from its owning context to `targetCtx`. The returned
   ## handle is owned by `targetCtx`; the source handle is independent.
   ## Sort is preserved (typed family round-trips).

@@ -350,6 +350,48 @@ type
     ## accessible via `Z3_get_error_code` rather than terminating the
     ## process.
 
+  # ---- N7.8 fixedpoint callback typedefs ------------------------------------
+
+  Z3FixedpointReduceAssignCallbackFptr* =
+    proc(state: pointer, decl: RawZ3FuncDecl,
+         numIn: cuint, inArgs: pointer,
+         numOut: cuint, outArgs: pointer) {.cdecl.}
+    ## Callback invoked by Z3's fixedpoint engine for destructive updates
+    ## (register-assign style). `decl` is the relation being updated;
+    ## `inArgs`/`numIn` are the input column values (`Z3_ast const[]`),
+    ## `outArgs`/`numOut` are the output columns. C declares the array
+    ## params as `Z3_ast const[]` (const-qualified); Nim uses `pointer`
+    ## to avoid a `-Wincompatible-pointer-types` mismatch — cast to
+    ## `ptr UncheckedArray[RawZ3Ast]` inside the callback body.
+    ## Matches `Z3_fixedpoint_reduce_assign_callback_fptr`.
+
+  Z3FixedpointReduceAppCallbackFptr* =
+    proc(state: pointer, decl: RawZ3FuncDecl,
+         numArgs: cuint, args: pointer,
+         res: ptr RawZ3Ast) {.cdecl.}
+    ## Callback for building terms from relational operators. `args` is
+    ## a `Z3_ast const[]` array (const-qualified in C; `pointer` here
+    ## for the same reason as `Z3FixedpointReduceAssignCallbackFptr`).
+    ## `res` is a non-const out-param the callback fills with a
+    ## replacement AST (or leaves unchanged for no replacement). Matches
+    ## `Z3_fixedpoint_reduce_app_callback_fptr`.
+
+  Z3FixedpointNewLemmaEh* =
+    proc(state: pointer, lemma: RawZ3Ast, level: cuint) {.cdecl.}
+    ## Export callback fired by the Spacer engine when it discovers a
+    ## new lemma at the given induction level. Matches
+    ## `Z3_fixedpoint_new_lemma_eh`.
+
+  Z3FixedpointPredecessorEh* =
+    proc(state: pointer) {.cdecl.}
+    ## Callback fired when the Spacer engine explores a predecessor
+    ## frame. Matches `Z3_fixedpoint_predecessor_eh`.
+
+  Z3FixedpointUnfoldEh* =
+    proc(state: pointer) {.cdecl.}
+    ## Callback fired on each unfolding step. Matches
+    ## `Z3_fixedpoint_unfold_eh`.
+
 # ============================================================================
 # Z3 FFI declarations
 # ============================================================================
@@ -1100,6 +1142,46 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                                s: cstring): RawZ3AstVector
     {.cdecl, header: "z3.h".}
     ## **N7.7.** File-input twin of `Z3_fixedpoint_from_string`.
+
+  # --- N7.8 fixedpoint callback registration --------------------------------
+
+  proc Z3_fixedpoint_init(c: RawZ3Context, d: RawZ3Fixedpoint, state: pointer)
+    {.cdecl, header: "z3_fixedpoint.h".}
+    ## **N7.8.** Initialise the fixedpoint context with a user-defined
+    ## state pointer. Must be called before registering reduce-assign or
+    ## reduce-app callbacks; `state` is threaded through every callback
+    ## invocation so callers can recover their Nim-side data without
+    ## globals.
+
+  proc Z3_fixedpoint_set_reduce_assign_callback(
+      c: RawZ3Context, d: RawZ3Fixedpoint,
+      cb: pointer)
+    {.cdecl, header: "z3_fixedpoint.h".}
+    ## **N7.8.** Register a destructive-update callback. Z3 invokes the
+    ## `Z3_fixedpoint_reduce_assign_callback_fptr`-typed function pointer
+    ## `cb` whenever the engine performs a register-assign step. The
+    ## parameter is declared as `pointer` to avoid a softlink
+    ## `__typeof__`/`_Static_assert` const-qualification mismatch
+    ## (`Z3_ast * const*` vs Nim's generated non-const ptr type);
+    ## callers cast `Z3FixedpointReduceAssignCallbackFptr` to `pointer`.
+
+  proc Z3_fixedpoint_set_reduce_app_callback(
+      c: RawZ3Context, d: RawZ3Fixedpoint,
+      cb: pointer)
+    {.cdecl, header: "z3_fixedpoint.h".}
+    ## **N7.8.** Register a term-building callback. The `pointer` param
+    ## carries a `Z3_fixedpoint_reduce_app_callback_fptr`; same
+    ## const-array rationale as `Z3_fixedpoint_set_reduce_assign_callback`.
+
+  proc Z3_fixedpoint_add_callback(c: RawZ3Context, f: RawZ3Fixedpoint,
+                                   state: pointer,
+                                   newLemmaEh: Z3FixedpointNewLemmaEh,
+                                   predecessorEh: Z3FixedpointPredecessorEh,
+                                   unfoldEh: Z3FixedpointUnfoldEh)
+    {.cdecl, header: "z3_fixedpoint.h".}
+    ## **N7.8.** Register Spacer-engine export callbacks: `newLemmaEh`
+    ## fires on each new lemma discovery, `predecessorEh` on predecessor
+    ## exploration, `unfoldEh` on each unfolding step.
 
   # --- Spacer / IC3-PDR extensions (z3_spacer.h) -------------------------
 

@@ -299,3 +299,54 @@ proc `$`*(fp: Z3Fixedpoint): string =
   ## SMT-LIB rendering of the fixedpoint solver state — rules,
   ## assertions, registered relations.
   $Z3_fixedpoint_to_string(fp.ctx.raw, fp.raw, 0, nil)
+
+# ============================================================================
+# N7.8 — Callback registration (raw pointer / cdecl surface)
+#
+# These procs expose the four Z3 callback-registration functions with
+# raw `pointer` state and `{.cdecl.}` function pointers. Typed-closure
+# wrappers (boxing a Nim closure into a stable C-ABI thunk) are
+# deferred to a follow-on RFC per the complete-lib-not-consumer directive.
+# ============================================================================
+
+proc init*(fp: Z3Fixedpoint, state: pointer) =
+  ## Bind a user-defined `state` pointer to `fp`. This must be called
+  ## before `setReduceAssignCallback` or `setReduceAppCallback` so that
+  ## Z3 knows which state to thread through each callback invocation.
+  ## Pass `nil` when no per-callback state is needed.
+  Z3_fixedpoint_init(fp.ctx.raw, fp.raw, state)
+
+proc setReduceAssignCallback*(fp: Z3Fixedpoint, state: pointer,
+    cb: Z3FixedpointReduceAssignCallbackFptr) =
+  ## Register a destructive-update callback on `fp`. Z3 calls `cb`
+  ## (with the `state` pointer) whenever the fixedpoint engine performs
+  ## a register-assign step. Pass `nil` for both `state` and `cb` to
+  ## deregister. `init` is called internally to bind `state`.
+  ##
+  ## The FFI layer accepts `pointer` for the callback argument to avoid
+  ## a softlink const-qualification mismatch (`Z3_ast * const*` in C).
+  fp.init(state)
+  Z3_fixedpoint_set_reduce_assign_callback(fp.ctx.raw, fp.raw,
+    cast[pointer](cb))
+
+proc setReduceAppCallback*(fp: Z3Fixedpoint, state: pointer,
+    cb: Z3FixedpointReduceAppCallbackFptr) =
+  ## Register a term-building callback on `fp`. Z3 calls `cb` when
+  ## it needs to construct a term from a relational operator; the
+  ## callback can replace the result via its out-param. Pass `nil`
+  ## for both arguments to deregister. `init` is called internally.
+  fp.init(state)
+  Z3_fixedpoint_set_reduce_app_callback(fp.ctx.raw, fp.raw,
+    cast[pointer](cb))
+
+proc addCallback*(fp: Z3Fixedpoint, state: pointer,
+    newLemmaEh: Z3FixedpointNewLemmaEh,
+    predecessorEh: Z3FixedpointPredecessorEh,
+    unfoldEh: Z3FixedpointUnfoldEh) =
+  ## Register Spacer-engine export callbacks. `newLemmaEh` is invoked
+  ## on each new lemma discovery; `predecessorEh` on predecessor-frame
+  ## exploration; `unfoldEh` on each unfolding step. Any callback
+  ## may be `nil` to opt out of that event. The `state` pointer is
+  ## threaded through all three callbacks unchanged.
+  Z3_fixedpoint_add_callback(fp.ctx.raw, fp.raw, state,
+    newLemmaEh, predecessorEh, unfoldEh)

@@ -70,6 +70,13 @@ type
       ## typedesc. The `*` export is needed so the sibling module
       ## `z3/datatypes` (which lives outside `z3/context`) can write
       ## into the table; user code should not touch it directly.
+    uninterpretedRegistry*: Table[string, RawZ3Sort]
+      ## Per-context lookup table keyed by sort name, populated by
+      ## `declareUninterpretedSort` with the resulting `RawZ3Sort`.
+      ## Mirrors `datatypeRegistry`; read at sortdispatch time by
+      ## `sortOf(_: typedesc[Z3UninterpretedVal[T]], ctx)`.
+      ## The `*` export is needed so `z3/uninterpretedval` can write
+      ## into the table; user code should not touch it directly.
   Z3Context* = ref Z3ContextOwn
     ## Heap-allocated, ref-counted by Nim's ORC. Held alive by anyone
     ## who needs the underlying Z3 context (ASTs, solvers, models).

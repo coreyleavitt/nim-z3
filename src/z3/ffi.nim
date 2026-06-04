@@ -440,6 +440,19 @@ type
     ## Called when Z3 decides to split on a registered expression.
     ## Matches `Z3_decide_eh`.
 
+  # ---- N8.4d on-clause callback typedef ------------------------------------
+  # Matches `Z3_on_clause_eh` from z3_api.h line 1443.
+  # Signature: (ctx, proof_hint, n, deps, literals)
+  # Note: the count `n` precedes the pointer `deps` in the actual C ABI —
+  # this is the correct ordering per z3_api.h (not swapped).
+  Z3OnClauseEh* =
+    proc(ctx: pointer, proofHint: RawZ3Ast,
+         n: cuint, deps: ptr UncheckedArray[cuint],
+         lits: RawZ3AstVector) {.cdecl.}
+    ## Called when Z3 asserts, infers, or deletes a clause during search.
+    ## `proofHint` may be nil. `deps` is an array of `n` clause-index
+    ## references. `lits` is the Z3_ast_vector of literals in the clause.
+
 # ============================================================================
 # Z3 FFI declarations
 # ============================================================================
@@ -2793,6 +2806,25 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Assert a propagation consequence given a set of fixed premises and
     ## equality premises. Returns false if the consequence is already true.
+
+  # N8.4d — Z3_solver_register_on_clause (available on Z3 4.12+).
+  # The declaration is unconditional here because `dynlib` bodies may not
+  # contain `when` blocks (the macro only accepts proc declarations).
+  # The high-level typed surface (`z3/onclause`) is gated behind
+  # `-d:z3WithoutOnClause`; on older builds the symbol simply won't be
+  # called via the public API.
+  #
+  # The callback parameter is declared as `pointer` (not `Z3OnClauseEh`)
+  # because the C typedef uses `const unsigned int*` for the deps param,
+  # which Nim cannot express in a proc-type. Using `pointer` bypasses
+  # softlink's static const-mismatch check; the cast to `Z3OnClauseEh`
+  # is performed at the call site in `z3/onclause`.
+  proc Z3_solver_register_on_clause(c: RawZ3Context, s: RawZ3Solver,
+                                    userCtx: pointer,
+                                    onClauseEh: pointer)
+    {.cdecl, header: "z3.h".}
+    ## Register a callback to receive asserted, inferred, and deleted
+    ## clauses during Z3's CDCL(T) search. Matches `Z3_solver_register_on_clause`.
 
 # N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
 # some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).

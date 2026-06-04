@@ -343,3 +343,42 @@ proc finalizeZ3Memory*() =
     Z3_finalize_memory()
 
 # `checkErrVoid` moved to `z3/error` in v0.5 step 1.
+
+# ============================================================================
+# AST print mode (N8.10)
+# ============================================================================
+
+type AstPrintMode* = enum
+  ## Controls how Z3 renders AST nodes to strings (via `Z3_ast_to_string`
+  ## and related calls, surfaced through Nim's `$` operator on typed
+  ## AST families).
+  ##
+  ## Maps directly onto Z3's `Z3_ast_print_mode` C enum:
+  ##
+  ## - `apSmtLib2Full` (0) — `Z3_PRINT_SMTLIB_FULL`. Verbose SMTLIB
+  ##   format; each sub-expression is re-printed at every occurrence.
+  ##   This is Z3's default mode.
+  ## - `apLowLevel` (1) — `Z3_PRINT_LOW_LEVEL`. Internal low-level
+  ##   format; wraps sorts explicitly (`(Int x)` instead of `x`).
+  ##   Useful for debugging library internals.
+  ## - `apSmtLibCompliant` (2) — `Z3_PRINT_SMTLIB2_COMPLIANT`.
+  ##   SMTLIB 2.x compliant output; shared sub-expressions are
+  ##   lifted into `let`-bindings to avoid exponential blowup.
+  ##
+  ## Use `setAstPrintMode` to apply a mode to a specific context.
+  apSmtLib2Full      ## Z3_PRINT_SMTLIB_FULL = 0
+  apLowLevel         ## Z3_PRINT_LOW_LEVEL = 1
+  apSmtLibCompliant  ## Z3_PRINT_SMTLIB2_COMPLIANT = 2
+
+proc setAstPrintMode*(ctx: Z3Context, mode: AstPrintMode) =
+  ## Set the AST printing mode for `ctx`. Affects all subsequent `$ast`
+  ## calls (and any other API that routes through `Z3_ast_to_string`) on
+  ## this context. The mode is per-context and sticky until changed.
+  ##
+  ## See `AstPrintMode` for mode semantics and the mapping to Z3's
+  ## `Z3_ast_print_mode` C enum.
+  ##
+  ## See also `z3/pretty.reformat` / `pretty[T]` — the Nim-side
+  ## re-indenter that operates on top of Z3's flat string output and is
+  ## unaffected by the print mode choice.
+  Z3_set_ast_print_mode(ctx.raw, cuint(mode))

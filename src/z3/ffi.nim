@@ -972,6 +972,15 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                            param_value: pointer): bool
     {.cdecl, header: "z3.h".}
 
+  # --- AST print mode (N8.10) -----------------------------------------------
+  # `Z3_ast_print_mode` is a C enum; we pass it as `cuint` to avoid
+  # importing a C enum into the FFI layer directly.  The enum values are
+  # sequential from 0:
+  #   Z3_PRINT_SMTLIB_FULL = 0, Z3_PRINT_LOW_LEVEL = 1,
+  #   Z3_PRINT_SMTLIB2_COMPLIANT = 2
+  proc Z3_set_ast_print_mode(c: RawZ3Context, mode: cuint)
+    {.cdecl, header: "z3.h".}
+
   # --- Cross-thread interrupt (v1.0 audit round 2, item #1) ----------------
   # Z3_interrupt is the documented exception to the
   # "one-context-one-thread" discipline (see docs/THREADING.md): it is

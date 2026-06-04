@@ -6,9 +6,11 @@
 ## Z3's own `Z3_*_to_string` family emits a *flat* SMT-LIB string with
 ## no line breaks regardless of nesting depth — for a tightly-nested
 ## term you get one extremely long line. `Z3_set_ast_print_mode`
-## chooses between flavors of output (SMT-LIB v2 vs. low-level) but
-## doesn't add structure. So this module implements the indentation
-## pass in Nim, operating on top of Z3's flat output.
+## (surfaced as `setAstPrintMode` in `z3/context`) chooses between
+## flavors of output (SMT-LIB v2 full / low-level / SMTLIB2-compliant)
+## but doesn't add structure. So this module implements the indentation
+## pass in Nim, operating on top of Z3's flat output regardless of
+## which print mode is active.
 ##
 ## ## Algorithm (Wadler-style "fit or stack")
 ##

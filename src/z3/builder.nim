@@ -105,6 +105,20 @@ proc mkBigReal*(ctx: Z3Context, numeral: string): Z3Real =
 proc mkBigReal*(numeral: string): Z3Real =
   mkBigReal(requireCurrentContext(), numeral)
 
+proc mkReal*(ctx: Z3Context, v: float64): Z3Real =
+  ## Float64-to-Real literal. Formats `v` as a decimal string and passes it
+  ## to Z3's numeral parser — the same path as `mkBigReal`. Z3's parser
+  ## round-trips any value that Nim's `$` renders as a finite decimal
+  ## (e.g. `3.14`, `0.5`). The result is an *exact rational* in Z3's Real
+  ## sort whose value equals Z3's decimal-string interpretation of `$v`,
+  ## which for representable doubles matches the original float64 to full
+  ## machine precision.
+  ##
+  ## **Note**: `Inf`, `-Inf`, and `NaN` are not valid Z3 Real numerals; pass
+  ## them only if you truly intend that (Z3 will raise a `Z3Error`).
+  mkBigReal(ctx, $v)
+proc mkReal*(v: float64): Z3Real = mkReal(requireCurrentContext(), v)
+
 # ============================================================================
 # Variables ("constants" in SMT-LIB speak)
 # ============================================================================

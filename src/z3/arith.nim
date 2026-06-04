@@ -34,9 +34,10 @@
 ## ```
 ##
 ## For Real, `int` literals lift to `Z3Real` via `mkReal(ctx, n)`.
-## Float-literal lift (e.g. `r + 0.5`) is intentionally NOT provided
-## because floats aren't exact rationals — users wanting a specific
-## ratio write `r + mkReal(1, 2)` explicitly.
+## Float-literal lift (e.g. `r + 0.5`) is also provided: the float64
+## is formatted as a decimal string and parsed by Z3's numeral parser via
+## `mkReal(ctx, v: float64)`. For exact rationals without floating-point
+## rounding, prefer `mkReal(num, den)` (e.g. `r + mkReal(1, 2)`).
 ##
 ## ## Why `==` is split between `z3/ast.nim` and the operator modules
 ##
@@ -117,16 +118,22 @@ proc rem*(a: int, b: Z3Int): Z3Int {.inline.} = rem(mkInt(b.ctx, a), b)
 proc `+`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_add, a, b)
 proc `+`*(a: Z3Real, b: int): Z3Real {.inline.} = a + mkReal(a.ctx, b)
 proc `+`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) + b
+proc `+`*(a: Z3Real, b: float64): Z3Real {.inline.} = a + mkReal(a.ctx, b)
+proc `+`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) + b
 
 proc `-`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_sub, a, b)
 proc `-`*(a: Z3Real, b: int): Z3Real {.inline.} = a - mkReal(a.ctx, b)
 proc `-`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) - b
 proc `-`*(a: Z3Real): Z3Real =
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_unary_minus(a.ctx.raw, a.raw))
+proc `-`*(a: Z3Real, b: float64): Z3Real {.inline.} = a - mkReal(a.ctx, b)
+proc `-`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) - b
 
 proc `*`*(a, b: Z3Real): Z3Real = binaryVararg[stReal](Z3_mk_mul, a, b)
 proc `*`*(a: Z3Real, b: int): Z3Real {.inline.} = a * mkReal(a.ctx, b)
 proc `*`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) * b
+proc `*`*(a: Z3Real, b: float64): Z3Real {.inline.} = a * mkReal(a.ctx, b)
+proc `*`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) * b
 
 proc `/`*(a, b: Z3Real): Z3Real =
   ## Real division. `0` divisor is a sort error caught by Z3 and
@@ -134,6 +141,8 @@ proc `/`*(a, b: Z3Real): Z3Real =
   wrap[Z3Real](a.ctx, a.ctx.checkErr Z3_mk_div(a.ctx.raw, a.raw, b.raw))
 proc `/`*(a: Z3Real, b: int): Z3Real {.inline.} = a / mkReal(a.ctx, b)
 proc `/`*(a: int, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) / b
+proc `/`*(a: Z3Real, b: float64): Z3Real {.inline.} = a / mkReal(a.ctx, b)
+proc `/`*(a: float64, b: Z3Real): Z3Real {.inline.} = mkReal(b.ctx, a) / b
 
 # ============================================================================
 # Ordering — `<`, `<=`, `>`, `>=`
@@ -192,11 +201,15 @@ proc `==`*(a: Z3Int, b: int): Z3Bool {.inline.} = a == mkInt(a.ctx, b)
 proc `==`*(a: int, b: Z3Int): Z3Bool {.inline.} = mkInt(b.ctx, a) == b
 proc `==`*(a: Z3Real, b: int): Z3Bool {.inline.} = a == mkReal(a.ctx, b)
 proc `==`*(a: int, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) == b
+proc `==`*(a: Z3Real, b: float64): Z3Bool {.inline.} = a == mkReal(a.ctx, b)
+proc `==`*(a: float64, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) == b
 
 proc `!=`*(a: Z3Int, b: int): Z3Bool {.inline.} = a != mkInt(a.ctx, b)
 proc `!=`*(a: int, b: Z3Int): Z3Bool {.inline.} = mkInt(b.ctx, a) != b
 proc `!=`*(a: Z3Real, b: int): Z3Bool {.inline.} = a != mkReal(a.ctx, b)
 proc `!=`*(a: int, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) != b
+proc `!=`*(a: Z3Real, b: float64): Z3Bool {.inline.} = a != mkReal(a.ctx, b)
+proc `!=`*(a: float64, b: Z3Real): Z3Bool {.inline.} = mkReal(b.ctx, a) != b
 
 # ============================================================================
 # abs — absolute value

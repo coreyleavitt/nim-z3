@@ -371,3 +371,42 @@ proc asZ3Regex*[Basis](a: Z3AnyAst): Z3Regex[Basis] =
     raiseSortMismatch("Z3Regex[Basis] (skRegex)", k, a.ctx)
   wrap[Z3Regex[Basis]](a.ctx, a.raw)
 
+# ============================================================================
+# FuncDecl name / arity / domain / range / id introspection (N2.4a)
+# ============================================================================
+#
+# All procs accept `RawZ3FuncDecl` rather than `Z3FuncDecl[ArgsTup, Ret]`
+# because:
+#   (a) the typed wrapper's phantom parameters already encode domain/range
+#       at compile time — these procs exist for *runtime* introspection
+#       of raw func_decls obtained from `getAppDecl`, model enumeration,
+#       or datatype accessor slots where the typed form isn't available;
+#   (b) it keeps the introspect module free of the macro-heavy funcdecl
+#       module to avoid circular imports.
+
+proc declName*(ctx: Z3Context, d: RawZ3FuncDecl): string =
+  ## Name of the function declaration as a Nim string.
+  ## Calls `Z3_get_decl_name` → `Z3_get_symbol_string`.
+  let sym = ctx.checkErr Z3_get_decl_name(ctx.raw, d)
+  $Z3_get_symbol_string(ctx.raw, sym)
+
+proc declArity*(ctx: Z3Context, d: RawZ3FuncDecl): int =
+  ## Domain arity — number of argument sorts the declaration expects.
+  int(Z3_get_domain_size(ctx.raw, d))
+
+proc declDomain*(ctx: Z3Context, d: RawZ3FuncDecl, i: int): RawZ3Sort =
+  ## i-th domain sort (0-based).  Raises `Z3Error` if i ≥ arity.
+  let n = declArity(ctx, d)
+  doAssert i >= 0 and i < n,
+    "declDomain: index " & $i & " out of bounds [0, " & $n & ")"
+  ctx.checkErr Z3_get_domain(ctx.raw, d, cuint(i))
+
+proc declRange*(ctx: Z3Context, d: RawZ3FuncDecl): RawZ3Sort =
+  ## Range (codomain / return) sort of the declaration.
+  ctx.checkErr Z3_get_range(ctx.raw, d)
+
+proc declFuncId*(ctx: Z3Context, d: RawZ3FuncDecl): int =
+  ## Unique monotone identifier for the declaration within its context.
+  ## Non-zero and stable for the lifetime of the context.
+  int(Z3_get_func_decl_id(ctx.raw, d))
+

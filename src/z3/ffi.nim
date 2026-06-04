@@ -1619,6 +1619,31 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
                            dst: RawZ3Context): RawZ3Model
     {.cdecl, header: "z3.h".}
 
+  # --- Decl name/arity/domain/range introspection (N2.4a) ------------------
+
+  proc Z3_get_decl_name(c: RawZ3Context, d: RawZ3FuncDecl): RawZ3Symbol
+    {.cdecl, header: "z3.h".}
+    ## Return the symbol carrying the declaration's name.  Pair with
+    ## `Z3_get_symbol_string` to get a Nim string.
+  proc Z3_get_decl_num_parameters(c: RawZ3Context, d: RawZ3FuncDecl): cuint
+    {.cdecl, header: "z3.h".}
+    ## Number of *sort parameters* in the declaration (not the domain
+    ## arity of the function).  Used internally; `Z3_get_domain_size`
+    ## is the correct arity accessor.
+  proc Z3_get_domain_size(c: RawZ3Context, d: RawZ3FuncDecl): cuint
+    {.cdecl, header: "z3.h".}
+    ## Number of domain sorts — the arity of the function declaration.
+  proc Z3_get_domain(c: RawZ3Context, d: RawZ3FuncDecl, i: cuint): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## i-th domain sort (0-based).  Behaviour is undefined for i ≥ arity.
+  proc Z3_get_range(c: RawZ3Context, d: RawZ3FuncDecl): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## Range (codomain) sort of the function declaration.
+  proc Z3_get_func_decl_id(c: RawZ3Context, d: RawZ3FuncDecl): cuint
+    {.cdecl, header: "z3.h".}
+    ## Unique monotone identifier for the declaration within its context.
+    ## Stable for the lifetime of the context.
+
   # --- Characters (v0.3 step 4) --------------------------------------------
   #
   # Z3's Char sort is a Unicode codepoint type. The string/regex theory

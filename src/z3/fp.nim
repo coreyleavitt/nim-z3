@@ -469,6 +469,32 @@ proc `-`*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} = fpSub(a, 
 proc `*`*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} = fpMul(a, b)
 proc `/`*[E, S: static int](a, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} = fpDiv(a, b)
 
+# ============================================================================
+# N6.5b — arithmetic literal lifts (Z3Fp op float64/float32)
+# ============================================================================
+#
+# Each binary arithmetic operator has four overloads: (Z3Fp, float64),
+# (float64, Z3Fp), (Z3Float32, float32), (float32, Z3Float32).
+# All use rmRNE (round-nearest-ties-to-even, IEEE 754 default) by lifting the
+# literal with `mkFp` then delegating to the existing Z3Fp×Z3Fp operator.
+
+template liftFpBin(name: untyped) =
+  ## For each arithmetic operator `name` already defined on `(Z3Fp[E,S], Z3Fp[E,S])`,
+  ## add two float64 overloads and two float32 overloads.
+  proc `name`*[E, S: static int](a: Z3Fp[E, S], b: float64): Z3Fp[E, S] {.inline.} =
+    `name`(a, mkFp[E, S](a.ctx, b))
+  proc `name`*[E, S: static int](a: float64, b: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =
+    `name`(mkFp[E, S](b.ctx, a), b)
+  proc `name`*(a: Z3Float32, b: float32): Z3Float32 {.inline.} =
+    `name`(a, mkFloat32(a.ctx, b))
+  proc `name`*(a: float32, b: Z3Float32): Z3Float32 {.inline.} =
+    `name`(mkFloat32(b.ctx, a), b)
+
+liftFpBin(`+`)
+liftFpBin(`-`)
+liftFpBin(`*`)
+liftFpBin(`/`)
+
 proc sqrt*[E, S: static int](rm: Z3RoundingMode, a: Z3Fp[E, S]): Z3Fp[E, S] =
   wrap[Z3Fp[E, S]](a.ctx, a.ctx.checkErr Z3_mk_fpa_sqrt(a.ctx.raw, rm.raw, a.raw))
 proc sqrt*[E, S: static int](a: Z3Fp[E, S]): Z3Fp[E, S] {.inline.} =

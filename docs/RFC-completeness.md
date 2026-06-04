@@ -824,6 +824,8 @@ proc isNumeralPositive*(a: Z3Fp): bool   # Z3_fpa_is_numeral_positive
 proc isNumeralNegative*(a: Z3Fp): bool   # Z3_fpa_is_numeral_negative
 ```
 
+**v5.1 implementer caveat (N6.4a):** `Z3_fpa_is_numeral_*` predicates only fire on **true numeral AST nodes**. `mkFpFromParts` (N6.3) produces an `fpa.fp(...)` application node — even with concrete BV inputs — and silently returns `false` for every predicate. Use `mkFloat32`/`mkFloat64`/`mkFpFromFloat` (constants built via `Z3_mk_fpa_numeral_*`) when you need the numeral predicates to apply.
+
 ### N6.4b — FPA numeral decomposition (CORRECTED in v3 per round-2 Lens 1 H2)
 
 v2 invented an `isNormalised: bool` field on `getNumeralSignificandUint64`'s tuple return. The C signature (`z3_fpa.h:1257`) is `bool Z3_API Z3_fpa_get_numeral_significand_uint64(Z3_context c, Z3_ast t, uint64_t * n)` — the `bool` return is a success/fail flag, and `n` is the output. There is NO `isNormalised` output. v3 corrects to `Option[uint64]`:

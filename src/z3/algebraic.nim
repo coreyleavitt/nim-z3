@@ -221,6 +221,31 @@ proc algebraicEval*(p: Z3Real, vals: openArray[Z3Real]): int =
 # Polynomial subresultants (merged from N1.5)
 # ============================================================================
 
+# ============================================================================
+# Polynomial introspection — defining polynomial and root index
+# ============================================================================
+
+proc algebraicGetPoly*(a: Z3Real): Z3AstVector =
+  ## Return the defining polynomial of algebraic numeral `a` as a
+  ## `Z3AstVector` of coefficient ASTs ordered from lowest to highest degree.
+  ##
+  ## For example, √2 (root of x² − 2) returns a vector of length 3 with
+  ## coefficients [−2, 0, 1] at indices 0, 1, 2 respectively.
+  ##
+  ## Precondition: `algebraicIsValue(a)`.
+  let ctx = a.ctx
+  wrapAstVector(ctx, ctx.checkErr Z3_algebraic_get_poly(ctx.raw, a.raw))
+
+proc algebraicGetI*(a: Z3Real): int =
+  ## Return the 1-based index of algebraic numeral `a` among the real roots of
+  ## its defining polynomial, ordered from smallest to largest value.
+  ##
+  ## For example, √2 is the positive root of x² − 2 and returns 2; −√2 is the
+  ## negative root and returns 1.
+  ##
+  ## Precondition: `algebraicIsValue(a)`.
+  int(Z3_algebraic_get_i(a.ctx.raw, a.raw))
+
 proc subresultants*(p, q, x: Z3Real): Z3AstVector =
   ## Return the nonzero subresultant polynomial chain of `p` and `q` with
   ## respect to variable `x`. The result is a `Z3AstVector` of ASTs

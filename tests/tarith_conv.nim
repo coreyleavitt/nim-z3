@@ -46,7 +46,7 @@ suite "arith conv — realToInt":
     s.add n == realToInt(mkReal(27, 10))  # 27/10 = 2.7
     check s.check() == zsSat
     let m = s.model()
-    check m[n].toInt == 2
+    check m[n].toInt64 == 2
 
   test "realToInt(-2.3) = -3 (floor of negative)":
     let ctx = newContext()
@@ -55,7 +55,7 @@ suite "arith conv — realToInt":
     s.add n == realToInt(mkReal(-23, 10))  # -23/10 = -2.3
     check s.check() == zsSat
     let m = s.model()
-    check m[n].toInt == -3
+    check m[n].toInt64 == -3
 
   test "realToInt of an exact integer is identity":
     let ctx = newContext()
@@ -64,7 +64,7 @@ suite "arith conv — realToInt":
     s.add n == realToInt(mkReal(4, 1))  # exactly 4.0
     check s.check() == zsSat
     let m = s.model()
-    check m[n].toInt == 4
+    check m[n].toInt64 == 4
 
 # ---------------------------------------------------------------------------
 # Round-trip: intToReal(realToInt(x)) <= x

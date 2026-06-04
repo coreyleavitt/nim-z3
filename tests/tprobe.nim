@@ -96,7 +96,7 @@ suite "Z3Probe — condTactic":
     let sTrue = truePipe.toSolver()
     sTrue.add(x == mkInt(7))
     check sTrue.check() == zsSat
-    check sTrue.model().eval(x).toInt == 7
+    check sTrue.model().eval(x).toInt64 == 7
 
     # Probe false → elseT = smt → sat.
     let falsePipe = condTactic(
@@ -106,7 +106,7 @@ suite "Z3Probe — condTactic":
     let sFalse = falsePipe.toSolver()
     sFalse.add(x == mkInt(11))
     check sFalse.check() == zsSat
-    check sFalse.model().eval(x).toInt == 11
+    check sFalse.model().eval(x).toInt64 == 11
 
     # Sanity: when the chosen branch is `fail`, the solver does not
     # report sat — confirming dispatch is actually selecting branches.

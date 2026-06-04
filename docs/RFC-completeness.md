@@ -689,9 +689,21 @@ Same as v1.
 
 Same as v1 (FFI additions: `Z3_mk_int2real`, `Z3_mk_real2int`, `Z3_mk_is_int`).
 
-### N4.3 — Algebraic number bounds
+### N4.3 — Algebraic number polynomial + index introspection (REVISED v5.1 per implementer escalation)
 
-Same as v1.
+**v1's spec was wrong.** `Z3_algebraic_get_lower(a, precision)` and `Z3_algebraic_get_upper(a, precision)` do **NOT exist** in the Z3 C API (verified against `_audit_headers/z3_algebraic.h` — 18 functions total, no precision-parameterized bound extraction). v5.1 reframes the slice as exposing the two existing FFI entries `Z3_algebraic_get_poly` and `Z3_algebraic_get_i`:
+
+```nim
+proc algebraicGetPoly*(a: Z3Real): Z3AstVector
+  ## Returns the defining polynomial of an algebraic number as a vector of
+  ## coefficient ASTs (constants in the polynomial sort, from low-degree to
+  ## high-degree). Wraps Z3_algebraic_get_poly.
+proc algebraicGetI*(a: Z3Real): int
+  ## Returns the index of this algebraic number among the roots of its
+  ## defining polynomial (1-based, ordered by value). Wraps Z3_algebraic_get_i.
+```
+
+These are the actual building blocks; users who need rational isolation bounds can compute them via Cauchy's bound on the returned polynomial coefficients. Implementing those bounds in nim-z3 is out of scope for v1.0 (no Z3 API support; would require ~100 lines of pure-Nim rational arithmetic + Newton refinement).
 
 ### N4.4 — Option extractors + int64 consistency (CLARIFIED per Lens 3 M4 + Lens 4 MED-3)
 

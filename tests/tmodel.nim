@@ -30,7 +30,7 @@ suite "Z3Model — eval + [] indexing":
     s.add x == 42
     check s.check() == zsSat
     let m = s.model()
-    check m[x].toInt == 42
+    check m[x].toInt64 == 42
 
   test "m.eval(x) is the same as m[x]":
     let ctx = newContext()
@@ -39,7 +39,7 @@ suite "Z3Model — eval + [] indexing":
     s.add x == 7
     check s.check() == zsSat
     let m = s.model()
-    check m.eval(x).toInt == m[x].toInt
+    check m.eval(x).toInt64 == m[x].toInt64
 
   test "modelCompletion = true assigns unconstrained vars":
     let ctx = newContext()
@@ -53,14 +53,14 @@ suite "Z3Model — eval + [] indexing":
     check v.toIntOpt.isSome
 
 suite "Z3Model — scalar extractors":
-  test "Z3Int.toInt":
+  test "Z3Int.toInt64":
     let ctx = newContext()
     let s = newSolver()
     let x = mkIntVar("x")
     s.add x == 100
     discard s.check()
     let m = s.model()
-    check m[x].toInt == 100
+    check m[x].toInt64 == 100
 
   test "Z3Int.toIntOpt returns some for literal":
     let ctx = newContext()
@@ -77,11 +77,11 @@ suite "Z3Model — scalar extractors":
     # x is a variable, not a numeral, so toIntOpt returns none.
     check x.toIntOpt == none(int)
 
-  test "Z3Int.toInt raises on non-literal":
+  test "Z3Int.toInt64 raises on non-literal":
     let ctx = newContext()
     let x = mkIntVar("x")
     expect Z3Error:
-      discard x.toInt
+      discard x.toInt64
 
   test "Z3Int.toBigIntStr works for big numbers":
     let ctx = newContext()

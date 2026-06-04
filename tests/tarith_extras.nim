@@ -19,7 +19,7 @@ suite "arith extras — abs":
     s.add x == mkInt(-5)
     check s.check() == zsSat
     let m = s.model()
-    check m[abs(x)].toInt == 5
+    check m[abs(x)].toInt64 == 5
 
   test "abs(Z3Real): model value is non-negative":
     let ctx = newContext()
@@ -38,7 +38,7 @@ suite "arith extras — abs":
     s.add x == mkInt(7)
     check s.check() == zsSat
     let m = s.model()
-    check m[abs(x)].toInt == 7
+    check m[abs(x)].toInt64 == 7
 
 # ---------------------------------------------------------------------------
 # power

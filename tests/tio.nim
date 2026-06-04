@@ -54,8 +54,8 @@ suite "z3/io — round-trip":
     for a in asserts: s2.add a
     check s2.check() == zsSat
     let m = s2.model()
-    let xv = m.eval(x).toInt
-    let yv = m.eval(y).toInt
+    let xv = m.eval(x).toInt64
+    let yv = m.eval(y).toInt64
     check xv + yv == 10
     check xv > 3
 
@@ -73,7 +73,7 @@ suite "z3/io — file I/O":
     let s2 = newSolver()
     for a in asserts: s2.add a
     check s2.check() == zsSat
-    let xv = s2.model().eval(x).toInt
+    let xv = s2.model().eval(x).toInt64
     check xv > 5 and xv < 20
 
   test "parseSmt2File parses on-disk content equivalent to parseSmt2String":

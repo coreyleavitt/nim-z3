@@ -88,7 +88,7 @@
 ##   `setParams(s, p: Z3Params)` for timeout / random_seed / etc.
 ##   **Implemented. setParams in v0.3 step 8.**
 ## - `z3/model` — `Z3Model` lifecycle, `eval` / `[]`, scalar
-##   extractors (`toInt`, `toBool`, etc.), composers (`evalInt`,
+##   extractors (`toInt64`, `toBool`, etc.), composers (`evalInt`,
 ##   `evalBool`). **Implemented.**
 ## - `z3/bitvec` — width-tracked `Z3BitVec[W]` phantom types with
 ##   sign-explicit ops (`bvudiv`/`bvsdiv`, `bvult`/`bvslt`, `lshr`/

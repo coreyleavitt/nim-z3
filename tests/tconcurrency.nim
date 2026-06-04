@@ -71,7 +71,7 @@ suite "concurrency — solver isolation":
         let s = newSolver()
         s.add x == mkInt(idx + 100)
         if s.check() == zsSat:
-          results[idx] = s.model().eval(x).toInt
+          results[idx] = s.model().eval(x).toInt64
         else:
           results[idx] = -1  # sentinel for "didn't solve"
 

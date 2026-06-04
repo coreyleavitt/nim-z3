@@ -8,7 +8,7 @@
 ##    substitutes the model's variable values into `expr` and returns
 ##    the simplified result — typically a numeral / literal AST.
 ##
-## 2. **Extract a scalar**: `.toInt`, `.toBool`, `.toBigIntStr`,
+## 2. **Extract a scalar**: `.toInt64`, `.toBool`, `.toBigIntStr`,
 ##    `.toBigRealStr` on the evaluated AST yield the raw Nim value.
 ##
 ## Convenience composers: `m.evalInt(x)` does both in one call.
@@ -97,8 +97,8 @@ proc eval*[T: Z3Term](m: Z3Model, a: T, modelCompletion = true): T =
     s.add x > mkInt(3)
     doAssert s.check() == zsSat
     let m = s.model()
-    let xv = m.eval(x).toInt
-    let yv = m.eval(y).toInt
+    let xv = m.eval(x).toInt64
+    let yv = m.eval(y).toInt64
     doAssert xv + yv == 10 and xv > 3
   var outRaw: RawZ3Ast
   let ok = Z3_model_eval(m.ctx.raw, m.raw, a.raw, modelCompletion, addr outRaw)
@@ -131,22 +131,28 @@ proc `[]`*[T: Z3Term](m: Z3Model, a: T): T =
 # that's where literals come from after solving. Calling on a
 # non-literal AST raises Z3Error.
 
-proc toInt*(a: Z3Int): int =
-  ## Extract an `int` value from an integer literal. Raises `Z3Error`
+proc toInt64*(a: Z3Int): int64 =
+  ## Extract an `int64` value from an integer literal. Raises `Z3Error`
   ## if the AST isn't a literal numeral or its value doesn't fit in
-  ## `cint`. For arbitrary-precision integers, use `toBigIntStr`.
-  var v: cint
-  if not Z3_get_numeral_int(a.ctx.raw, a.raw, addr v):
+  ## `int64`. For arbitrary-precision integers, use `toBigIntStr`.
+  ##
+  ## **ADR-N0005 hard break**: renamed from `toInt` in N4.4; no
+  ## deprecation alias. Callers should update to `toInt64`.
+  var v: int64
+  if not Z3_get_numeral_int64(a.ctx.raw, a.raw, addr v):
     var e = newException(Z3InvalidUsageError,
-      "Z3Int.toInt: AST `" & $a & "` is not a literal int (or doesn't " &
-      "fit in cint). Use `toBigIntStr` for arbitrary-precision integers.")
+      "Z3Int.toInt64: AST `" & $a & "` is not a literal int (or doesn't " &
+      "fit in int64). Use `toBigIntStr` for arbitrary-precision integers.")
     e.code = Z3_INVALID_USAGE
     raise e
-  int(v)
+  v
 
 proc toIntOpt*(a: Z3Int): Option[int] =
-  ## `toInt` in `Option[int]` form. Returns `none` instead of raising
-  ## when the AST isn't a literal or doesn't fit in `cint`.
+  ## Extract an `int` value from an integer literal as `Option[int]`.
+  ## Returns `none` instead of raising when the AST isn't a literal
+  ## or doesn't fit in `cint` (32-bit range on most platforms).
+  ## For 64-bit range, use `toInt64` directly (which raises) or check
+  ## `toBigIntStr` for exact representation.
   var v: cint
   if Z3_get_numeral_int(a.ctx.raw, a.raw, addr v):
     some(int(v))
@@ -202,9 +208,9 @@ proc toBoolOpt*(a: Z3Bool): Option[bool] =
 # Composers — eval + extract in one call
 # ============================================================================
 
-proc evalInt*(m: Z3Model, a: Z3Int, modelCompletion = true): int {.inline.} =
-  ## `m.eval(a).toInt` in one call.
-  m.eval(a, modelCompletion).toInt
+proc evalInt*(m: Z3Model, a: Z3Int, modelCompletion = true): int64 {.inline.} =
+  ## `m.eval(a).toInt64` in one call.
+  m.eval(a, modelCompletion).toInt64
 
 proc evalBool*(m: Z3Model, a: Z3Bool, modelCompletion = true): bool {.inline.} =
   ## `m.eval(a).toBool` in one call.
@@ -229,7 +235,7 @@ proc evalBigRealStr*(m: Z3Model, a: Z3Real, modelCompletion = true): string {.in
 # knob on our side."
 #
 # Z3's `Z3_get_numeral_double` requires a literal numeral AST. We
-# `simplify` the input first — consistent with `toUint` / `toInt` —
+# `simplify` the input first — consistent with `toUint` / `toInt64` —
 # so concrete expression trees fold to a numeral before extraction.
 # Epsilon-bound expressions from optimisation reals (`1/2 + ε`) don't
 # fold to a numeral and raise `Z3Error`.
@@ -237,7 +243,7 @@ proc evalBigRealStr*(m: Z3Model, a: Z3Real, modelCompletion = true): string {.in
 proc toRealApprox*(a: Z3Real): float =
   ## Lossy float64 approximation of a `Z3Real` literal. Internally
   ## `Z3_simplify`s first so concrete expression trees fold before
-  ## extraction, mirroring `toUint` / `toInt` on `Z3BitVec`.
+  ## extraction, mirroring `toUint` / `toInt64` on `Z3BitVec`.
   ##
   ## Raises `Z3Error` if the AST doesn't reduce to a literal numeral
   ## (most commonly: an epsilon-bound expression from optimisation
@@ -251,6 +257,22 @@ proc toRealApprox*(a: Z3Real): float =
   if errCode != Z3_OK:
     raiseZ3Error(a.ctx.raw, errCode)
   float(v)
+
+proc toRealOpt*(a: Z3Real): Option[float] =
+  ## `toRealApprox` in `Option[float]` form. Returns `none` instead of
+  ## raising when the AST doesn't reduce to a literal numeral (e.g. a
+  ## free Real variable or an epsilon-bound expression). Returns
+  ## `some(approx)` for any concrete rational literal that Z3 can fold
+  ## to a double.
+  let folded = a.ctx.checkErr Z3_simplify(a.ctx.raw, a.raw)
+  let v = Z3_get_numeral_double(a.ctx.raw, folded)
+  let errCode = Z3_get_error_code(a.ctx.raw)
+  if errCode != Z3_OK:
+    # Clear the error so the context stays usable.
+    discard Z3_get_error_code(a.ctx.raw)
+    none(float)
+  else:
+    some(float(v))
 
 proc evalReal*(m: Z3Model, a: Z3Real, modelCompletion = true): float {.inline.} =
   ## `m.eval(a, modelCompletion).toRealApprox` in one call.

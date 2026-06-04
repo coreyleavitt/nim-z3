@@ -104,21 +104,21 @@ proc isDigit*(a: Z3Char): Z3Bool =
 
 proc toInt*(a: Z3Char): Z3Int =
   ## SMT `(char.to_int a)` — codepoint as a `Z3Int`. Distinct from
-  ## `model.toInt` (extracts a Nim `int` from a numeral AST); this is
+  ## `model.toInt64` (extracts a Nim `int64` from a numeral AST); this is
   ## the AST-level codepoint extractor.
   wrap[Z3Int](a.ctx, a.ctx.checkErr Z3_mk_char_to_int(a.ctx.raw, a.raw))
 
 proc `$`*(a: Z3Char): string = termToSmt2(a)
   ## SMT-LIB rendering: e.g. `(_ Char 97)` for ASCII `'a'`.
 
-proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int {.inline.} =
+proc evalChar*(m: Z3Model, a: Z3Char, modelCompletion = true): int64 {.inline.} =
   ## Shorthand for "extract the Unicode codepoint of `a` under the
-  ## model as a Nim `int`." **v0.5 step 3.** Composes the AST-level
+  ## model as a Nim `int64`." **v0.5 step 3.** Composes the AST-level
   ## codepoint extractor (`toInt(a: Z3Char)`) with the model-level
-  ## numeral extractor (`toInt(a: Z3Int)`); `simplify` folds the
+  ## numeral extractor (`toInt64(a: Z3Int)`); `simplify` folds the
   ## `(char.to_int (_ Char N))` wrapper to the literal `N`, which
   ## Z3's evaluator doesn't do automatically.
-  simplify(m.eval(a, modelCompletion).toInt).toInt
+  simplify(m.eval(a, modelCompletion).toInt).toInt64
 
 # ============================================================================
 # Z3Char <-> Z3BitVec interop (v0.5 step 6C)

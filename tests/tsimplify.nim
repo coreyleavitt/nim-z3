@@ -10,7 +10,7 @@ suite "simplify — tracer":
   test "simplify(2 + 3) is a literal numeral with value 5":
     let ctx = newContext()
     let r = simplify(mkInt(2) + mkInt(3))
-    check r.toInt == 5
+    check r.toInt64 == 5
 
 suite "simplify — algebraic identities":
   test "true and p simplifies to a form equivalent to p":

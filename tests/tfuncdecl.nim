@@ -11,7 +11,7 @@ suite "Z3FuncDecl — tracer":
     s.add f(mkInt(0)) == mkInt(42)
     check s.check() == zsSat
     let m = s.model()
-    check m.evalAt(f, (mkInt(0),)).toInt == 42
+    check m.evalAt(f, (mkInt(0),)).toInt64 == 42
 
 suite "Z3FuncDecl — arity variations":
   test "nullary (constant) — Z3FuncDecl[(), Z3Int]":
@@ -21,7 +21,7 @@ suite "Z3FuncDecl — arity variations":
     s.add c() == mkInt(7)
     check s.check() == zsSat
     let m = s.model()
-    check m.evalAt(c, ()).toInt == 7
+    check m.evalAt(c, ()).toInt64 == 7
 
   test "binary — Z3FuncDecl[(Z3Int, Z3Int), Z3Bool]":
     let ctx = newContext()
@@ -41,7 +41,7 @@ suite "Z3FuncDecl — arity variations":
     s.add g(mkInt(1), mkTrue(), mkReal(1, 2)) == mkInt(100)
     check s.check() == zsSat
     let m = s.model()
-    check m.evalAt(g, (mkInt(1), mkTrue(), mkReal(1, 2))).toInt == 100
+    check m.evalAt(g, (mkInt(1), mkTrue(), mkReal(1, 2))).toInt64 == 100
 
 suite "Z3FuncDecl — application syntax":
   test "f(x, y) and f.apply(x, y) produce equivalent ASTs":
@@ -61,8 +61,8 @@ suite "Z3FuncDecl — composition":
     s.add f(g(mkInt(0))) == mkInt(42)
     check s.check() == zsSat
     let m = s.model()
-    check m.evalAt(g, (mkInt(0),)).toInt == 99
-    check m.evalAt(f, (mkInt(99),)).toInt == 42
+    check m.evalAt(g, (mkInt(0),)).toInt64 == 99
+    check m.evalAt(f, (mkInt(99),)).toInt64 == 42
 
 suite "Z3FuncDecl — element-type coverage":
   test "Z3BitVec[W] arg + return":
@@ -100,7 +100,7 @@ suite "Z3FuncDecl — element-type coverage":
     s.add r(oneTwo) == mkInt(12)
     check s.check() == zsSat
     let m = s.model()
-    check m.evalAt(r, (oneTwo,)).toInt == 12
+    check m.evalAt(r, (oneTwo,)).toInt64 == 12
 
 suite "Z3FuncDecl — sort safety":
   test "passing wrong-sort args is a compile error":

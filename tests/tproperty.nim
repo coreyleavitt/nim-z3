@@ -46,7 +46,7 @@ suite "property: tracer":
         s.add x == mkInt(k)
         ensure s.check() == zsSat
         let m = s.model()
-        ensure m[x].toInt == k)
+        ensure m[x].toInt64 == k)
     check report.outcome == otPassed
 
 suite "smtValid / smtEquiv":
@@ -112,7 +112,7 @@ suite "property: SMT2 round-trip":
         let s2 = newSolver()
         for a in asserts: s2.add a
         ensure s2.check() == zsSat
-        ensure s2.model()[x].toInt == k)
+        ensure s2.model()[x].toInt64 == k)
     check report.outcome == otPassed
 
 # ============================================================================

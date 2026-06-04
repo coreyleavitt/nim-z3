@@ -35,7 +35,7 @@ suite "Z3Model — construction: addConstInterp":
     let fd = mkFuncDecl[(), Z3Int]("x")
     addConstInterp(m, fd.raw, mkInt(42).toAnyAst)
     # Evaluate the constant application x() against the hand-crafted model.
-    let evaled = m.eval(fd()).toInt
+    let evaled = m.eval(fd()).toInt64
     check evaled == 42
 
   test "addConstInterp: model gains one const entry":
@@ -59,7 +59,7 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     # addFuncInterp sets the initial else-value.
     let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
     # No entries; every arg maps to else=0.
-    let result = m.eval(fd(mkInt(99))).toInt
+    let result = m.eval(fd(mkInt(99))).toInt64
     check result == 0
 
   test "addEntry: f(42)=100, f(0) falls back to else=0":
@@ -68,8 +68,8 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let fd = mkFuncDecl[(Z3Int,), Z3Int]("f")
     let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
     addEntry(fi, [mkInt(42).toAnyAst], mkInt(100).toAnyAst)
-    check m.eval(fd(mkInt(42))).toInt == 100
-    check m.eval(fd(mkInt(0))).toInt == 0
+    check m.eval(fd(mkInt(42))).toInt64 == 100
+    check m.eval(fd(mkInt(0))).toInt64 == 0
 
   test "setElse changes the else-value post-construction":
     let ctx = newContext()
@@ -78,7 +78,7 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
     setElse(fi, mkInt(99).toAnyAst)
     # No entry for 5; returns updated else=99.
-    check m.eval(fd(mkInt(5))).toInt == 99
+    check m.eval(fd(mkInt(5))).toInt64 == 99
 
   test "addEntry with multiple args":
     let ctx = newContext()
@@ -86,5 +86,5 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let fd = mkFuncDecl[(Z3Int, Z3Int), Z3Int]("g")
     let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
     addEntry(fi, [mkInt(3).toAnyAst, mkInt(4).toAnyAst], mkInt(7).toAnyAst)
-    check m.eval(fd(mkInt(3), mkInt(4))).toInt == 7
-    check m.eval(fd(mkInt(1), mkInt(2))).toInt == 0
+    check m.eval(fd(mkInt(3), mkInt(4))).toInt64 == 7
+    check m.eval(fd(mkInt(1), mkInt(2))).toInt64 == 0

@@ -41,21 +41,21 @@ suite "Z3FuncInterp — entries + else":
 
     # Semantic check: every entry's value matches what `evalAt` says
     # at the same arg, AND `evalAt` at f(0) returns 7, f(1) returns 11.
-    check evalAt(m, f, (mkInt(0),)).toInt == 7
-    check evalAt(m, f, (mkInt(1),)).toInt == 11
+    check evalAt(m, f, (mkInt(0),)).toInt64 == 7
+    check evalAt(m, f, (mkInt(1),)).toInt64 == 11
 
     # Walk the entries and verify each is self-consistent: the
     # interpretation says f(entry.args) == entry.value, and so does
     # `evalAt`.
     for i in 0 ..< fi.len:
       let entry = fi[i]
-      let argVal = entry.args[0].toInt
-      let viaEntry = entry.value.toInt
-      let viaEval = evalAt(m, f, entry.args).toInt
+      let argVal = entry.args[0].toInt64
+      let viaEntry = entry.value.toInt64
+      let viaEval = evalAt(m, f, entry.args).toInt64
       check viaEntry == viaEval
 
     # The else-value is whatever Z3 picked — smoke: extractable.
-    let elseVal = fi.elseValue.toInt
+    let elseVal = fi.elseValue.toInt64
     discard elseVal
 
   test "zero-entry interpretation: f only constrained at one point":
@@ -80,9 +80,9 @@ suite "Z3FuncInterp — entries + else":
     # else-value MUST be 99 (it's the only thing carrying the
     # constraint). If Z3 chose the one-entry shape, the elseValue is
     # unconstrained — we don't pin it.
-    check evalAt(m, f, (mkInt(42),)).toInt == 99
+    check evalAt(m, f, (mkInt(42),)).toInt64 == 99
     if fi.len == 0:
-      check fi.elseValue.toInt == 99
+      check fi.elseValue.toInt64 == 99
 
   test "two-arg function: f(Int, Int) -> Bool":
     let ctx = newContext()

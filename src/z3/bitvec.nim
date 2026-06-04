@@ -632,3 +632,69 @@ proc extRotateRight*[W: static int](a, b: Z3BitVec[W]): Z3BitVec[W] =
   ## Bits shifted out of the LSB wrap around to the MSB.
   wrap[Z3BitVec[W]](a.ctx,
     a.ctx.checkErr Z3_mk_ext_rotate_right(a.ctx.raw, a.raw, b.raw))
+
+# ============================================================================
+# Theory-level conversions (N3.3)
+#
+# These are SMT-theory operations that produce ASTs, not model extractors.
+# Contrast with `.toInt` / `.toUint` which pull concrete Nim values out of
+# a *closed* BV numeral.
+#
+# - `bvToInt`   — BV[W] → Z3Int       (Z3_mk_bv2int; signed flag controls
+#                                       two's-complement interpretation)
+# - `intToBv`   — Z3Int → Z3BitVec[W] (Z3_mk_int2bv; width from typedesc)
+# - `toBitVec`  — Z3Bool → Z3BitVec[1] (derived via ite; no Z3 primitive)
+#
+# N3.3 naming rationale: `bvToInt` vs `.toInt`
+# `.toInt` on Z3BitVec[W] is a *model extractor* — it calls `Z3_simplify`
+# and then `Z3_get_numeral_uint64`, returning a Nim `int64`. It requires
+# the BV to already be a numeral (or simplifiable to one).
+# `bvToInt` is a *theory conversion* — it calls `Z3_mk_bv2int` which
+# produces a Z3Int AST. The result is a *formula*, not a Nim value; it can
+# reference free variables and participates in further symbolic reasoning.
+# ============================================================================
+
+proc bvToInt*[W: static int](a: Z3BitVec[W], signed: bool = false): Z3Int =
+  ## Theory-level BV → Int conversion. Returns a `Z3Int` AST whose value
+  ## is the unsigned (default) or signed two's-complement interpretation
+  ## of `a`.
+  ##
+  ## `signed = false`: result ∈ [0, 2^W − 1].
+  ## `signed = true`: result ∈ [−2^(W−1), 2^(W−1) − 1].
+  ##
+  ## This is a *formula builder* — the result is a `Z3Int` AST that can
+  ## reference free variables. Contrast with `.toInt` (model extractor).
+  wrap[Z3Int](a.ctx,
+    a.ctx.checkErr Z3_mk_bv2int(a.ctx.raw, a.raw, signed))
+
+proc intToBv*[W: static int](a: Z3Int, _: typedesc[Z3BitVec[W]]): Z3BitVec[W] =
+  ## Theory-level Int → BV[W] conversion. Returns a `Z3BitVec[W]` AST.
+  ##
+  ## The integer value is taken modulo 2^W (consistent with SMT-LIB
+  ## `(_ int2bv W)`). Negative inputs are treated as their two's-complement
+  ## representation in W bits.
+  ##
+  ## ```nim
+  ## let bv = intToBv(mkInt(42), Z3BitVec[8])   # Z3BitVec[8] == 42
+  ## ```
+  static: assert W > 0, "intToBv: width must be positive"
+  wrap[Z3BitVec[W]](a.ctx,
+    a.ctx.checkErr Z3_mk_int2bv(a.ctx.raw, cuint(W), a.raw))
+
+proc toBitVec*(b: Z3Bool): Z3BitVec[1] =
+  ## Convert a `Z3Bool` to a 1-bit bit-vector.
+  ##
+  ## Derived via `ite(b, BV[1](1), BV[1](0))` — there is no Z3 primitive
+  ## for this conversion. The result is `1` when `b` is true, `0` when
+  ## false.
+  ##
+  ## ```nim
+  ## toBitVec(mkTrue()).toUint  # == 1
+  ## toBitVec(mkFalse()).toUint # == 0
+  ## ```
+  let ctx = b.ctx
+  let s = ctx.checkErr Z3_mk_bv_sort(ctx.raw, 1)
+  let one  = wrap[Z3BitVec[1]](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, 1'u64, s))
+  let zero = wrap[Z3BitVec[1]](ctx, ctx.checkErr Z3_mk_unsigned_int64(ctx.raw, 0'u64, s))
+  wrap[Z3BitVec[1]](ctx,
+    ctx.checkErr Z3_mk_ite(ctx.raw, b.raw, one.raw, zero.raw))

@@ -48,7 +48,7 @@ when not defined(z3WithoutSimplifierObject):
   # ==========================================================================
 
   type
-    Z3SimplifierOwn* {.pure, inheritable.} = object
+    Z3SimplifierOwn* = object
       raw*: RawZ3Simplifier
       ctx*: Z3Context
     Z3Simplifier* = ref Z3SimplifierOwn
@@ -143,8 +143,7 @@ when not defined(z3WithoutSimplifierObject):
     ## configurable parameters.
     $Z3_simplifier_get_help(s.ctx.raw, s.raw)
 
-  proc `$`*(s: Z3Simplifier): string =
-    ## Human-readable help/description string for this simplifier.
-    ## Delegates to `getHelp`; the Z3 C API has no dedicated
-    ## `Z3_simplifier_to_string` — help text is the nearest equivalent.
-    s.getHelp()
+  # `$` is intentionally absent from Z3Simplifier. `getHelp(s)` returns
+  # parameter documentation (not a value representation), which is
+  # surprising as a `$` result. Call `s.getHelp()` explicitly when you
+  # need the help text.

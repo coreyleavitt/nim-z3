@@ -43,11 +43,12 @@ else:
       expect(Z3Error):
         discard mkSimplifier(ctx, "this-name-does-not-exist-xyzzy")
 
-    test "$ equals getHelp":
-      ## $ is documented to delegate to getHelp; verify they agree.
+    test "getHelp returns non-empty doc string":
+      ## $ was removed (it returned parameter docs, which is surprising).
+      ## getHelp() is the explicit way to get the documentation string.
       let ctx = newContext()
       let simp = mkSimplifier(ctx, "simplify")
-      check $simp == simp.getHelp()
+      check simp.getHelp().len > 0
 
   suite "Z3Simplifier — addSimplifier":
     test "addSimplifier on a solver returns non-nil":

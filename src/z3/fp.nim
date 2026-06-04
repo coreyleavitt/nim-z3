@@ -352,6 +352,28 @@ proc isFinite*[E, S: static int](a: Z3Fp[E, S]): Z3Bool =
   (not isNaN(a)) and (not isInf(a))
 
 # ============================================================================
+# N6.4a — Host-side numeral predicates (concrete bool, not Z3Bool)
+# ============================================================================
+#
+# These are introspection procs operating on *concrete* FP numerals.
+# They invoke `Z3_fpa_is_numeral_*` which returns a C `bool` directly —
+# no solver round-trip, no SMT formula construction.
+# Contrast with the symbolic `isNaN`/`isInf`/… above, which build Z3Bool
+# AST nodes for use in assertions.
+
+template numeralPredicate(name, ffi: untyped) =
+  proc name*[E, S: static int](a: Z3Fp[E, S]): bool =
+    ffi(a.ctx.raw, a.raw)
+
+numeralPredicate(isNumeralNaN,       Z3_fpa_is_numeral_nan)
+numeralPredicate(isNumeralInf,       Z3_fpa_is_numeral_inf)
+numeralPredicate(isNumeralZero,      Z3_fpa_is_numeral_zero)
+numeralPredicate(isNumeralNormal,    Z3_fpa_is_numeral_normal)
+numeralPredicate(isNumeralSubnormal, Z3_fpa_is_numeral_subnormal)
+numeralPredicate(isNumeralPositive,  Z3_fpa_is_numeral_positive)
+numeralPredicate(isNumeralNegative,  Z3_fpa_is_numeral_negative)
+
+# ============================================================================
 # Comparisons — signaling (NaN ordered with nothing)
 # ============================================================================
 

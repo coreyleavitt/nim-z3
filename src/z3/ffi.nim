@@ -2099,6 +2099,22 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_mk_fpa_is_positive(c: RawZ3Context, t: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
 
+  # Numeral predicates — host-side bool (N6.4a)
+  proc Z3_fpa_is_numeral_nan(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_inf(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_zero(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_normal(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_subnormal(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_positive(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+  proc Z3_fpa_is_numeral_negative(c: RawZ3Context, t: RawZ3Ast): bool
+    {.cdecl, header: "z3.h".}
+
   # Conversions
   proc Z3_mk_fpa_to_fp_bv(c: RawZ3Context, bv: RawZ3Ast, s: RawZ3Sort): RawZ3Ast
     {.cdecl, header: "z3.h".}

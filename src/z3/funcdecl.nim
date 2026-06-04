@@ -141,6 +141,33 @@ proc wrapFuncDecl*[ArgsTup: tuple, Ret](
   incRefFD(ctx, raw)
   Z3FuncDecl[ArgsTup, Ret](raw: raw, ctx: ctx)
 
+proc freshFuncDecl*[ArgsTup: tuple, Ret](
+    ctx: Z3Context, prefix: string): Z3FuncDecl[ArgsTup, Ret] =
+  ## Declare a fresh uninterpreted function with a unique name derived from
+  ## `prefix`. Unlike `mkFuncDecl`, two calls with the same `prefix` and
+  ## type parameters produce structurally distinct `Z3FuncDecl` handles —
+  ## safe to use where name collisions would cause Z3 to identify the
+  ## functions.
+  ##
+  ## ```nim
+  ## let f = freshFuncDecl[(Z3Int,), Z3Int](ctx, "f")
+  ## let g = freshFuncDecl[(Z3Int,), Z3Int](ctx, "f")   # distinct from f
+  ## ```
+  var domain = domainSorts[ArgsTup](ctx)
+  let domainPtr =
+    if domain.len == 0: nil
+    else: cast[ptr UncheckedArray[RawZ3Sort]](addr domain[0])
+  let rangeSort = sortOfType[Ret](ctx)
+  let raw = ctx.checkErr Z3_mk_fresh_func_decl(
+    ctx.raw, prefix.cstring, cuint(domain.len), domainPtr, rangeSort)
+  result = Z3FuncDecl[ArgsTup, Ret](raw: raw, ctx: ctx)
+  incRefFD(ctx, raw)
+
+proc freshFuncDecl*[ArgsTup: tuple, Ret](
+    prefix: string): Z3FuncDecl[ArgsTup, Ret] {.inline.} =
+  ## Current-context shorthand for `freshFuncDecl[ArgsTup, Ret](ctx, prefix)`.
+  freshFuncDecl[ArgsTup, Ret](requireCurrentContext(), prefix)
+
 # ============================================================================
 # defineFun — define a recursive (non-uninterpreted) function. N5.5.
 # ============================================================================

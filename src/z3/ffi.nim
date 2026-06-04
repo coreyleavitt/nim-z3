@@ -841,6 +841,16 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## `Z3_inc_ref` / `Z3_dec_ref` (datatypes.nim does the same).
     ## **v0.3 step 7.**
 
+  proc Z3_mk_fresh_func_decl(c: RawZ3Context, prefix: cstring,
+                              domain_size: cuint,
+                              domain: ptr UncheckedArray[RawZ3Sort],
+                              range: RawZ3Sort): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Declare a fresh uninterpreted function with a unique name derived from
+    ## `prefix`. Unlike `Z3_mk_func_decl`, the generated name has a unique
+    ## internal id so two calls with the same `prefix` produce structurally
+    ## distinct func_decls. **N9.4.**
+
   proc Z3_mk_rec_func_decl(c: RawZ3Context, s: RawZ3Symbol,
                            domain_size: cuint,
                            domain: ptr UncheckedArray[RawZ3Sort],
@@ -1679,6 +1689,14 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## **v0.4 step 9.** Substitute subterms by-term. `from_arr[i]`
     ## occurrences in `a` are replaced by `to_arr[i]`.
+  proc Z3_substitute_funs(c: RawZ3Context, a: RawZ3Ast, num_funs: cuint,
+                          from_arr: ptr UncheckedArray[RawZ3FuncDecl],
+                          to_arr: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## **N9.4.** Substitute function-application subterms. Each application of
+    ## `from_arr[i]` in `a` is replaced by `to_arr[i]`, where `to_arr[i]` may
+    ## contain de-Bruijn free variables (index 0 = first argument of the
+    ## replaced function, index 1 = second argument, etc.).
   proc Z3_substitute_vars(c: RawZ3Context, a: RawZ3Ast,
                           num_exprs: cuint,
                           to_arr: ptr UncheckedArray[RawZ3Ast]): RawZ3Ast

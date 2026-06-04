@@ -1845,6 +1845,27 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     ## Hint: suggest `v` starts at `value`. No guarantee solver respects it.
     ## N8.1.
 
+  proc Z3_solver_cube(c: RawZ3Context, s: RawZ3Solver,
+                      vars: RawZ3AstVector,
+                      backtrack_level: cuint): RawZ3AstVector
+    {.cdecl, header: "z3.h".}
+    ## Return a cube (conjunction of literals) the solver is willing to branch
+    ## on. `vars` is a hint vector of variables to branch on (may be empty);
+    ## `backtrack_level` limits the depth. A result containing a single `false`
+    ## literal means UNSAT; an empty vector means the cube is trivially SAT.
+    ## N8.2.
+
+  proc Z3_solver_congruence_root(c: RawZ3Context, s: RawZ3Solver,
+                                  a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Return the congruence-closure root for `a`. Valid after `check()` on a
+    ## solver using CDCL; reflects current case-split state. N8.2.
+
+  proc Z3_solver_congruence_next(c: RawZ3Context, s: RawZ3Solver,
+                                  a: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
+    ## Return the next AST in `a`'s congruence class (cyclic list). N8.2.
+
   # --- Model ----------------------------------------------------------------
 
   proc Z3_model_eval(c: RawZ3Context, m: RawZ3Model, t: RawZ3Ast,

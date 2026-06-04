@@ -512,3 +512,49 @@ proc setInitialValue*[V: Z3Term, Val: Z3Term](s: Z3Solver, v: V, value: Val) =
   ## Both `v` and `value` must belong to the solver's context.
   s.ctx.checkErrVoid Z3_solver_set_initial_value(
     s.ctx.raw, s.raw, v.raw, value.raw)
+
+# ============================================================================
+# Cube + congruence introspection (N8.2)
+# ============================================================================
+
+proc cube*(s: Z3Solver, vars: Z3AstVector, backtrackLevel: int): Z3AstVector =
+  ## Return a cube (conjunction of literals) that the solver is willing to
+  ## branch on. `vars` is a hint vector of relevant variables (may be an
+  ## empty `newAstVector`); `backtrackLevel` limits the search depth.
+  ##
+  ## Semantics of the returned vector:
+  ## - length 0 — the search space is exhausted (no more cubes)
+  ## - length 1, sole element is `false` — the constraint set is UNSAT
+  ## - length ≥ 1, otherwise — a valid branching cube
+  ##
+  ## Backed by `Z3_solver_cube`. Works with both `newSolver` and
+  ## `newSimpleSolver`; call `check()` first on the solver to warm up
+  ## internal state. N8.2.
+  var varsCopy = vars  # may not be needed but clarifies ownership intent
+  let raw = s.ctx.checkErr Z3_solver_cube(
+    s.ctx.raw, s.raw, varsCopy.raw, cuint(backtrackLevel))
+  wrapAstVector(s.ctx, raw)
+
+proc congruenceRoot*[T: Z3Term](s: Z3Solver, ast: T): RawZ3Ast =
+  ## Return the raw congruence-closure root of `ast` in the solver's current
+  ## state. All members of the same congruence class share the same root.
+  ##
+  ## Returns a `RawZ3Ast` (untyped) because the root's sort is identical to
+  ## `ast`'s sort but the typed family isn't statically recoverable without
+  ## importing `z3/introspect` (which creates a cycle through
+  ## `bitvec → model → solver`). Callers may compare `.raw` values directly
+  ## to test class membership.
+  ##
+  ## Valid after `check()` on a CDCL-backed solver. The congruences reflect
+  ## current case-split state — true *under* the current search path, not
+  ## global consequences. N8.2.
+  s.ctx.checkErr Z3_solver_congruence_root(s.ctx.raw, s.raw, ast.raw)
+
+proc congruenceNext*[T: Z3Term](s: Z3Solver, ast: T): RawZ3Ast =
+  ## Return the raw next AST in `ast`'s congruence class. The class
+  ## forms a cyclic linked list; iterating `congruenceNext` from any member
+  ## eventually returns back to the starting AST.
+  ##
+  ## Returns `RawZ3Ast` for the same reason as `congruenceRoot` — avoids the
+  ## `solver → introspect → bitvec → model → solver` import cycle. N8.2.
+  s.ctx.checkErr Z3_solver_congruence_next(s.ctx.raw, s.raw, ast.raw)

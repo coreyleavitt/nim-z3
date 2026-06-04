@@ -324,3 +324,73 @@ proc translate*(m: Z3Model, target: Z3Context): Z3Model =
   ## to a second solver that works in a sibling context).
   let raw = m.ctx.checkErr Z3_model_translate(m.ctx.raw, m.raw, target.raw)
   wrapModel(target, raw)
+
+# ============================================================================
+# Model construction — N2.2
+# ============================================================================
+#
+# These procs construct hand-crafted models — useful for testing formula
+# falsity by building a witness, or for synthesis consumers that produce
+# models from scratch.
+#
+# `Z3FuncInterpMut` is a mutable handle to an in-progress function
+# interpretation. It holds a context + raw RawZ3FuncInterp pair. The
+# interpreter is owned by the parent `Z3Model` (via the model's refcount);
+# the `Z3FuncInterpMut` does not hold an extra ref.
+
+type Z3FuncInterpMut* = object
+  ## Mutable handle to a function interpretation being constructed.
+  ## Obtained from `addFuncInterp`; valid only while the parent
+  ## model is alive. Not reference-counted (the model owns the interp).
+  ctx*: Z3Context
+  raw*: RawZ3FuncInterp
+
+# Concept for any type with a `.raw: RawZ3Ast` field — matches both
+# Z3Ast[S] (typed families) and Z3AnyAst (erased) without importing
+# z3/introspect (which would create a cycle via bitvec -> model).
+type Z3AstLike* = concept x
+  x.raw is RawZ3Ast
+
+proc newModel*(ctx: Z3Context): Z3Model =
+  ## Construct a fresh empty `Z3Model` in context `ctx`.
+  ## The model has no constant or function interpretations initially.
+  let raw = ctx.checkErr Z3_mk_model(ctx.raw)
+  Z3_model_inc_ref(ctx.raw, raw)
+  Z3Model(raw: raw, ctx: ctx)
+
+proc addConstInterp*(m: Z3Model, f: RawZ3FuncDecl, value: Z3AstLike) =
+  ## Pin constant declaration `f` to `value` in model `m`.
+  ## `f` must be a nullary (0-arity) function declaration. After this
+  ## call `m.hasInterp(f)` returns `true` and `m.eval` returns `value`.
+  m.ctx.checkErrVoid Z3_add_const_interp(m.ctx.raw, m.raw, f, value.raw)
+
+proc addFuncInterp*(m: Z3Model, f: RawZ3FuncDecl,
+                    defaultVal: Z3AstLike): Z3FuncInterpMut =
+  ## Begin a function interpretation for declaration `f` in model `m`.
+  ## `defaultVal` is the else-value (returned for any argument combination
+  ## not explicitly covered by `addEntry`). Returns a `Z3FuncInterpMut`
+  ## handle for adding entries and updating the else-value.
+  let raw = m.ctx.checkErr Z3_add_func_interp(m.ctx.raw, m.raw, f,
+                                               defaultVal.raw)
+  Z3FuncInterpMut(ctx: m.ctx, raw: raw)
+
+proc setElse*(fi: Z3FuncInterpMut, elseVal: Z3AstLike) =
+  ## Replace the else-value of function interpretation `fi` with `elseVal`.
+  ## Useful to update the default after `addFuncInterp` was called, or to
+  ## change the default after adding explicit entries.
+  fi.ctx.checkErrVoid Z3_func_interp_set_else(fi.ctx.raw, fi.raw, elseVal.raw)
+
+proc addEntry*(fi: Z3FuncInterpMut,
+               args: openArray[Z3AstLike], value: Z3AstLike) =
+  ## Add a `(args -> value)` row to function interpretation `fi`.
+  ## `args` must have the same length as the declared arity of the
+  ## function. After this call `m.eval(f(args))` returns `value`.
+  ##
+  ## Internally this wraps the arg array into a `Z3AstVector` because
+  ## `Z3_func_interp_add_entry` takes a `Z3_ast_vector`.
+  let v = Z3_mk_ast_vector(fi.ctx.raw)
+  Z3_ast_vector_inc_ref(fi.ctx.raw, v)
+  for a in args:
+    Z3_ast_vector_push(fi.ctx.raw, v, a.raw)
+  fi.ctx.checkErrVoid Z3_func_interp_add_entry(fi.ctx.raw, fi.raw, v, value.raw)
+  Z3_ast_vector_dec_ref(fi.ctx.raw, v)

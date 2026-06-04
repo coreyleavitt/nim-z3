@@ -127,6 +127,20 @@ proc mkFuncDecl*[ArgsTup: tuple, Ret](
 proc mkFuncDecl*[ArgsTup: tuple, Ret](name: string): Z3FuncDecl[ArgsTup, Ret] =
   mkFuncDecl[ArgsTup, Ret](requireCurrentContext(), name)
 
+proc wrapFuncDecl*[ArgsTup: tuple, Ret](
+    ctx: Z3Context, raw: RawZ3FuncDecl): Z3FuncDecl[ArgsTup, Ret] =
+  ## Wrap a raw `Z3_func_decl` into a typed `Z3FuncDecl[ArgsTup, Ret]`,
+  ## incrementing its refcount. Used by sibling modules (e.g. `z3/order`)
+  ## that create func_decls via Z3 C-API calls and need to lift them into
+  ## the typed surface without access to `Z3FuncDeclOwn`'s private fields.
+  if raw.isNil:
+    var e = newException(Z3InvalidUsageError,
+      "wrapFuncDecl: Z3 returned a nil func_decl")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  incRefFD(ctx, raw)
+  Z3FuncDecl[ArgsTup, Ret](raw: raw, ctx: ctx)
+
 # ============================================================================
 # defineFun — define a recursive (non-uninterpreted) function. N5.5.
 # ============================================================================

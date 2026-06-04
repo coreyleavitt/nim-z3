@@ -341,5 +341,9 @@ when not defined(z3WithoutSpacer):
   import z3/spacer
   export spacer
 
+when not defined(z3WithoutOrder):
+  import z3/order
+  export order
+
 # softlink's SoftlinkError / LoadResult / lrOk live in softlink; users
 # who need them `import softlink` directly.

@@ -2963,6 +2963,34 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
     ## Human-readable help string listing the simplifier's parameters.
 
+  # N9.2 — order theory + transitive closure.
+  # Z3_mk_linear_order / _partial_order / _piecewise_linear_order / _tree_order
+  # all have signature (Z3_context, Z3_sort, unsigned) → Z3_func_decl.
+  # Z3_mk_transitive_closure has signature (Z3_context, Z3_func_decl) → Z3_func_decl.
+
+  proc Z3_mk_linear_order(c: RawZ3Context, a: RawZ3Sort, id: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Create a strict total (linear) order on sort `a` with identifier `id`.
+    ## Z3 injects irreflexivity, transitivity, and totality axioms.
+
+  proc Z3_mk_partial_order(c: RawZ3Context, a: RawZ3Sort, id: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Create a partial order (reflexive, antisymmetric, transitive) on `a`.
+
+  proc Z3_mk_piecewise_linear_order(c: RawZ3Context, a: RawZ3Sort,
+                                     id: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Create a piecewise linear order on `a` (a forest of linear chains).
+
+  proc Z3_mk_tree_order(c: RawZ3Context, a: RawZ3Sort, id: cuint): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Create a tree order on `a`.
+
+  proc Z3_mk_transitive_closure(c: RawZ3Context,
+                                 f: RawZ3FuncDecl): RawZ3FuncDecl
+    {.cdecl, header: "z3.h".}
+    ## Return the transitive closure of binary relation `f`.
+
 # N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
 # some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).
 # Gate their FFI declarations behind `-d:z3WithSeqReplaceAll` and

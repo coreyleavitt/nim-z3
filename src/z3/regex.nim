@@ -77,13 +77,14 @@ proc mkRegexFull*[Basis](ctx: Z3Context): Z3Regex[Basis] =
 proc mkRegexFull*[Basis](): Z3Regex[Basis] =
   mkRegexFull[Basis](requireCurrentContext())
 
-proc mkRegexAll*[Basis](ctx: Z3Context): Z3Regex[Basis] =
+proc mkRegexAllChar*[Basis](ctx: Z3Context): Z3Regex[Basis] =
   ## Regex matching any single basis element (`re.allchar`). For
-  ## strings, that's any single codepoint.
+  ## strings, that's any single codepoint. Named `mkRegexAllChar` to
+  ## distinguish from `mkRegexFull` (which matches every sequence).
   let sort = ctx.checkErr Z3_mk_re_sort(ctx.raw, basisSort[Basis](ctx))
   wrap[Z3Regex[Basis]](ctx, ctx.checkErr Z3_mk_re_allchar(ctx.raw, sort))
-proc mkRegexAll*[Basis](): Z3Regex[Basis] =
-  mkRegexAll[Basis](requireCurrentContext())
+proc mkRegexAllChar*[Basis](): Z3Regex[Basis] =
+  mkRegexAllChar[Basis](requireCurrentContext())
 
 # ============================================================================
 # Membership

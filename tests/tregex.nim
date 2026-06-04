@@ -61,8 +61,8 @@ suite "Z3Regex — n-ary combinators":
   test "intersect narrows":
     let ctx = newContext()
     # Strings starting with "ab" intersected with strings ending in "cd"
-    let ab_star = concat(mkRegex(mkString("ab")), mkRegexAll[Z3String]().star)
-    let star_cd = concat(mkRegexAll[Z3String]().star, mkRegex(mkString("cd")))
+    let ab_star = concat(mkRegex(mkString("ab")), mkRegexAllChar[Z3String]().star)
+    let star_cd = concat(mkRegexAllChar[Z3String]().star, mkRegex(mkString("cd")))
     let both = intersect(ab_star, star_cd)
     check smtValid(matches(mkString("abcd"), both))
     check smtValid(matches(mkString("abxcd"), both))
@@ -104,9 +104,9 @@ suite "Z3Regex — universals":
     check smtValid(matches(mkString(""), r))
     check smtValid(matches(mkString("any"), r))
 
-  test "mkRegexAll accepts exactly single-codepoint strings":
+  test "mkRegexAllChar accepts exactly single-codepoint strings":
     let ctx = newContext()
-    let r = mkRegexAll[Z3String]()
+    let r = mkRegexAllChar[Z3String]()
     check smtValid(not matches(mkString(""), r))
     check smtValid(matches(mkString("a"), r))
     check smtValid(not matches(mkString("ab"), r))

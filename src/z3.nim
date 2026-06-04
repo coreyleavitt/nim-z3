@@ -184,7 +184,7 @@
 ## - `z3/regex` — `Z3Regex[Basis]` phantom-typed over the basis
 ##   sequence sort (v0.3 step 4: `Z3Regex[Z3String]` only; step 5
 ##   widens to `Z3Regex[Z3Seq[E]]`). `mkRegex` / `mkRegexEmpty` /
-##   `mkRegexFull` / `mkRegexAll`, `matches` membership predicate,
+##   `mkRegexFull` / `mkRegexAllChar`, `matches` membership predicate,
 ##   `star` / `plus` / `option` / `complement` unary, varargs
 ##   `concat` / `union` / `intersect`, `range(lo, hi: string)`
 ##   character ranges, `loop(r, lo, hi)` / `power(r, n)` counted

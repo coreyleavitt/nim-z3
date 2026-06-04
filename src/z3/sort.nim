@@ -53,6 +53,12 @@ type
       ## and invasive rework of every existing generic over `Z3Ast[S]`.
       ## This tag exists so `Z3Sort[stBitVec]` is still expressible for
       ## `mkBitVecSort` and sort-level introspection.
+    stFp
+      ## IEEE 754 floating-point sort handle — exposes a `Z3Sort[stFp]`
+      ## for the four standard-precision constructors (`mkFpSortHalf`,
+      ## `mkFpSortSingle`, `mkFpSortDouble`, `mkFpSortQuadruple`) defined
+      ## in `z3/fp`. The ebits/sbits live in the underlying `RawZ3Sort`;
+      ## use `Z3_fpa_get_ebits` / `Z3_fpa_get_sbits` to recover them.
 
   # NOTE: v0.3 step 3 retired `stArray` and `stDatatype` from this enum.
   # Both were placeholder tags from v0.2 that never had a caller — the

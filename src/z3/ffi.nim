@@ -1996,6 +1996,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
 
   proc Z3_mk_fpa_sort(c: RawZ3Context, ebits, sbits: cuint): RawZ3Sort
     {.cdecl, header: "z3.h".}
+  proc Z3_mk_fpa_sort_half(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## IEEE 754 binary16 (half-precision) sort — 5 exponent, 11 significand bits.
+  proc Z3_mk_fpa_sort_single(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## IEEE 754 binary32 (single-precision) sort — 8 exponent, 24 significand bits.
+  proc Z3_mk_fpa_sort_double(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## IEEE 754 binary64 (double-precision) sort — 11 exponent, 53 significand bits.
+  proc Z3_mk_fpa_sort_quadruple(c: RawZ3Context): RawZ3Sort
+    {.cdecl, header: "z3.h".}
+    ## IEEE 754 binary128 (quadruple-precision) sort — 15 exponent, 113 significand bits.
   proc Z3_mk_fpa_rounding_mode_sort(c: RawZ3Context): RawZ3Sort
     {.cdecl, header: "z3.h".}
 

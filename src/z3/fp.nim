@@ -53,7 +53,7 @@
 ## lifter) collapsed into one family. Source delta is mostly
 ## `rmRNE` → `rmRNE()` and `mkRoundingMode(rmX)` → `rmX()`.
 
-import ./ffi, ./context, ./error, ./ast, ./model, ./bitvec
+import ./ffi, ./context, ./error, ./ast, ./model, ./bitvec, ./sort
 
 # ============================================================================
 # Z3Fp[Ebits, Sbits] — phantom-typed FP value family
@@ -156,6 +156,34 @@ proc mkRoundingModeVar*(name: string): Z3RoundingMode =
 
 proc fpSort[E, S: static int](ctx: Z3Context): RawZ3Sort {.inline.} =
   ctx.checkErr Z3_mk_fpa_sort(ctx.raw, cuint(E), cuint(S))
+
+# ----------------------------------------------------------------------------
+# Named-precision sort-handle constructors (N6.2)
+#
+# Each returns a typed `Z3Sort[stFp]` — the sort-level counterpart to the
+# `Z3Fp[E, S]` value aliases `Z3Float16/32/64/128`. Sort IDs match those
+# returned by `sortOf[Z3FloatXxx](ctx)` for the corresponding precision.
+# ----------------------------------------------------------------------------
+
+proc mkFpSortHalf*(ctx: Z3Context): Z3Sort[stFp] =
+  ## IEEE 754 binary16 (half-precision) sort handle: 5 exponent + 11 significand bits.
+  ## Matches `sortOf[Z3Float16](ctx)` by sort ID.
+  Z3Sort[stFp](raw: ctx.checkErr Z3_mk_fpa_sort_half(ctx.raw), ctx: ctx)
+
+proc mkFpSortSingle*(ctx: Z3Context): Z3Sort[stFp] =
+  ## IEEE 754 binary32 (single-precision) sort handle: 8 exponent + 24 significand bits.
+  ## Matches `sortOf[Z3Float32](ctx)` by sort ID.
+  Z3Sort[stFp](raw: ctx.checkErr Z3_mk_fpa_sort_single(ctx.raw), ctx: ctx)
+
+proc mkFpSortDouble*(ctx: Z3Context): Z3Sort[stFp] =
+  ## IEEE 754 binary64 (double-precision) sort handle: 11 exponent + 53 significand bits.
+  ## Matches `sortOf[Z3Float64](ctx)` by sort ID.
+  Z3Sort[stFp](raw: ctx.checkErr Z3_mk_fpa_sort_double(ctx.raw), ctx: ctx)
+
+proc mkFpSortQuadruple*(ctx: Z3Context): Z3Sort[stFp] =
+  ## IEEE 754 binary128 (quadruple-precision) sort handle: 15 exponent + 113 significand bits.
+  ## Matches `sortOf[Z3Float128](ctx)` by sort ID.
+  Z3Sort[stFp](raw: ctx.checkErr Z3_mk_fpa_sort_quadruple(ctx.raw), ctx: ctx)
 
 # ============================================================================
 # Literals + variables

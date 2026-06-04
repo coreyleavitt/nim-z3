@@ -180,3 +180,25 @@ proc range*(lo, hi: string): Z3Regex[Z3String] =
 
 proc `$`*[Basis](r: Z3Regex[Basis]): string = termToSmt2(r)
   ## SMT-LIB rendering of the regex AST.
+
+# ============================================================================
+# Cross-theory: regex-based sequence replacement (N5.4)
+# ============================================================================
+#
+# Lives here (regex.nim) rather than sequence.nim because `Z3Regex[Basis]`
+# is defined here; sequence.nim is lower in the import DAG and cannot
+# import regex.nim without creating a cycle.
+
+when defined(z3WithSeqReplaceRe):
+  proc replaceRe*[E](a: Z3Seq[E], pattern: Z3Regex[Z3Seq[E]],
+                     replacement: Z3Seq[E]): Z3Seq[E] =
+    ## SMT `(seq.replace_re a pattern replacement)`. Replaces the first
+    ## occurrence of a substring matching `pattern` in `a` with
+    ## `replacement`.
+    ##
+    ## Requires `-d:z3WithSeqReplaceRe`. The underlying C function
+    ## `Z3_mk_seq_replace_re` is absent from some Z3 distributions
+    ## (e.g. the openSUSE Tumbleweed 4.15.0-1.3 package).
+    let raw = a.ctx.checkErr Z3_mk_seq_replace_re(a.ctx.raw, a.raw,
+                                                   pattern.raw, replacement.raw)
+    wrap[Z3Seq[E]](a.ctx, raw)

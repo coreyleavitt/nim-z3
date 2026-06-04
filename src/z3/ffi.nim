@@ -1929,6 +1929,8 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
     {.cdecl, header: "z3.h".}
   proc Z3_mk_seq_replace(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_last_index(c: RawZ3Context, s, sub: RawZ3Ast): RawZ3Ast
+    {.cdecl, header: "z3.h".}
   proc Z3_mk_str_to_int(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_int_to_str(c: RawZ3Context, s: RawZ3Ast): RawZ3Ast
@@ -2263,3 +2265,18 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
   proc Z3_polynomial_subresultants(c: RawZ3Context,
                                    p, q, x: RawZ3Ast): RawZ3AstVector
     {.cdecl, header: "z3.h".}
+
+# N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
+# some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).
+# Gate their FFI declarations behind `-d:z3WithSeqReplaceAll` and
+# `-d:z3WithSeqReplaceRe` so users on capable builds can opt in.
+
+when defined(z3WithSeqReplaceAll):
+  dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
+    proc Z3_mk_seq_replace_all(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
+      {.cdecl, header: "z3.h".}
+
+when defined(z3WithSeqReplaceRe):
+  dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
+    proc Z3_mk_seq_replace_re(c: RawZ3Context, s, r, dst: RawZ3Ast): RawZ3Ast
+      {.cdecl, header: "z3.h".}

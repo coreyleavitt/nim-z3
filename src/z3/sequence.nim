@@ -161,3 +161,21 @@ proc replace*[E](a, old, new: Z3Seq[E]): Z3Seq[E] =
   ## SMT `(seq.replace a src dst)`. First-occurrence semantics.
   let raw = a.ctx.checkErr Z3_mk_seq_replace(a.ctx.raw, a.raw, old.raw, new.raw)
   wrap[Z3Seq[E]](a.ctx, raw)
+
+proc lastIndexOf*[E](a, sub: Z3Seq[E]): Z3Int =
+  ## SMT `(seq.last_indexof a sub)`. Returns the 0-based position of
+  ## the last occurrence of `sub` in `a`, or `-1` if not found.
+  let raw = a.ctx.checkErr Z3_mk_seq_last_index(a.ctx.raw, a.raw, sub.raw)
+  wrap[Z3Int](a.ctx, raw)
+
+when defined(z3WithSeqReplaceAll):
+  proc replaceAll*[E](a, old, new: Z3Seq[E]): Z3Seq[E] =
+    ## SMT `(seq.replace_all a src dst)`. All-occurrences semantics —
+    ## replaces every non-overlapping occurrence of `old` in `a` with `new`.
+    ##
+    ## Requires `-d:z3WithSeqReplaceAll`. The underlying C function
+    ## `Z3_mk_seq_replace_all` is absent from some Z3 distributions
+    ## (e.g. the openSUSE Tumbleweed 4.15.0-1.3 package).
+    let raw = a.ctx.checkErr Z3_mk_seq_replace_all(a.ctx.raw, a.raw, old.raw, new.raw)
+    wrap[Z3Seq[E]](a.ctx, raw)
+

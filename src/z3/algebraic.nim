@@ -13,7 +13,7 @@
 ##   - `algebraicNeg`
 ##   - `algebraicRoots(p, vals)` -- real roots of a polynomial
 ##
-## ## Type design (M5 fix)
+## ## Type design
 ##
 ## `Z3AlgebraicNum` is a distinct type wrapping `Z3Real`. All Z3 algebraic
 ## operations take and return `Z3AlgebraicNum`, NOT `Z3Real`. This eliminates
@@ -55,7 +55,7 @@ when not defined(z3WithoutAlgebraic):
   import ./ffi, ./context, ./error, ./ast, ./builder, ./astvector
 
   # ==========================================================================
-  # Z3AlgebraicNum -- distinct type for algebraic numerals (M5 fix)
+  # Z3AlgebraicNum -- distinct type for algebraic numerals
   # ==========================================================================
 
   type
@@ -155,6 +155,12 @@ when not defined(z3WithoutAlgebraic):
     ## Return the algebraic numeral -a.
     ## Z3_algebraic_neg is absent from z3_algebraic.h. Implemented as
     ## 0 - a via Z3_algebraic_sub with the zero rational.
+    ##
+    ## Note: Z3_mk_unary_minus is NOT used here even though it accepts
+    ## Real-sorted ASTs. It produces a symbolic application node, NOT an
+    ## algebraic-package numeral — i.e. the result fails Z3_algebraic_is_value.
+    ## Only the Z3_algebraic_* family guarantees the algebraic-package marker
+    ## on its outputs. Verified empirically with sqrt(2) as a probe input.
     let zero = mkReal(a.algCtx, 0).toAlgebraic
     Z3AlgebraicNum(wrap[Z3Real](a.algCtx,
       a.algCtx.checkErr Z3_algebraic_sub(a.algCtx.raw, zero.algRaw, a.algRaw)))
@@ -293,13 +299,19 @@ when not defined(z3WithoutAlgebraic):
   proc algebraicGetPoly*(a: Z3AlgebraicNum): Z3AstVector =
     ## Return the defining polynomial of algebraic numeral `a` as a
     ## `Z3AstVector` of coefficients ordered from lowest to highest degree.
-    ## Precondition: `algebraicIsValue(a)`.
+    ## Precondition: a was obtained via algebraic ops (algebraicRoot, +, -, *, /, etc.)
+    ## OR via toAlgebraic on a Z3Real that satisfies algebraicIsValue.
+    ## The distinct-type wrapper makes most misuse a type error; toAlgebraic's debug
+    ## assertion catches the remaining case.
     let ctx = a.algCtx
     wrapAstVector(ctx, ctx.checkErr Z3_algebraic_get_poly(ctx.raw, a.algRaw))
 
   proc algebraicGetI*(a: Z3AlgebraicNum): int =
     ## Return the 1-based root index among the roots of the defining polynomial.
-    ## Precondition: `algebraicIsValue(a)`.
+    ## Precondition: a was obtained via algebraic ops (algebraicRoot, +, -, *, /, etc.)
+    ## OR via toAlgebraic on a Z3Real that satisfies algebraicIsValue.
+    ## The distinct-type wrapper makes most misuse a type error; toAlgebraic's debug
+    ## assertion catches the remaining case.
     int(Z3_algebraic_get_i(a.algCtx.raw, a.algRaw))
 
   # ==========================================================================

@@ -254,7 +254,7 @@ proc defineRecFun*[A1, Ret](
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   let raw = ctx.checkErr Z3_mk_rec_func_decl(
     ctx.raw, sym, 1'u32, domainPtr, rangeSort)
-  incRefFD(ctx, raw)
+  incRefFD(ctx, raw)  # ref for `self`
   let self = Z3FuncDecl[(A1,), Ret](raw: raw, ctx: ctx)
   let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
@@ -263,6 +263,7 @@ proc defineRecFun*[A1, Ret](
   var argsArr = @[a1.raw]
   Z3_add_rec_def(ctx.raw, raw, 1'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  incRefFD(ctx, raw)  # ref for the returned Z3FuncDecl (second owner)
   Z3FuncDecl[(A1,), Ret](raw: raw, ctx: ctx)
 
 proc defineRecFun*[A1, Ret](name: string,
@@ -282,7 +283,7 @@ proc defineRecFun*[A1, A2, Ret](
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   let raw = ctx.checkErr Z3_mk_rec_func_decl(
     ctx.raw, sym, 2'u32, domainPtr, rangeSort)
-  incRefFD(ctx, raw)
+  incRefFD(ctx, raw)  # ref for `self`
   let self = Z3FuncDecl[(A1, A2), Ret](raw: raw, ctx: ctx)
   let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
@@ -294,6 +295,7 @@ proc defineRecFun*[A1, A2, Ret](
   var argsArr = @[a1.raw, a2.raw]
   Z3_add_rec_def(ctx.raw, raw, 2'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  incRefFD(ctx, raw)  # ref for the returned Z3FuncDecl (second owner)
   Z3FuncDecl[(A1, A2), Ret](raw: raw, ctx: ctx)
 
 proc defineRecFun*[A1, A2, Ret](name: string,
@@ -313,7 +315,7 @@ proc defineRecFun*[A1, A2, A3, Ret](
   let sym = ctx.checkErr Z3_mk_string_symbol(ctx.raw, name.cstring)
   let raw = ctx.checkErr Z3_mk_rec_func_decl(
     ctx.raw, sym, 3'u32, domainPtr, rangeSort)
-  incRefFD(ctx, raw)
+  incRefFD(ctx, raw)  # ref for `self`
   let self = Z3FuncDecl[(A1, A2, A3), Ret](raw: raw, ctx: ctx)
   let a1 = wrap[A1](ctx, ctx.checkErr Z3_mk_const(ctx.raw,
     ctx.checkErr Z3_mk_string_symbol(ctx.raw, (name & "_arg0").cstring),
@@ -328,6 +330,7 @@ proc defineRecFun*[A1, A2, A3, Ret](
   var argsArr = @[a1.raw, a2.raw, a3.raw]
   Z3_add_rec_def(ctx.raw, raw, 3'u32,
     cast[ptr UncheckedArray[RawZ3Ast]](addr argsArr[0]), bodyExpr.raw)
+  incRefFD(ctx, raw)  # ref for the returned Z3FuncDecl (second owner)
   Z3FuncDecl[(A1, A2, A3), Ret](raw: raw, ctx: ctx)
 
 proc defineRecFun*[A1, A2, A3, Ret](name: string,

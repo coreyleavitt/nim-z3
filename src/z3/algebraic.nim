@@ -78,7 +78,13 @@ when not defined(z3WithoutAlgebraic):
 
   proc toAlgebraic*(r: Z3Real): Z3AlgebraicNum {.inline.} =
     ## Explicitly cast a `Z3Real` to `Z3AlgebraicNum`.
-    ## Precondition: `r` must be an algebraic-numeral AST.
+    ## Precondition: `r` must be an algebraic-numeral AST (i.e. satisfies
+    ## `algebraicIsValue`). In debug/test builds a `doAssert` enforces this;
+    ## in release builds the check is elided for zero cost.
+    when not defined(release):
+      doAssert Z3_algebraic_is_value(r.ctx.raw, r.raw),
+        "toAlgebraic: precondition violated — r is not an algebraic numeral. " &
+        "Use algebraicIsValue(r) to check before casting."
     Z3AlgebraicNum(r)
 
   proc toReal*(a: Z3AlgebraicNum): Z3Real {.inline.} =

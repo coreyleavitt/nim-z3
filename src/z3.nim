@@ -233,6 +233,53 @@
 ##   refcount-managed streaming parser with `addSort` / `addDecl` /
 ##   `parseFromString`. **v0.4 step 14** (relocated from `z3/pretty`
 ##   and extended).
+## - `z3/sets` — `Z3Set[E] = distinct Z3Array[E, Z3Bool]`, phantom-typed
+##   SMT set theory. Constructors `mkEmptySet[E]` / `mkFullSet[E]` /
+##   `mkSetVar[E]`; operators `in` (membership), `union` / `intersect` /
+##   `setminus`; predicates `subset` / `setEqual`; `complement`.
+##   **v2.0.**
+## - `z3/astmap` — `Z3AstMap`, refcount-managed Z3-side AST → AST
+##   hash table. `newAstMap`, `[]` get, `[]=` insert, `contains`,
+##   `del`, `len`, `reset`, `keys` / `values` / `pairs` iterators,
+##   `toSeq`. **v2.0.**
+## - `z3/uninterpretedval` — `Z3UninterpretedVal[T]`, marker-phantom-
+##   typed values of an uninterpreted sort. `mkUninterpretedSort[T]`,
+##   `mkUninterpretedVal[T]`, `mkUninterpretedVar[T]`. Phantom `T` is
+##   a Nim marker type (`type Foo = object`) so different uninterpreted
+##   sorts are statically distinct. **v2.0.**
+## - `z3/rcf` — `Z3RcfNum`, move-only (destructor + no copy) Real
+##   Closed Field numerals for exact real arithmetic outside the SMT
+##   layer. `rcfMkRational` / `rcfMkSmall` / `rcfMkQ` / `rcfMkRoots`;
+##   arithmetic `+` `-` `*` `/` and comparisons `<` `<=` `>` `>=`
+##   `==` `!=`; `rcfDisplayInterval` for interval printing. **v2.0.**
+## - `z3/algebraic` — `Z3AlgebraicNum`, distinct-typed algebraic
+##   numerals (exact real roots of integer polynomials, e.g. sqrt(2)).
+##   `algebraicRoot` / `algebraicPower`; arithmetic `+` `-` `*` `/`
+##   and concrete comparisons returning Nim `bool`; `algebraicRoots` /
+##   `algebraicEval` for polynomial root enumeration and sign queries;
+##   `algebraicGetPoly` / `algebraicGetI` introspection;
+##   `subresultants` polynomial subresultant chain. Gated
+##   `-d:z3WithoutAlgebraic`. **v2.0.**
+## - `z3/spacer` — Spacer engine extensions to `Z3Fixedpoint`:
+##   `addCover` / `getCover` for PDR invariant witnesses, `getSpacerLevel`,
+##   `mkFpQuery`. Gated `-d:z3WithoutSpacer`. **v2.0.**
+## - `z3/simplifier` — `Z3Simplifier` object pipeline. `newSimplifier` /
+##   `addSimplifier` composition; `simplify[T](a, s)` overload using
+##   the pipeline. Gated `-d:z3WithoutSimplifierObject`. **v2.0.**
+## - `z3/propagator` — `Z3Propagator` with `Z3PropagatorHandlers`
+##   callback set (`onFinal`, `onEq`, `onDecide`, `onFixed`,
+##   `onCreated`). `newPropagator`, `registerPropagator`,
+##   `propagatorConflict`. **v2.0.**
+## - `z3/onclause` — `registerOnClause` proof-hint callback. Receives
+##   clause ASTs as they are added to the solver's proof trace. Gated
+##   `-d:z3WithoutOnClause`; requires a context created with
+##   `proof = true`. **v2.0.**
+## - `z3/order` — Order theory + transitive closure. `mkOrdering`,
+##   `mkTC` (transitive closure of a relation), `tcAdd` / `tcQuery`.
+##   Gated `-d:z3WithoutOrder`. **v2.0.**
+## - `z3/logging` — Z3 process-global logging API. `openLog` /
+##   `appendLog` / `closeLog`; `z3EnableLog` for component-level
+##   verbosity control. **v2.0.**
 
 # ============================================================================
 # Feature flags (v0.5 step 10)

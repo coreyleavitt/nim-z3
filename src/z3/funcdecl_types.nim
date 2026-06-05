@@ -10,8 +10,12 @@
 ## All functional surface (apply, mkFuncDecl, defineFun, defineRecFun,
 ## Z3FuncInterp, seqMap, …) lives in `z3/funcdecl`.
 ##
-## This module is **not** part of the public `import z3` surface on its
-## own — users reach it transitively through `z3/funcdecl` or `z3/model`.
+## **Public reach**: users reach this module transitively via `z3/funcdecl`
+## (the primary typed surface, re-exported by `import z3`) or via
+## `z3/model` (which exports it so callers of the model-enumeration
+## surface — `constDecl`, `funcDecl` — get the `Z3FuncDecl` type without
+## a separate import). Direct `import z3/funcdecl_types` is not needed
+## in normal usage.
 
 import ./ffi, ./context, ./error
 
@@ -64,10 +68,14 @@ proc `=destroy`*[ArgsTup: tuple, Ret](v: Z3FuncDeclOwn[ArgsTup, Ret])
 proc wrapFuncDecl*[ArgsTup: tuple, Ret](
     ctx: Z3Context, raw: RawZ3FuncDecl): Z3FuncDecl[ArgsTup, Ret] =
   ## Wrap a raw `Z3_func_decl` into a typed `Z3FuncDecl[ArgsTup, Ret]`,
-  ## incrementing its refcount. Used by sibling modules (e.g. `z3/order`,
-  ## `z3/model`) that create func_decls via Z3 C-API calls and need to
-  ## lift them into the typed surface without access to `Z3FuncDeclOwn`'s
-  ## private fields.
+  ## incrementing its refcount.
+  ##
+  ## Primary consumer: `z3/model` (`constDecl` / `funcDecl`), which wraps
+  ## raw handles it obtains from `Z3_model_get_const_decl` /
+  ## `Z3_model_get_func_decl`. Secondary consumers include `z3/order`,
+  ## `z3/fixedpoint`, and any external module that obtains a `RawZ3FuncDecl`
+  ## from a Z3 C-API call and needs to lift it into the typed surface
+  ## without direct access to `Z3FuncDeclOwn`'s fields.
   if raw.isNil:
     var e = newException(Z3InvalidUsageError,
       "wrapFuncDecl: Z3 returned a nil func_decl")

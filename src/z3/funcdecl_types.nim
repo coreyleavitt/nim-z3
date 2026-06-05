@@ -43,14 +43,15 @@ proc decRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
   except CatchableError:
     discard
 
-proc incRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
+proc incRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) =
+  ## Increment the Z3 refcount for `fd`. Errors propagate — this proc runs
+  ## on the construction path where an error indicates a real problem and
+  ## should not be silenced. (Compare `decRefFD`, which swallows errors
+  ## because it runs from `=destroy` and cannot propagate.)
   if fd.isNil or ctx == nil or ctx.raw.isNil: return
-  try:
-    let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-    if not asAst.isNil:
-      Z3_inc_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+  let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
+  if not asAst.isNil:
+    Z3_inc_ref(ctx.raw, asAst)
 
 proc `=destroy`*[ArgsTup: tuple, Ret](v: Z3FuncDeclOwn[ArgsTup, Ret])
     {.raises: [].} =

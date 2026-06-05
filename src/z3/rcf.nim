@@ -258,9 +258,13 @@ when not defined(z3WithoutRcf):
     ## `coeffs` is ordered from lowest to highest degree: `coeffs[0]` is the
     ## constant term, `coeffs[n-1]` is the leading coefficient.
     ##
-    ## A polynomial of degree N (len = N+1) has at most N real roots;
-    ## the output buffer is sized `coeffs.len - 1`. `Z3_rcf_mk_roots`
-    ## fills the buffer and returns the actual count of distinct real roots.
+    ## `Z3_rcf_mk_roots` requires the output buffer to have exactly
+    ## `coeffs.len` slots (the C contract in `z3_rcf.h`: *"The output
+    ## vector `roots` must have size `n`"* where `n` is the coefficient
+    ## count). A polynomial of degree N (len = N+1) has at most N real
+    ## roots, so the actual count returned by Z3 will be ≤ `coeffs.len - 1`
+    ## — but the buffer itself must be sized to `coeffs.len`. Only the
+    ## `0..count-1` prefix is wrapped and returned.
     ##
     ## Returns the (possibly shorter) prefix of the output buffer that was
     ## actually populated.
@@ -277,7 +281,7 @@ when not defined(z3WithoutRcf):
     ## ```
     if coeffs.len < 2:
       return @[]
-    let maxRoots = coeffs.len - 1
+    let maxRoots = coeffs.len  # buffer size per z3_rcf.h contract (size n)
     # Build a raw array of input coefficients (index loop avoids =copy on
     # the move-only Z3RcfNum; we only read the .raw field).
     var rawCoeffs = newSeq[RawZ3RcfNum](coeffs.len)

@@ -676,6 +676,82 @@ proc seqFoldli*[E, A](f: Z3FuncDecl[(Z3Int, A, E), A],
 # All three live here (not in z3/arrays) because `z3/funcdecl` already
 # imports `z3/arrays` — putting the procs here avoids a circular import.
 
+# ============================================================================
+# narrowFuncDecl — recover a typed Z3FuncDecl from model-enumeration form
+# ============================================================================
+#
+# `constDecl` / `funcDecl` in `z3/model` return
+# `Z3FuncDecl[tuple[], Z3AnyAst]` — the widened "I don't know arity/sort"
+# form.  `narrowFuncDecl` lets callers recover the typed shape by
+# performing a runtime sort/arity check.
+
+proc narrowFuncDecl*[ArgsTup, Ret](
+    fd: Z3FuncDecl[tuple[], Z3AnyAst]): Z3FuncDecl[ArgsTup, Ret] =
+  ## Recover a typed `Z3FuncDecl[ArgsTup, Ret]` from the widened
+  ## enumeration form returned by `Z3Model.constDecl` / `Z3Model.funcDecl`.
+  ##
+  ## Performs a runtime arity check (domain size matches the number of
+  ## fields in `ArgsTup`) and per-position sort-kind check. Raises
+  ## `Z3InvalidUsageError` if the actual arity or sort kinds don't match
+  ## the target type.
+  ##
+  ## On match: increments the refcount and returns a new typed handle that
+  ## shares the same underlying Z3 func_decl object.
+  ##
+  ## Example:
+  ## ```nim
+  ## let m = s.model()
+  ## type MyArgs = (Z3Int,)          # type alias avoids tuple-trailing-comma
+  ## for i in 0 ..< m.numFuncs:
+  ##   let fd = m.funcDecl(i)        # Z3FuncDecl[tuple[], Z3AnyAst]
+  ##   let typed = narrowFuncDecl[MyArgs, Z3Int](fd)
+  ##   # use typed(mkInt(3)) etc.
+  ## ```
+  ## Note: use a named type alias for `ArgsTup` (e.g. `type A = (Z3Int,)`)
+  ## when calling, to work around Nim's tuple literal limitations with explicit
+  ## generic instantiation. UFCS form (`fd.narrowFuncDecl[...]()`) is not
+  ## supported for generic procs with explicit type parameters in Nim 2.x.
+  let ctx = fd.ctx
+  # --- arity check ---
+  let actualArity = int(Z3_get_domain_size(ctx.raw, fd.raw))
+  var expectedArity = 0
+  var dummy: ArgsTup
+  for _ in fields(dummy):
+    inc expectedArity
+  if actualArity != expectedArity:
+    var e = newException(Z3InvalidUsageError,
+      "narrowFuncDecl: arity mismatch — func_decl has " & $actualArity &
+      " domain sorts but target ArgsTup has " & $expectedArity & " fields.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  # --- domain sort-kind check ---
+  var i = cuint(0)
+  for field in fields(dummy):
+    let actualKind = Z3_get_sort_kind(ctx.raw,
+      Z3_get_domain(ctx.raw, fd.raw, i))
+    let expectedKind = Z3_get_sort_kind(ctx.raw,
+      sortOfType[typeof(field)](ctx))
+    if actualKind != expectedKind:
+      var e = newException(Z3InvalidUsageError,
+        "narrowFuncDecl: domain sort mismatch at position " & $i &
+        " — actual kind " & $int(actualKind) &
+        " != expected kind " & $int(expectedKind) & ".")
+      e.code = Z3_INVALID_USAGE
+      raise e
+    inc i
+  # --- range sort-kind check ---
+  let actualRange  = Z3_get_sort_kind(ctx.raw, Z3_get_range(ctx.raw, fd.raw))
+  let expectedRange = Z3_get_sort_kind(ctx.raw, sortOfType[Ret](ctx))
+  if actualRange != expectedRange:
+    var e = newException(Z3InvalidUsageError,
+      "narrowFuncDecl: range sort mismatch — actual kind " &
+      $int(actualRange) & " != expected kind " & $int(expectedRange) & ".")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  # --- wrap with an extra incRef for the new owner ---
+  incRefFD(ctx, fd.raw)
+  Z3FuncDecl[ArgsTup, Ret](raw: fd.raw, ctx: ctx)
+
 proc mapArray*[K, V, W](f: Z3FuncDecl[(V,), W],
                         a: Z3Array[K, V]): Z3Array[K, W] =
   ## Apply `f` pointwise across array `a`. Result array `r` satisfies

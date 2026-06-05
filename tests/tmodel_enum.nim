@@ -199,3 +199,79 @@ suite "Z3Model — translate":
     let m2 = m1.translate(ctx2)
     let n2 = m2.numConsts
     check n1 == n2
+
+# ---------------------------------------------------------------------------
+# Suite 4 — narrowFuncDecl
+# ---------------------------------------------------------------------------
+
+suite "Z3Model — narrowFuncDecl":
+
+  test "narrow a unary func_decl from model enumeration":
+    ## Declare `f : Z3Int -> Z3Int`, pin it at one point, solve, then
+    ## enumerate funcDecl(i) and narrow it back to the typed form.
+    ## Uses a type alias for ArgsTup to work around Nim's generic
+    ## instantiation limitation with tuple literals.
+    let ctx = newContext()
+    let s = newSolver(ctx)
+    let f = mkFuncDecl[(Z3Int,), Z3Int](ctx, "narrow_f")
+    s.add f(mkInt(ctx, 3)) == mkInt(ctx, 7)
+    check s.check() == zsSat
+    let m = s.model()
+    # Find the func decl for f in the model.
+    type UnaryIntArgs = (Z3Int,)
+    var found = false
+    for i in 0 ..< m.numFuncs:
+      let wide = m.funcDecl(i)
+      # Try to narrow; skip any that don't match (Z3 may add internal helpers).
+      try:
+        let typed = narrowFuncDecl[UnaryIntArgs, Z3Int](wide)
+        # Verify the narrowed decl can be applied — it should equal f.
+        check typed != nil
+        check not typed.raw.isNil
+        found = true
+      except Z3InvalidUsageError:
+        discard
+    check found
+
+  test "narrowFuncDecl raises on arity mismatch":
+    ## Declare `g : Z3Int -> Z3Bool` (unary), then try to narrow it as
+    ## if it were binary — expect Z3InvalidUsageError.
+    let ctx = newContext()
+    let s = newSolver(ctx)
+    let g = mkFuncDecl[(Z3Int,), Z3Bool](ctx, "narrow_g_arity")
+    let x = mkIntVar(ctx, "x_arity")
+    s.add g(x) == mkBool(ctx, true)
+    s.add x == mkInt(ctx, 5)
+    check s.check() == zsSat
+    let m = s.model()
+    type BinaryArgs = (Z3Int, Z3Int)
+    var raisedCorrectly = false
+    for i in 0 ..< m.numFuncs:
+      let wide = m.funcDecl(i)
+      try:
+        # Try binary narrowing on a unary func_decl.
+        discard narrowFuncDecl[BinaryArgs, Z3Bool](wide)
+      except Z3InvalidUsageError:
+        raisedCorrectly = true
+    check raisedCorrectly
+
+  test "narrowFuncDecl raises on return sort mismatch":
+    ## Declare `h : Z3Int -> Z3Bool`, then try to narrow to `Z3Int -> Z3Int`.
+    let ctx = newContext()
+    let s = newSolver(ctx)
+    let h = mkFuncDecl[(Z3Int,), Z3Bool](ctx, "narrow_h_ret")
+    let x = mkIntVar(ctx, "x_ret")
+    s.add h(x) == mkBool(ctx, true)
+    s.add x == mkInt(ctx, 2)
+    check s.check() == zsSat
+    let m = s.model()
+    type UnaryIntArgs2 = (Z3Int,)
+    var raisedCorrectly = false
+    for i in 0 ..< m.numFuncs:
+      let wide = m.funcDecl(i)
+      try:
+        # Same arity but wrong return sort.
+        discard narrowFuncDecl[UnaryIntArgs2, Z3Int](wide)
+      except Z3InvalidUsageError:
+        raisedCorrectly = true
+    check raisedCorrectly

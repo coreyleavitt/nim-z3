@@ -35,7 +35,9 @@
 
 import std/[macros]
 import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./arrays, ./bitvec, ./chars,
-       ./sequence, ./strings, ./fp, ./model
+       ./sequence, ./strings, ./fp, ./model,
+       ./funcdecl_types
+export funcdecl_types
 # The leaf-family imports are intentional: funcdecl's domainSorts
 # iterates an arbitrary tuple at compile time, and `sortOfType[FieldT]`
 # resolves through `mixin sortOf` at the iteration site (which is
@@ -45,56 +47,9 @@ import ./ffi, ./context, ./error, ./ast, ./sortdispatch, ./arrays, ./bitvec, ./c
 # v0.3 step 9 dropped the local `sortOfType` cascade — every typed
 # family now owns its `sortOf` overload via `z3/sortdispatch`.
 
-# ============================================================================
-# Z3FuncDecl[ArgsTup, Ret] — phantom-typed function declaration
-# ============================================================================
-
-type
-  Z3FuncDeclOwn[ArgsTup: tuple, Ret] = object
-    raw: RawZ3FuncDecl
-    ctx: Z3Context
-  Z3FuncDecl*[ArgsTup: tuple, Ret] = ref Z3FuncDeclOwn[ArgsTup, Ret]
-    ## Ref-typed handle (parallel to `Z3Solver`, `Z3Model`, etc.).
-    ## The phantom tuple `ArgsTup` captures the domain element types
-    ## positionally; `Ret` is the codomain.
-
-proc raw*[ArgsTup: tuple, Ret](
-    f: Z3FuncDecl[ArgsTup, Ret]): RawZ3FuncDecl {.inline.} = f.raw
-proc ctx*[ArgsTup: tuple, Ret](
-    f: Z3FuncDecl[ArgsTup, Ret]): Z3Context {.inline.} = f.ctx
-  ## Underlying-handle accessors — used by sibling modules (notably
-  ## `z3/fixedpoint` for `registerRelation` / `addFact` / cover ops)
-  ## that need to thread the raw func_decl into Z3 calls.
-
-# ----------------------------------------------------------------------------
-# Refcount discipline
-# ----------------------------------------------------------------------------
-# Z3 refcounts func_decls through `Z3_func_decl_to_ast` + the AST
-# refcount pair, same pattern datatypes.nim already uses. We don't go
-# through the lifecycle stampers because the dec_ref needs the
-# `_to_ast` round-trip.
-
-proc decRefFD(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
-  if fd.isNil or ctx == nil or ctx.raw.isNil: return
-  try:
-    let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-    if not asAst.isNil:
-      Z3_dec_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
-
-proc incRefFD(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
-  if fd.isNil or ctx == nil or ctx.raw.isNil: return
-  try:
-    let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-    if not asAst.isNil:
-      Z3_inc_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
-
-proc `=destroy`[ArgsTup: tuple, Ret](v: Z3FuncDeclOwn[ArgsTup, Ret])
-    {.raises: [].} =
-  decRefFD(v.ctx, v.raw)
+# Z3FuncDeclOwn, Z3FuncDecl (with public raw/ctx fields), decRefFD/incRefFD,
+# =destroy, and wrapFuncDecl all live in funcdecl_types.nim (exported
+# above) to break the funcdecl → model → funcdecl circular import.
 
 # ============================================================================
 # Construction
@@ -126,20 +81,6 @@ proc mkFuncDecl*[ArgsTup: tuple, Ret](
 
 proc mkFuncDecl*[ArgsTup: tuple, Ret](name: string): Z3FuncDecl[ArgsTup, Ret] =
   mkFuncDecl[ArgsTup, Ret](requireCurrentContext(), name)
-
-proc wrapFuncDecl*[ArgsTup: tuple, Ret](
-    ctx: Z3Context, raw: RawZ3FuncDecl): Z3FuncDecl[ArgsTup, Ret] =
-  ## Wrap a raw `Z3_func_decl` into a typed `Z3FuncDecl[ArgsTup, Ret]`,
-  ## incrementing its refcount. Used by sibling modules (e.g. `z3/order`)
-  ## that create func_decls via Z3 C-API calls and need to lift them into
-  ## the typed surface without access to `Z3FuncDeclOwn`'s private fields.
-  if raw.isNil:
-    var e = newException(Z3InvalidUsageError,
-      "wrapFuncDecl: Z3 returned a nil func_decl")
-    e.code = Z3_INVALID_USAGE
-    raise e
-  incRefFD(ctx, raw)
-  Z3FuncDecl[ArgsTup, Ret](raw: raw, ctx: ctx)
 
 proc freshFuncDecl*[ArgsTup: tuple, Ret](
     ctx: Z3Context, prefix: string): Z3FuncDecl[ArgsTup, Ret] =

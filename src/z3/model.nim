@@ -23,8 +23,9 @@
 ## actually needed to constrain.
 
 import std/options
-import ./ffi, ./context, ./error, ./ast, ./builder, ./solver, ./astvector
-export solver
+import ./ffi, ./context, ./error, ./ast, ./builder, ./solver, ./astvector,
+       ./funcdecl_types
+export solver, funcdecl_types
 
 type
   Z3ModelOwn = object
@@ -295,36 +296,57 @@ proc numConsts*(m: Z3Model): int =
   ## Number of constant (nullary) function declarations pinned by this model.
   int(Z3_model_get_num_consts(m.ctx.raw, m.raw))
 
-proc constDecl*(m: Z3Model, i: int): RawZ3FuncDecl =
-  ## `i`-th constant declaration (0-based). Handle is model-owned; caller
-  ## must not free it. Raises if `i` is out of bounds.
+proc constDecl*(m: Z3Model, i: int): Z3FuncDecl[tuple[], Z3AnyAst] =
+  ## `i`-th constant declaration (0-based).
+  ##
+  ## Returns a `Z3FuncDecl[tuple[], Z3AnyAst]` — the widened "I don't
+  ## know the sort" form. `ArgsTup = tuple[]` because constants are
+  ## nullary; `Ret = Z3AnyAst` because the return sort is only known
+  ## at runtime. Use `cast` to narrow to a concrete type if needed.
+  ##
+  ## `wrapFuncDecl` takes ownership (inc_refs). Raises if `i` is out of bounds.
   doAssert i >= 0 and i < m.numConsts,
     "Z3Model.constDecl: index " & $i & " out of bounds [0, " & $m.numConsts & ")"
-  m.ctx.checkErr Z3_model_get_const_decl(m.ctx.raw, m.raw, cuint(i))
+  let raw = m.ctx.checkErr Z3_model_get_const_decl(m.ctx.raw, m.raw, cuint(i))
+  wrapFuncDecl[tuple[], Z3AnyAst](m.ctx, raw)
 
 proc numFuncs*(m: Z3Model): int =
   ## Number of non-nullary function declarations pinned by this model.
   int(Z3_model_get_num_funcs(m.ctx.raw, m.raw))
 
-proc funcDecl*(m: Z3Model, i: int): RawZ3FuncDecl =
-  ## `i`-th function declaration (0-based). Handle is model-owned.
-  ## Raises if `i` is out of bounds.
+proc funcDecl*(m: Z3Model, i: int): Z3FuncDecl[tuple[], Z3AnyAst] =
+  ## `i`-th function declaration (0-based).
+  ##
+  ## Returns a `Z3FuncDecl[tuple[], Z3AnyAst]` — the widened "I don't
+  ## know the arity or return sort" form. This is the natural type for
+  ## dynamically-enumerated declarations. Use `cast` to narrow.
+  ##
+  ## `wrapFuncDecl` takes ownership (inc_refs). Raises if `i` is out of bounds.
   doAssert i >= 0 and i < m.numFuncs,
     "Z3Model.funcDecl: index " & $i & " out of bounds [0, " & $m.numFuncs & ")"
-  m.ctx.checkErr Z3_model_get_func_decl(m.ctx.raw, m.raw, cuint(i))
+  let raw = m.ctx.checkErr Z3_model_get_func_decl(m.ctx.raw, m.raw, cuint(i))
+  wrapFuncDecl[tuple[], Z3AnyAst](m.ctx, raw)
 
 proc numSorts*(m: Z3Model): int =
   ## Number of uninterpreted sorts whose finite universe the model enumerates.
   int(Z3_model_get_num_sorts(m.ctx.raw, m.raw))
 
-proc sort*(m: Z3Model, i: int): RawZ3Sort =
-  ## `i`-th enumerated uninterpreted sort (0-based). Handle is model-owned.
+proc sort*(m: Z3Model, i: int): Z3Sort[stUninterpreted] =
+  ## `i`-th enumerated uninterpreted sort (0-based).
+  ##
+  ## Z3's model enumeration only surfaces uninterpreted sorts (declared
+  ## via `(declare-sort Foo 0)` or `declareSort`) — built-in sorts
+  ## (Int, Bool, BitVec[N], …) are never in this table. The return type
+  ## `Z3Sort[stUninterpreted]` reflects that invariant statically.
+  ##
+  ## Note: `Z3Sort` is a value type; `raw` is accessible on the result.
   ## Raises if `i` is out of bounds.
   doAssert i >= 0 and i < m.numSorts,
     "Z3Model.sort: index " & $i & " out of bounds [0, " & $m.numSorts & ")"
-  m.ctx.checkErr Z3_model_get_sort(m.ctx.raw, m.raw, cuint(i))
+  let raw = m.ctx.checkErr Z3_model_get_sort(m.ctx.raw, m.raw, cuint(i))
+  Z3Sort[stUninterpreted](raw: raw, ctx: m.ctx)
 
-proc sortUniverse*(m: Z3Model, s: RawZ3Sort): Z3AstVector =
+proc sortUniverse*(m: Z3Model, s: Z3Sort[stUninterpreted]): Z3AstVector =
   ## Finite set of AST nodes assigned to uninterpreted sort `s` in this model.
   ##
   ## Refcount accounting: `Z3_model_get_sort_universe` returns a vector
@@ -335,14 +357,15 @@ proc sortUniverse*(m: Z3Model, s: RawZ3Sort): Z3AstVector =
   ## initialise the `Z3AstVector` finalizer. We immediately cancel the
   ## Z3-given +1 so the net refcount delta is exactly +1 owned by the
   ## returned `Z3AstVector`.
-  let raw = m.ctx.checkErr Z3_model_get_sort_universe(m.ctx.raw, m.raw, s)
+  let raw = m.ctx.checkErr Z3_model_get_sort_universe(m.ctx.raw, m.raw, s.raw)
   let v = wrapAstVector(m.ctx, raw)
   Z3_ast_vector_dec_ref(m.ctx.raw, raw)
   v
 
-proc hasInterp*(m: Z3Model, d: RawZ3FuncDecl): bool =
+proc hasInterp*[ArgsTup: tuple, Ret](m: Z3Model,
+    d: Z3FuncDecl[ArgsTup, Ret]): bool =
   ## `true` if declaration `d` has an interpretation pinned in model `m`.
-  Z3_model_has_interp(m.ctx.raw, m.raw, d)
+  Z3_model_has_interp(m.ctx.raw, m.raw, d.raw)
 
 proc translate*(m: Z3Model, target: Z3Context): Z3Model =
   ## Return a copy of `m` with all AST nodes translated into `target`.
@@ -378,21 +401,23 @@ proc newModel*(ctx: Z3Context): Z3Model =
   let raw = ctx.checkErr Z3_mk_model(ctx.raw)
   wrapModel(ctx, raw)
 
-proc addConstInterp*[V: Z3Term](m: Z3Model, f: RawZ3FuncDecl, value: V) =
+proc addConstInterp*[ArgsTup: tuple, Ret, V: Z3Term](
+    m: Z3Model, f: Z3FuncDecl[ArgsTup, Ret], value: V) =
   ## Pin constant declaration `f` to `value` in model `m`.
   ## `f` must be a nullary (0-arity) function declaration. After this
   ## call `m.hasInterp(f)` returns `true` and `m.eval` returns `value`.
   ## `value` accepts any `Z3Term` (typed AST or `Z3AnyAst`).
-  m.ctx.checkErrVoid Z3_add_const_interp(m.ctx.raw, m.raw, f, value.raw)
+  m.ctx.checkErrVoid Z3_add_const_interp(m.ctx.raw, m.raw, f.raw, value.raw)
 
-proc addFuncInterp*[D: Z3Term](m: Z3Model, f: RawZ3FuncDecl,
-                                defaultVal: D): Z3FuncInterpMut =
+proc addFuncInterp*[ArgsTup: tuple, Ret, D: Z3Term](
+    m: Z3Model, f: Z3FuncDecl[ArgsTup, Ret],
+    defaultVal: D): Z3FuncInterpMut =
   ## Begin a function interpretation for declaration `f` in model `m`.
   ## `defaultVal` is the else-value (returned for any argument combination
   ## not explicitly covered by `addEntry`). Returns a `Z3FuncInterpMut`
   ## handle for adding entries and updating the else-value.
   ## `defaultVal` accepts any `Z3Term` (typed AST or `Z3AnyAst`).
-  let raw = m.ctx.checkErr Z3_add_func_interp(m.ctx.raw, m.raw, f,
+  let raw = m.ctx.checkErr Z3_add_func_interp(m.ctx.raw, m.raw, f.raw,
                                                defaultVal.raw)
   Z3FuncInterpMut(ctx: m.ctx, raw: raw)
 

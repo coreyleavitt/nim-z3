@@ -41,6 +41,7 @@
 ##   completeness with Z3's API.
 
 import ./ffi, ./context, ./error, ./ast, ./bitvec, ./chars, ./fp, ./sequence, ./strings, ./regex, ./sortdispatch, ./params
+export ast  # re-export Z3AnyAst, toAnyAst (moved to ast.nim) and the rest of the AST surface
 
 # ============================================================================
 # Z3AstKind / Z3SortKind — Nim-side enums
@@ -105,23 +106,10 @@ proc toZ3SortKind(k: Z3SortKindFFI): Z3SortKind {.inline.} =
   of Z3_TYPE_VAR: skTypeVar
   of Z3_UNKNOWN_SORT: skUnknown
 
-# ============================================================================
-# Z3AnyAst — runtime-erased AST handle
-# ============================================================================
-
-type
-  Z3AnyAst* = object
-    ## Value-typed handle for an AST whose typed family isn't
-    ## compile-time known. Satisfies `Z3Term` (`raw` + `ctx` fields).
-    raw*: RawZ3Ast
-    ctx*: Z3Context
-
-emitTermLifecycle(Z3AnyAst, Z3_dec_ref, Z3_inc_ref)
-
-proc toAnyAst*[T: Z3Term](a: T): Z3AnyAst =
-  ## Up-convert a typed AST to the erased form. inc_refs the underlying
-  ## raw handle via the unified `wrap[Z3AnyAst]` template.
-  wrap[Z3AnyAst](a.ctx, a.raw)
+# Z3AnyAst and toAnyAst live in z3/ast (moved there so that z3/model
+# can use Z3AnyAst without a circular import through z3/introspect →
+# z3/sequence/chars/fp → z3/model). Imported here transitively via
+# `import ./ast`.
 
 # ============================================================================
 # AST introspection

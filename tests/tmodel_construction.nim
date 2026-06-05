@@ -33,7 +33,8 @@ suite "Z3Model — construction: addConstInterp":
     let m = newModel(ctx)
     # Use a nullary func decl ("x : Int") — same as a constant.
     let fd = mkFuncDecl[(), Z3Int]("x")
-    addConstInterp(m, fd.raw, mkInt(42).toAnyAst)
+    # addConstInterp now accepts typed Z3FuncDecl directly (no .raw)
+    addConstInterp(m, fd, mkInt(42).toAnyAst)
     # Evaluate the constant application x() against the hand-crafted model.
     let evaled = m.eval(fd()).toInt64
     check evaled == 42
@@ -42,8 +43,10 @@ suite "Z3Model — construction: addConstInterp":
     let ctx = newContext()
     let m = newModel(ctx)
     let fd = mkFuncDecl[(), Z3Int]("c")
-    addConstInterp(m, fd.raw, mkInt(7).toAnyAst)
+    # addConstInterp and hasInterp both accept typed Z3FuncDecl
+    addConstInterp(m, fd, mkInt(7).toAnyAst)
     check m.numConsts == 1
+    # constDecl returns Z3FuncDecl[tuple[], Z3AnyAst]; hasInterp accepts it
     check m.hasInterp(m.constDecl(0))
 
 # ---------------------------------------------------------------------------
@@ -56,8 +59,8 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let ctx = newContext()
     let m = newModel(ctx)
     let fd = mkFuncDecl[(Z3Int,), Z3Int]("f")
-    # addFuncInterp sets the initial else-value.
-    let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
+    # addFuncInterp now accepts typed Z3FuncDecl (no .raw)
+    let fi = addFuncInterp(m, fd, mkInt(0).toAnyAst)
     # No entries; every arg maps to else=0.
     let result = m.eval(fd(mkInt(99))).toInt64
     check result == 0
@@ -66,7 +69,7 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let ctx = newContext()
     let m = newModel(ctx)
     let fd = mkFuncDecl[(Z3Int,), Z3Int]("f")
-    let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
+    let fi = addFuncInterp(m, fd, mkInt(0).toAnyAst)
     addEntry(fi, [mkInt(42).toAnyAst], mkInt(100).toAnyAst)
     check m.eval(fd(mkInt(42))).toInt64 == 100
     check m.eval(fd(mkInt(0))).toInt64 == 0
@@ -75,7 +78,7 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let ctx = newContext()
     let m = newModel(ctx)
     let fd = mkFuncDecl[(Z3Int,), Z3Int]("f")
-    let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
+    let fi = addFuncInterp(m, fd, mkInt(0).toAnyAst)
     setElse(fi, mkInt(99).toAnyAst)
     # No entry for 5; returns updated else=99.
     check m.eval(fd(mkInt(5))).toInt64 == 99
@@ -84,7 +87,7 @@ suite "Z3Model — construction: addFuncInterp / setElse / addEntry":
     let ctx = newContext()
     let m = newModel(ctx)
     let fd = mkFuncDecl[(Z3Int, Z3Int), Z3Int]("g")
-    let fi = addFuncInterp(m, fd.raw, mkInt(0).toAnyAst)
+    let fi = addFuncInterp(m, fd, mkInt(0).toAnyAst)
     addEntry(fi, [mkInt(3).toAnyAst, mkInt(4).toAnyAst], mkInt(7).toAnyAst)
     check m.eval(fd(mkInt(3), mkInt(4))).toInt64 == 7
     check m.eval(fd(mkInt(1), mkInt(2))).toInt64 == 0

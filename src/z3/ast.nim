@@ -153,3 +153,30 @@ proc `$`*[S: static SortTag](a: Z3Ast[S]): string = termToSmt2(a)
   ##
   ## The string is generated fresh by Z3 on each call; if you need it
   ## hot in a tight loop, cache it yourself.
+
+# ============================================================================
+# Z3AnyAst — runtime-erased AST handle
+# ============================================================================
+#
+# Moved here from z3/introspect so that lower-level modules (z3/model,
+# z3/funcdecl_types) can use it without importing z3/introspect (which
+# depends on z3/model through z3/sequence/chars/fp). z3/introspect
+# inherits it via `import ./ast`.
+
+type
+  Z3AnyAst* = object
+    ## Value-typed handle for an AST whose typed family isn't
+    ## compile-time known. Satisfies `Z3Term` (`raw` + `ctx` fields).
+    ## Used as the widened "don't know the sort" phantom parameter in
+    ## `Z3FuncDecl[tuple[], Z3AnyAst]` returned from model enumeration.
+    raw*: RawZ3Ast
+    ctx*: Z3Context
+
+emitTermLifecycle(Z3AnyAst, Z3_dec_ref, Z3_inc_ref)
+
+proc toAnyAst*[T: Z3Term](a: T): Z3AnyAst =
+  ## Up-convert a typed AST to the erased form. inc_refs the underlying
+  ## raw handle via the unified `wrap[Z3AnyAst]` template.
+  wrap[Z3AnyAst](a.ctx, a.raw)
+
+proc `$`*(a: Z3AnyAst): string = termToSmt2(a)

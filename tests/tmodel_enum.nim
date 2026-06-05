@@ -27,7 +27,7 @@ suite "Z3Model — numConsts / constDecl / numFuncs / funcDecl / hasInterp":
     # At minimum x and y are in the model as const decls.
     check m.numConsts >= 2
 
-  test "constDecl returns non-nil RawZ3FuncDecl for each const":
+  test "constDecl returns non-nil Z3FuncDecl for each const":
     let ctx = newContext()
     let s = newSolver()
     let x = mkIntVar("x")
@@ -40,7 +40,9 @@ suite "Z3Model — numConsts / constDecl / numFuncs / funcDecl / hasInterp":
     check n >= 2
     for i in 0 ..< n:
       let fd = m.constDecl(i)
-      check not fd.isNil
+      # constDecl returns Z3FuncDecl[tuple[], Z3AnyAst] — a ref, non-nil check
+      check fd != nil
+      check not fd.raw.isNil
 
   test "hasInterp returns true for each enumerated const decl":
     let ctx = newContext()
@@ -73,7 +75,9 @@ suite "Z3Model — numConsts / constDecl / numFuncs / funcDecl / hasInterp":
     var foundInterp = false
     for i in 0 ..< m.numFuncs:
       let fd = m.funcDecl(i)
-      check not fd.isNil
+      # funcDecl returns Z3FuncDecl[tuple[], Z3AnyAst] — typed wrapper
+      check fd != nil
+      check not fd.raw.isNil
       if m.hasInterp(fd):
         foundInterp = true
     check foundInterp
@@ -88,7 +92,8 @@ suite "Z3Model — numConsts / constDecl / numFuncs / funcDecl / hasInterp":
     s.add x == mkInt(0)   # only x is in the model; g is unconstrained
     check s.check() == zsSat
     let m = s.model()
-    check not m.hasInterp(g.raw)
+    # hasInterp now accepts typed Z3FuncDecl directly (no .raw needed)
+    check not m.hasInterp(g)
 
 # ---------------------------------------------------------------------------
 # Suite 2 — numSorts / sort / sortUniverse
@@ -117,7 +122,7 @@ suite "Z3Model — numSorts / sort / sortUniverse":
     let m = s.model()
     check m.numSorts >= 1
 
-  test "sort(i) returns non-nil RawZ3Sort for each tracked sort":
+  test "sort(i) returns non-nil Z3Sort[stUninterpreted] for each tracked sort":
     let ctx = newContext()
     let s = newSolver(ctx)
     s.loadSmt2String """
@@ -131,8 +136,9 @@ suite "Z3Model — numSorts / sort / sortUniverse":
     let ns = m.numSorts
     check ns >= 1
     for i in 0 ..< ns:
-      let rawSort = m.sort(i)
-      check not rawSort.isNil
+      let sortVal = m.sort(i)
+      # sort() returns Z3Sort[stUninterpreted] — a value type; check .raw
+      check not sortVal.raw.isNil
 
   test "sortUniverse for Color has >= 2 elements when red != blue":
     let ctx = newContext()
@@ -150,8 +156,9 @@ suite "Z3Model — numSorts / sort / sortUniverse":
     # The universe of at least one tracked sort should have >= 2 elements.
     var found = false
     for i in 0 ..< ns:
-      let rawSort = m.sort(i)
-      let univ = m.sortUniverse(rawSort)
+      let sortVal = m.sort(i)
+      # sortUniverse accepts Z3Sort[stUninterpreted] directly
+      let univ = m.sortUniverse(sortVal)
       if univ.len >= 2:
         found = true
         break

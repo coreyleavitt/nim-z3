@@ -269,7 +269,7 @@
 ## - `z3/propagator` — `Z3Propagator` with `Z3PropagatorHandlers`
 ##   callback set (`onFinal`, `onEq`, `onDecide`, `onFixed`,
 ##   `onCreated`). `newPropagator`, `registerPropagator`,
-##   `propagatorConflict`. **v2.0.**
+##   `propagatorConflict`. Gated `-d:z3WithoutPropagator`. **v2.0.**
 ## - `z3/onclause` — `registerOnClause` proof-hint callback. Receives
 ##   clause ASTs as they are added to the solver's proof trace. Gated
 ##   `-d:z3WithoutOnClause`; requires a context created with

@@ -302,7 +302,8 @@ proc constDecl*(m: Z3Model, i: int): Z3FuncDecl[tuple[], Z3AnyAst] =
   ## Returns a `Z3FuncDecl[tuple[], Z3AnyAst]` — the widened "I don't
   ## know the sort" form. `ArgsTup = tuple[]` because constants are
   ## nullary; `Ret = Z3AnyAst` because the return sort is only known
-  ## at runtime. Use `cast` to narrow to a concrete type if needed.
+  ## at runtime. Use `narrowFuncDecl[ArgsTup, Ret]` (from `z3/funcdecl`)
+  ## to recover a typed form with a runtime sort/arity check.
   ##
   ## `wrapFuncDecl` takes ownership (inc_refs). Raises if `i` is out of bounds.
   doAssert i >= 0 and i < m.numConsts,
@@ -319,7 +320,8 @@ proc funcDecl*(m: Z3Model, i: int): Z3FuncDecl[tuple[], Z3AnyAst] =
   ##
   ## Returns a `Z3FuncDecl[tuple[], Z3AnyAst]` — the widened "I don't
   ## know the arity or return sort" form. This is the natural type for
-  ## dynamically-enumerated declarations. Use `cast` to narrow.
+  ## dynamically-enumerated declarations. Use `narrowFuncDecl[ArgsTup, Ret]`
+  ## (from `z3/funcdecl`) to recover a typed form with a runtime check.
   ##
   ## `wrapFuncDecl` takes ownership (inc_refs). Raises if `i` is out of bounds.
   doAssert i >= 0 and i < m.numFuncs,

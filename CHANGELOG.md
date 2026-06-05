@@ -6,6 +6,70 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased]
 
+Post-RFC review pass (2 rounds, 24 fix commits). All correctness
+findings closed before the 2.0.0 tag; this section summarises the
+fixes that landed on top of the initial 2.0.0 RFC implementation.
+
+### Fixed — correctness
+
+- **`rcf.mkRoots` output buffer**: `Z3_rcf_mk_roots` requires the
+  output `roots[]` buffer to be size `n` (coefficient count), not
+  `n - 1` (degree). Earlier wrapper underran the buffer by one slot.
+- **`defineRecFun` refcount underflow**: each arity allocated two
+  distinct `Z3FuncDecl` ref-objects (`self` + return) against a
+  single `incRefFD`. ORC's two `=destroy` calls produced one net
+  `dec_ref` underflow per call. Now matched.
+- **`sets` / `propagator` build-gate body guards**: both modules
+  were gated only at the `z3.nim` umbrella; `import z3/sets` direct
+  with `-d:z3WithoutSets` still pulled the full module body. Both
+  now have the `when not defined(z3WithoutX):` body guard.
+- **`onclause` + `propagator` GC discipline**: dropped `GC_ref` calls
+  on `PropagatorCtxBox` / `RawZ3OnClauseBox` that had no matching
+  `GC_unref`. Boxes reach ORC via ref fields / thread-local table.
+- **`sets.nim` `=copy`**: distinct-cast rvalue meant writes through
+  the cast didn't land on the actual `Z3Set[E]` object. Rewritten
+  with `ptr` alias.
+- **`incRefFD` error swallowing**: removed `try/except CatchableError:
+  discard` from the construction path. Only `decRefFD` (called from
+  `=destroy`) retains the swallow.
+
+### Added
+
+- `narrowFuncDecl[ArgsTup, Ret](fd)`: runtime-checked recovery of a
+  typed `Z3FuncDecl` from the widened `Z3FuncDecl[tuple[], Z3AnyAst]`
+  form returned by `Z3Model.constDecl` / `funcDecl`.
+- `Z3AlgebraicNum = distinct Z3Real`: algebraic numerals get a
+  distinct type so `+ - * / < <= > >= == !=` operator overloads are
+  safe without colliding with `arith.nim`'s symbolic Z3Real
+  operators. `toAlgebraic` / `toReal` for explicit conversions;
+  `toAlgebraic` has a debug-mode `algebraicIsValue` precondition
+  assert.
+- `Z3_rcf_mk_roots` FFI + `mkRoots` typed wrapper.
+
+### Changed — design
+
+- `model.nim` enumeration surface (`constDecl`, `funcDecl`, `sort`,
+  `hasInterp`, `addConstInterp`, `addFuncInterp`) returns / accepts
+  typed `Z3FuncDecl[tuple[], Z3AnyAst]` and `Z3Sort[stUninterpreted]`
+  instead of leaking `Raw*` handles. Required extracting
+  `funcdecl_types.nim` to break the `funcdecl → model → funcdecl`
+  cycle; `Z3AnyAst` relocated from `introspect.nim` to `ast.nim`.
+- `propagator.consequence` takes `seq[(Z3AnyAst, Z3AnyAst)]` pair
+  encoding instead of an interleaved even-length sequence with an
+  in-callback `doAssert`.
+- `spacer.getReachable` returns `Z3Bool` (not `Z3AnyAst`);
+  `modelExtrapolate` is generic `[T: Z3Term](model, fml: T): T`.
+- `Z3RcfNum.\`$\`` is now zero-argument; configurable form is
+  `toString(a, compact, html)`.
+
+### Removed
+
+- `Z3SimplifierOwn` `{.pure, inheritable.}` pragmas (signalled
+  subclassing intent that didn't exist).
+- `$` on `Z3Simplifier` (it returned help text; use `getHelp`).
+- `assertConstraint` alias for `Z3Goal.add` (two names for one op).
+- `varsCopy` micro-pattern in `solver.nim` (no-op on a ref).
+
 ## [2.0.0] — 2026-06-04
 
 The **completeness-pass** release. nim-z3 v1.x had three known additive

@@ -599,6 +599,30 @@ proc seqMap*[E, F](f: Z3FuncDecl[(E,), F],
     cast[ptr UncheckedArray[RawZ3App]](addr xApp), bodyRaw)
   wrap[Z3Seq[F]](ctx, ctx.checkErr Z3_mk_seq_map(ctx.raw, lambdaRaw, s.raw))
 
+proc seqMapBody*[E, F](boundVar: E, body: F, s: Z3Seq[E]): Z3Seq[F] =
+  ## SMT `(seq.map (lambda ((boundVar E)) body) s)` — direct-body variant.
+  ##
+  ## Unlike `seqMap` (which wraps an UNINTERPRETED `Z3FuncDecl` and requires
+  ## quantifier axioms to constrain the function), this proc accepts a CONCRETE
+  ## body expression already built over `boundVar` (a fresh constant created via
+  ## e.g. `mkCharVar`/`mkBitVecVar`/`mkIntVar`). The resulting lambda is
+  ## quantifier-free, so the solver does not need to search over function
+  ## interpretations — no `∀c` axiom, no hang risk.
+  ##
+  ## **Hang-free property**: the lambda body must be a closed-form expression
+  ## (e.g. a BV ITE for ASCII case-fold). Suitable for any per-element remap
+  ## expressible as a quantifier-free formula.
+  ##
+  ## `boundVar` MUST be a zero-arity constant (from `mkCharVar`, `mkBitVecVar`,
+  ## etc.) and `body` MUST reference `boundVar` as its only free variable.
+  ## `Z3_mk_lambda_const` substitutes every occurrence of `boundVar` in `body`
+  ## with a de Bruijn index, producing a proper closed lambda.
+  let ctx = s.ctx
+  var xApp = ctx.checkErr Z3_to_app(ctx.raw, boundVar.raw)
+  let lambdaRaw = ctx.checkErr Z3_mk_lambda_const(ctx.raw, 1'u32,
+    cast[ptr UncheckedArray[RawZ3App]](addr xApp), body.raw)
+  wrap[Z3Seq[F]](ctx, ctx.checkErr Z3_mk_seq_map(ctx.raw, lambdaRaw, s.raw))
+
 proc seqMapi*[E, F](f: Z3FuncDecl[(Z3Int, E), F],
                     startIdx: Z3Int,
                     s: Z3Seq[E]): Z3Seq[F] =

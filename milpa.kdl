@@ -6,7 +6,7 @@ src_dir "src"
 
 deps {
     "softlink" git=(url)"https://github.com/coreyleavitt/softlink.git" ref="main"
-    "proptest" local="/home/corey/projects/nimlibs/proptest"
+    "proptest" git=(url)"https://github.com/coreyleavitt/proptest.git" ref="main"
 }
 
 kind "library"

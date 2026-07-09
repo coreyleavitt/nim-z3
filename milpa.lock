@@ -3,22 +3,26 @@ version 1
 strategy "maxver"
 
 dep "proptest" {
-    identity "sha256:0efd758455476c681e90deee07817dc3d79030289f13c368ab752677982dca69"
+    identity "dag-sha256:8482015fec07da97a3bb00e34ce9c900615716a6a87b55ac38f81b83e29d3054"
     version "0.0.1"
     src_dir "src"
-    requires
+    requires "softlink"
     provenance {
-        kind "local"
-        path "/home/corey/projects/nimlibs/proptest"
+        origin "observed"
+        kind "git"
+        url "https://github.com/coreyleavitt/proptest.git"
+        ref "main"
+        commit_sha "14cf5007502bbfcb61c238c5b3503cdb56eeda58"
     }
 }
 
 dep "softlink" {
-    identity "sha256:7ba07d4a1c28324d07eed77e294aed9ed8400a0922060579f820e92473baa373"
+    identity "dag-sha256:765a414b7a6bbb56e62dcdec9a26f000a059a53ddecb998f8c5b820ce8fcb9f3"
     version "0.0.1"
     src_dir "src"
     requires
     provenance {
+        origin "observed"
         kind "git"
         url "https://github.com/coreyleavitt/softlink.git"
         ref "main"

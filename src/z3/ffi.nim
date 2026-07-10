@@ -476,7 +476,7 @@ type
 # model value extraction for Int + Bool; pretty-print). BitVec
 # theory is the next FFI expansion step.
 
-dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
+dynlib "z3":
 
   # --- Version --------------------------------------------------------------
 
@@ -3108,11 +3108,11 @@ dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
 # `-d:z3WithSeqReplaceRe` so users on capable builds can opt in.
 
 when defined(z3WithSeqReplaceAll):
-  dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
+  dynlib "z3":
     proc Z3_mk_seq_replace_all(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
       {.cdecl, header: "z3.h".}
 
 when defined(z3WithSeqReplaceRe):
-  dynlib "libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)":
+  dynlib "z3":
     proc Z3_mk_seq_replace_re(c: RawZ3Context, s, r, dst: RawZ3Ast): RawZ3Ast
       {.cdecl, header: "z3.h".}

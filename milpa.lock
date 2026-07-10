@@ -17,7 +17,7 @@ dep "proptest" {
 }
 
 dep "softlink" {
-    identity "dag-sha256:ef17994889e507b72a6b64a4e4208dc84d1954ad0dafafeb7ebe71f4a275a62d"
+    identity "dag-sha256:07f920621265cc03bbdf803da2ca0ba74290e1622852e6eefc9f0489d8254096"
     version "0.0.1"
     src_dir "src"
     requires
@@ -25,7 +25,7 @@ dep "softlink" {
         origin "observed"
         kind "git"
         url "https://github.com/coreyleavitt/softlink.git"
-        ref "v0.5.0"
-        commit_sha "f31633645298f34f12984bb58c2fed830f5d7728"
+        ref "v0.5.1"
+        commit_sha "47b8f66048687948e9d05a4ac28d3d0f27736c86"
     }
 }

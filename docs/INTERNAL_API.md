@@ -136,6 +136,22 @@ intended API name without the `Impl` suffix. **Users who find the
 `*Impl` names in autocomplete should call the bare-name template
 (`extract`, `concat`, etc.) instead.**
 
+### Dependency-inversion seams — `z3/fixedpoint` ↔ `z3/fixedpoint_callbacks`
+
+`z3/fixedpoint_callbacks` is gated (`-d:z3WithoutFixedpointCallbacks`)
+and imports the always-on `z3/fixedpoint` for `Z3Context`/
+`Z3Fixedpoint` — so `z3/fixedpoint` cannot import it back (circular
+import). These two seams let the always-on module hold state for,
+and trigger behavior in, the gated module without naming it.
+
+| Symbol | Module | Consumer modules | Why exported |
+|---|---|---|---|
+| `Z3FixedpointOwn.cbBox: RootRef` / `cbBoxRef*(fp)` / `` `cbBoxRef=`*(fp, r) `` | `z3/fixedpoint` | `z3/fixedpoint_callbacks` (`setHandlers`, `clearHandlers`, `handlers`, `hasHandlers`, `activateExportCallbacks`) | ADR-FC-0002. Type-erased root of the per-`fp` callback box (`FixedpointCtxBox`, defined in the gated module) — `RootRef`, not `pointer`, so ORC both roots the box while `fp` is alive and collects it when `fp`'s own `=destroy` drops `cbBox`. The gated module casts through `RootRef` at each accessor call site. |
+| `inQuery*(fp): bool` / the `inQuery` field | `z3/fixedpoint` | `z3/fixedpoint_callbacks` (`setHandlers`/`clearHandlers` assert `not fp.inQuery`) | ADR-FC-0005. True while a `query`/`queryRelations`/`queryFromLevel` call is on the stack; guards against swapping the callback box while Z3 holds a raw `state` pointer into it mid-query. `when not defined(release)`-gated — always `false`, zero cost, in release builds. |
+| `rawCbUsed*(fp): bool` / the `rawCbUsed` field | `z3/fixedpoint` | `z3/fixedpoint_callbacks` (`setHandlers` asserts `not fp.rawCbUsed`) | ADR-FC-0009. True once any raw §N7.8 callback-registration proc (`init`/`setReduceAssignCallback`/`setReduceAppCallback`/`addCallback`) has run on `fp` — the mixing-hazard guard between the raw and typed callback surfaces, which both write the same Z3-side `state` slot. Same release-gating as `inQuery`. |
+| `exportActivateHook*: proc(fp: Z3Fixedpoint) {.nimcall, raises: [].}` | `z3/fixedpoint` | `z3/fixedpoint_callbacks` (assigns `activateExportCallbacks` to it at module-init time) | The **behavioral** twin of `cbBox` — a `nil`-by-default proc-var `withInQuery` (the shared choke point behind `query`/`queryRelations`/`z3/spacer.queryFromLevel`) fires on every query, giving the gated module a lazy-activation entry point (A2-redesign) without `z3/fixedpoint` ever naming `activateExportCallbacks` directly. Stays `nil` forever under `-d:z3WithoutFixedpointCallbacks` — the `if exportActivateHook != nil` check costs one always-false pointer compare. |
+| `withInQuery*(fp, body)` | `z3/fixedpoint` | `z3/fixedpoint` itself (`query`, `queryRelations`) and `z3/spacer` (`queryFromLevel`) | The single choke-point template that sets/clears `inQuery` and fires `exportActivateHook`, so no query entry point can forget either guard. Not consumed by the gated module directly, but its existence is why `inQuery`/`exportActivateHook` are safe to reason about as "set exactly once per query, from exactly one place." |
+
 ### Bootstrap + threading hooks
 
 | Symbol | Module | Consumer modules | Why exported |

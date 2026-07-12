@@ -58,3 +58,17 @@ minor bump. Until then this file stays as the stability anchor —
 confirming that v2.0 is the current release and that any code
 change either fits one of the SemVer categories above or needs
 the major-bump treatment.
+
+**v2.1.0 batch — typed fixedpoint callbacks.** RFC
+[`docs/RFC-fixedpoint-callbacks.md`](RFC-fixedpoint-callbacks.md)
+closes the one open item `docs/RFC-completeness.md` deferred out of
+the v2.0.0 audit (§N7.8's typed-closure wrapper for
+`Z3_fixedpoint_add_callback`'s Spacer export events). Adds
+`z3/fixedpoint_callbacks` (`Z3FixedpointHandlers`/`setHandlers`/
+`clearHandlers`/`hasHandlers`/`handlers`/`collectLemmas`/
+`Z3LemmaLog`, gated `-d:z3WithoutFixedpointCallbacks`) and batches in
+four latent-bug backfixes to shipped v2.0 code (propagator exception
+wall; two ctx-ref lifecycle-template leak fixes; a hand-written
+`=destroy` audit) — see CHANGELOG `[2.1.0]` for the full list. Typed
+reduce callbacks (`reduceApp`/`reduceAssign`) are scoped out to v2.2;
+the raw §N7.8 procs remain the reduce escape hatch in the meantime.

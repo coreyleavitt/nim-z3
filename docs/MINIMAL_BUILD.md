@@ -140,7 +140,7 @@ Common multi-flag recipes for build profiles:
 | Profile | Flags |
 |---|---|
 | BV-only (no FP, no strings, no datatypes) | `-d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutStrings -d:z3WithoutRegex -d:z3WithoutDatatypes` |
-| Solver-only (no analysis, no optimise) | `-d:z3WithoutOptimize -d:z3WithoutTactics -d:z3WithoutFixedpoint` |
+| Solver-only (no analysis, no optimise, no CHC extras) | `-d:z3WithoutOptimize -d:z3WithoutTactics -d:z3WithoutSpacer -d:z3WithoutFixedpointCallbacks` |
 | Core + BV + arrays (embedded / microcontroller verification) | `-d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutDatatypes -d:z3WithoutOptimize -d:z3WithoutFuncDecl` |
 | No Spacer / CHC | `-d:z3WithoutSpacer` |
 | Algebraic-number-free | `-d:z3WithoutAlgebraic -d:z3WithoutRcf` |
@@ -151,6 +151,22 @@ flags were added in v2.0.0 for the three new heavy-weight theory families.
 They follow the same scope-hiding semantics as the v0.5 flags — hides
 umbrella re-export, does not necessarily reduce compile time (see
 "Honesty disclaimer" above).
+
+The `-d:z3WithoutFixedpointCallbacks` flag was added in v2.1.0. It hides
+`z3/fixedpoint_callbacks` — the typed `Z3FixedpointHandlers` /
+`setHandlers` / `clearHandlers` / `hasHandlers` / `handlers` /
+`collectLemmas` / `Z3LemmaLog` surface (Spacer-engine export
+callbacks: `newLemma`, `predecessor`, `unfold`). It follows the same
+scope-hiding semantics as every other `z3WithoutX` flag. **There is
+no `-d:z3WithoutFixedpoint` flag** — `z3/fixedpoint` (the CHC solver
+core: relations, rules, `query`, the raw §N7.8 callback procs) is
+always-on core (see "Always-on core" above) and cannot be gated out;
+only the *typed callback* layer built on top of it can be. If you
+want the smallest fixedpoint-adjacent footprint, combine
+`-d:z3WithoutFixedpointCallbacks` (typed callbacks) with
+`-d:z3WithoutSpacer` (Spacer extensions: `addCover`/`getCover`/
+`getSpacerLevel`/`mkFpQuery`) — the fixedpoint core itself always
+ships.
 
 ## The `nimble test-minimal` task
 

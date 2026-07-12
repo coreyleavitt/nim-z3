@@ -3,9 +3,20 @@
 ## Smoke tests for the four raw-pointer wrapper procs:
 ##   `init`, `setReduceAssignCallback`, `setReduceAppCallback`, `addCallback`
 ##
-## Typed-closure wrappers are explicitly deferred; these tests confirm
-## the raw {.cdecl.} function-pointer surface compiles, links, and
-## doesn't crash when called with concrete no-op callbacks.
+## This file covers the raw §N7.8 escape-hatch surface only — the
+## `{.cdecl.}` function-pointer procs that take a raw `pointer` state
+## and concrete C-ABI callbacks directly. These tests confirm that
+## surface compiles, links, and doesn't crash when called with
+## concrete no-op callbacks; it remains the only way to hook
+## `reduceApp`/`reduceAssign` (typed reduce is deferred to v2.2) and
+## is mutually exclusive, per `Z3Fixedpoint`, with the typed surface
+## below (ADR-FC-0009 — mixing hazard).
+##
+## The **typed-closure** surface (`Z3FixedpointHandlers`/
+## `setHandlers`, v2.1.0) has its own test files:
+## `tests/tfixedpoint_typed_callbacks.nim`,
+## `tests/tfixedpoint_handlers.nim`, `tests/tfixedpoint_newlemma.nim`,
+## and `tests/tfixedpoint_ctxbox.nim`.
 
 import std/unittest
 import z3

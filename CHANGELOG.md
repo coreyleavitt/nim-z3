@@ -70,6 +70,110 @@ fixes that landed on top of the initial 2.0.0 RFC implementation.
 - `assertConstraint` alias for `Z3Goal.add` (two names for one op).
 - `varsCopy` micro-pattern in `solver.nim` (no-op on a ref).
 
+## [2.1.0]
+
+The **typed fixedpoint callback** release (RFC-fixedpoint-callbacks.md).
+Closes the last standing "typed wrapper deferred to a follow-on RFC"
+note from the v2.0.0 completeness audit (§N7.8) — Spacer's
+export-callback events now have a Nim-closure surface parallel to
+`z3/propagator`'s. Also batches in four latent-bug backfixes to
+already-shipped v2.0 code, discovered while designing this RFC's
+callback-box lifecycle and folded in per the "batch don't defer"
+call (ADR-FC-0010–0013).
+
+### Added
+
+- **`z3/fixedpoint_callbacks`** — typed Spacer-engine export-callback
+  surface for `Z3Fixedpoint`:
+  - `Z3FixedpointHandlers` — `newLemma(lemma: Z3AnyAst, level: uint)`,
+    `predecessor()`, `unfold()`, all `{.closure, raises: [].}`. Reduce
+    fields (`reduceApp`/`reduceAssign`) are **cut** from this release;
+    the raw §N7.8 procs (`setReduceAssignCallback`/
+    `setReduceAppCallback` on `Z3Fixedpoint`) remain the only way to
+    hook reduce events until the v2.2 RFC.
+  - `setHandlers`/`clearHandlers`/`hasHandlers`/`handlers` — install,
+    reset, test, and read back the handler set on a `Z3Fixedpoint`.
+    `setHandlers` is pure intent-recording: it never touches Z3's
+    engine-gated registration call, so install order relative to
+    `setParams(engine=...)` never matters.
+  - `collectLemmas`/`Z3LemmaLog` — a `newLemma` convenience that
+    accumulates every fired `(lemma, level)` into an iterable log,
+    and **composes** with a caller-supplied `base` handler set rather
+    than replacing it.
+  - **Activation is lazy and Spacer-only**: registration
+    (`Z3_fixedpoint_add_callback` + the `fp.spacer.p3.share_lemmas`/
+    `share_invariants` param gate `newLemma` needs) happens at the
+    first query, not at `setHandlers` time, so `setHandlers` and
+    `setParams(engine=spacer)` can run in either order as long as the
+    engine is Spacer before the first query. Under `bmc`/`datalog`,
+    export handlers silently never fire — no exception, no signal.
+  - Gated `-d:z3WithoutFixedpointCallbacks` (default-shipped; the
+    flag strips the typed surface only — `z3/fixedpoint`'s core CHC
+    solver and the raw §N7.8 procs stay always-on regardless).
+
+### Fixed — correctness
+
+- **Fixedpoint-query interrupt now returns `zsUnknown` gracefully,
+  uniform with `Z3Solver.check()`.** Previously, calling
+  `ctx.interrupt()` during an in-flight `query`/`queryRelations`/
+  `z3/spacer.queryFromLevel` call — a pattern the shipped
+  `Z3Context.interrupt()` docstring already claimed to support — left
+  a raw `Z3OperationError`/`Z3_EXCEPTION` ("canceled") propagating out
+  uncaught, because Spacer/Datalog's cancellation path throws instead
+  of returning gracefully the way `Z3_solver_check` does. `query` /
+  `queryRelations` / `queryFromLevel` now catch exactly that narrow
+  discriminator and translate it: the call returns `zsUnknown`, and
+  `getReasonUnknown()` reads `"interrupted"` — matching
+  `Z3Solver.reasonUnknown()`'s contract on interrupt. Any other
+  `Z3Error` is re-raised unchanged.
+- **`propagator` exception wall (ADR-FC-0010).** All nine
+  `{.cdecl.}` propagator shims now wrap dispatch to the user closure
+  in `try/except CatchableError: discard`, and every
+  `Z3PropagatorHandlers` field is `{.closure, raises: [].}`. A
+  raising handler no longer risks unwinding a Nim exception across
+  the C++ call stack into Z3 — it's silently swallowed, matching
+  `z3/fixedpoint_callbacks`'s wall.
+- **`Z3ContextOwn` `=destroy` field leak (ADR-FC-0011).** A
+  hand-written `=destroy` replaces ORC's field-wise destruction
+  entirely; `Z3ContextOwn`'s custom destructor released `raw`/`cfg`
+  but not `datatypeRegistry`/`uninterpretedRegistry`, so both tables'
+  storage leaked on every context teardown that had populated them
+  (pre-existing since v2.0.0; the `tcontext` valgrind fixture never
+  populated them, which is why this stayed hidden). Now released.
+- **Systemic `ctx`-ref leak across both lifecycle templates
+  (ADR-FC-0012).** `emitRefcountLifecycle`'s generated `=destroy`
+  (~15 ref-handle types) and `termDestroy` (every value-family type)
+  now release their `ctx` reference after the raw `dec_ref` — a
+  handle held only by an otherwise-dropped context previously kept
+  that context alive indefinitely. No signature change; a context
+  that's only reachable through dropped handles is now freed
+  promptly rather than never.
+- **Hand-written `=destroy` audit (ADR-FC-0013).** Audited all
+  hand-written `=destroy` hooks in `src/z3/*.nim` for the same
+  omitted-field-release class as the above two; fixed
+  `Z3ConstructorDeclOwn[T].=destroy` (`datatypes.nim`), which failed
+  to release its `ctx`. The `nimble valgrind` task now builds its
+  subset with `-d:useMalloc` (without it, valgrind cannot see Nim's
+  arena-allocated leaks at all) and includes a new
+  ctx-release-proving test (`tests/td3_ctx_release.nim`).
+
+### Notes
+
+- Raw §N7.8 surface (`init`/`setReduceAssignCallback`/
+  `setReduceAppCallback`/`addCallback`) is untouched and remains
+  fully supported as the reduce-callback escape hatch; mixing it with
+  the new typed `setHandlers` surface on the same `Z3Fixedpoint` trips
+  a debug-build assert (ADR-FC-0009) — the two surfaces write the
+  same Z3-side registration slot.
+- Additive-only release; no existing symbol changes signature. The
+  `{.raises: [].}` now required on `Z3PropagatorHandlers` fields can
+  reject a provably-raising closure at compile time, which is a
+  correctness tightening (any such caller was already at UB risk),
+  not a runtime break.
+- Typed reduce callbacks (`Z3AnyFuncDecl`-based `reduceApp`/
+  `reduceAssign`, ADR-FC-0003) are deferred to v2.2, alongside the
+  ownership-transfer design questions that surface makes.
+
 ## [2.0.0] — 2026-06-04
 
 The **completeness-pass** release. nim-z3 v1.x had three known additive

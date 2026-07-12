@@ -60,7 +60,13 @@ when not defined(z3WithoutSpacer):
     ## rather than level 0. Useful for resuming or deepening a previous
     ## bounded query.
     ##
-    ## Returns `zsSat`, `zsUnsat`, or `zsUnknown`.
+    ## Returns `zsSat`, `zsUnsat`, or `zsUnknown` — including when the
+    ## query is cancelled mid-flight via `Z3Context.interrupt()` (RFC
+    ## C1(d); `fp.getReasonUnknown()` then reads `"interrupted"`,
+    ## uniform with `Z3Solver.check()`'s interrupt contract and with
+    ## `z3/fixedpoint.query`/`queryRelations` — see
+    ## `runCancelableFixedpointQuery`'s doc comment in
+    ## `z3/fixedpoint` for the mechanism this shares).
     ##
     runnableExamples:
       import z3
@@ -76,9 +82,10 @@ when not defined(z3WithoutSpacer):
       let res = fp.queryFromLevel(0, pred(mkInt(ctx, 0)))
       doAssert res == zsSat
     doAssert level >= 0
-    let res = fp.ctx.checkErr Z3_fixedpoint_query_from_lvl(
-      fp.ctx.raw, fp.raw, query.raw, cuint(level))
-    decodeLBool(res)
+    fp.withInQuery:
+      result = fp.runCancelableFixedpointQuery(
+        Z3_fixedpoint_query_from_lvl(
+          fp.ctx.raw, fp.raw, query.raw, cuint(level)))
 
   # ==========================================================================
   # Invariant + reachability

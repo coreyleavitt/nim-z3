@@ -36,6 +36,10 @@
 17. [`getProof` returns nil unless the context was built with proofs enabled](#17-getproof-returns-nil-unless-the-context-was-built-with-proofs-enabled)
 18. [`modelCompletion = false` evaluates unconstrained variables to themselves](#18-modelcompletion--false-evaluates-unconstrained-variables-to-themselves)
 19. [`Z3Seq.replace` is first-occurrence only — not replace-all](#19-z3seqreplace-is-first-occurrence-only--not-replace-all)
+20. [Mixing the raw §N7.8 fixedpoint callback procs with `setHandlers` trips a debug assert](#20-mixing-the-raw-n78-fixedpoint-callback-procs-with-sethandlers-trips-a-debug-assert)
+21. [Fixedpoint export callbacks only fire under `engine=spacer`, and the engine locks at first use](#21-fixedpoint-export-callbacks-only-fire-under-enginespacer-and-the-engine-locks-at-first-use)
+22. [`clearHandlers` doesn't deregister at the Z3 level — it just goes dormant](#22-clearhandlers-doesnt-deregister-at-the-z3-level--it-just-goes-dormant)
+23. [Interrupting from inside a fixedpoint handler cancels the query gracefully](#23-interrupting-from-inside-a-fixedpoint-handler-cancels-the-query-gracefully)
 
 ---
 
@@ -597,3 +601,197 @@ fixed-point loop using `indexOf` + `substr`, or use
 Z3 4.12+ replace-all directly. The v1.x release will surface
 `replaceAll`, `replaceRegex`, and `splitRegex` as first-class
 wrappers (tracked in the CHANGELOG deferral list).
+
+---
+
+## 20. Mixing the raw §N7.8 fixedpoint callback procs with `setHandlers` trips a debug assert
+
+**Symptom.** Calling `fp.init(...)` / `fp.setReduceAssignCallback(...)`
+/ `fp.setReduceAppCallback(...)` / `fp.addCallback(...)` on a
+`Z3Fixedpoint` that already has `setHandlers` installed on it (or
+vice versa) fails an `assert` in non-release builds:
+`"the typed setHandlers surface (z3/fixedpoint_callbacks) has already
+been used on this fp — the raw and typed callback surfaces are
+mutually exclusive per fp"`.
+
+**Cause.** Both surfaces ultimately write the **same** Z3-side
+`state` pointer / callback registration slot on the underlying
+`Z3_fixedpoint` handle (`Z3_fixedpoint_init` and
+`Z3_fixedpoint_add_callback` are shared plumbing). Using both on one
+`Z3Fixedpoint` means the second surface silently overwrites what the
+first one's `{.cdecl.}` shims depend on — type confusion (the raw
+surface's `state` isn't a `FixedpointCtxBox`) or a use-after-free,
+depending on call order (ADR-FC-0009).
+
+**Wrapper behaviour.** Each of the four raw §N7.8 procs
+(`init`/`setReduceAssignCallback`/`setReduceAppCallback`/
+`addCallback`) asserts `fp.cbBoxRef.isNil` before running; `setHandlers`
+asserts `not fp.rawCbUsed` before installing. Both guards are `when
+not defined(release)`-gated — zero cost in `-d:release`/`-d:danger`
+builds, and **not checked** there, so mixing the two surfaces in a
+release build is silent undefined behavior rather than a caught
+error.
+
+**What you should do.** Pick one callback surface per `Z3Fixedpoint`
+and stay on it for that handle's lifetime: the typed `setHandlers`
+(newLemma/predecessor/unfold export events only — v2.1.0) or the raw
+§N7.8 procs (needed today for `reduceApp`/`reduceAssign`, since the
+typed reduce surface is deferred to v2.2). If you need both event
+families, allocate two separate `Z3Fixedpoint` handles rather than
+sharing one.
+
+---
+
+## 21. Fixedpoint export callbacks only fire under `engine=spacer`, and the engine locks at first use
+
+**Symptom.** `fp.setHandlers(Z3FixedpointHandlers(newLemma: ...))`
+compiles and runs with no error, but the handler never fires — even
+though rules were added and `query` returned a result.
+
+**Cause.** `newLemma`/`predecessor`/`unfold` are **Spacer-engine**
+export events (`Z3_fixedpoint_add_callback`'s dispatch is a Spacer
+feature; `bmc`/`datalog` don't call it). Registration happens
+**lazily, at the first query** (not at `setHandlers` time — the
+A2-redesign), because Z3 doesn't expose a way to read back which
+engine `auto-config` resolved to ahead of time. If that first query
+runs under a non-Spacer engine, registration is attempted, fails
+silently (Z3 throws internally; the wrapper catches it), and — this
+is the sharp edge — **Z3 permanently locks the fixedpoint's engine at
+the first engine-touching operation**, so a later
+`setParams(engine=spacer)` call on that *same* `fp`, issued after a
+query has already run, cannot retroactively make export callbacks
+start firing.
+
+**Wrapper behaviour.** `setHandlers` is pure intent-recording — it
+never raises on engine grounds and doesn't care about install order
+relative to `setParams(engine=...)`. Activation retries automatically
+on every query until it first succeeds (tracked by an internal
+`exportActivated` latch), so `setHandlers` before **or** after
+`setParams(engine=spacer)` both work, as long as the engine is
+Spacer **before the first query on that `fp`**. There is no
+*automatic* exception, warning, or thrown error signaling "this engine
+doesn't support export callbacks" — the handler just never fires; the
+one signal you can poll for it is `fp.handlersActive()` (below).
+
+**What you should do.** Ensure Spacer is selected before the *first*
+`query`/`queryRelations`/`queryFromLevel` call on any `fp` you intend
+to install export handlers on:
+
+```nim
+let p = newParams()
+p.set("engine", "spacer")   # the default, but make it explicit
+fp.setParams(p)
+```
+
+If you need to verify callbacks are actually wired, don't rely on
+`hasHandlers` (it only reports what you *installed*, not what Z3
+*activated*) — call `fp.handlersActive()` instead: `true` once the
+engine has actually accepted the callback registration (i.e. the
+first query ran under Spacer), `false` if `setHandlers` was never
+called or every query so far ran under a non-Spacer engine. It's a
+direct query, not a hand-rolled fire-counter:
+
+```nim
+discard fp.query(...)
+if not fp.handlersActive():
+  echo "export callbacks never activated -- check fp's engine"
+```
+
+---
+
+## 22. `clearHandlers` doesn't deregister at the Z3 level — it just goes dormant
+
+**Symptom.** After calling `fp.clearHandlers()`, you'd expect Z3 to
+stop calling back into the wrapper entirely. Internally, Z3 is still
+invoking the `{.cdecl.}` shim on every event — it just does nothing
+observable, because the shim's handler lookup comes back nil.
+
+**Cause.** Z3's C API has no "deregister callback" call —
+`Z3_fixedpoint_add_callback`'s registration, once made, is sticky for
+the `Z3_fixedpoint` object's lifetime (ADR-FC-0008). There is no FFI
+entry point to undo it.
+
+**Wrapper behaviour.** `clearHandlers` resets the installed handler
+set on `fp`'s box to all-`nil` **in place** — the box itself (and the
+Z3-side `state` pointer into it) stays live for `fp`'s whole
+lifetime. Each shim (`newLemmaShim`/`predecessorShim`/`unfoldShim`)
+checks its handler field for `nil` on every fire and no-ops when it
+is — so the *observable* effect matches "stopped," even though
+nothing was deregistered at the Z3 level. Calling `setHandlers` again
+later on the same `fp` reuses the same stable box and simply repopulates
+the handler fields in place — at the Z3 level, this is still no
+re-registration and no double-fire risk.
+
+**Correction (this claim used to stop there and call it "always
+safe" — that's incomplete).** "Repopulates" means **replaces
+wholesale**, not merges: whatever closure was installed for a field
+before `setHandlers`/`clearHandlers` runs is gone, not chained. Two
+sharp edges follow from that:
+
+- **M2 — a `Z3LemmaLog` from `collectLemmas` silently stops growing.**
+  If you called `let log = fp.collectLemmas(...)` and are holding onto
+  `log`, a *later* `setHandlers` or `clearHandlers` call on that same
+  `fp` detaches `collectLemmas`' accumulator closure from the box — the
+  log freezes at whatever it already collected. No error, no crash;
+  entries already in the log stay valid and readable (they're
+  independent `inc_ref`'d copies), but nothing new is appended. See
+  `Z3LemmaLog`'s and `collectLemmas`' doc comments.
+- **Also true as of the H1 fix:** a handler field that was `nil` at
+  the time export callbacks first activated (see #21) and is later set
+  non-nil via `setHandlers` **will** now start firing on the very next
+  query — it is not stuck dormant forever the way a field that goes
+  non-nil→nil is (see the symptom above). Don't assume "I already
+  queried once, so my newly-added handler needs a fresh `fp`" — it
+  doesn't; the existing box picks it up.
+
+**What you should do.** Treat `clearHandlers`/installing `nil` fields
+as "go quiet," not "release resources" — there's no cleanup to time
+around it, and no way to shrink `fp`'s Z3-side footprint short of
+dropping the whole `Z3Fixedpoint` handle. If you're cycling through
+many handler configurations on one long-lived `fp`, `setHandlers`
+in place is the intended pattern (and is what makes that stable-box
+invariant load-bearing in the first place — see the module docstring
+in `z3/fixedpoint_callbacks`). If you need to ADD a handler without
+detaching something already installed (most importantly, a live
+`Z3LemmaLog`), don't call `setHandlers`/`collectLemmas` with a fresh
+handler set — fold the new handlers into what's already on `fp` with
+`combine`:
+
+```nim
+let log = fp.collectLemmas()
+# ...later, add a predecessor handler WITHOUT freezing `log`...
+fp.setHandlers(combine(fp.handlers, Z3FixedpointHandlers(
+  predecessor: proc() {.closure, raises: [].} = echo "predecessor fired")))
+```
+
+---
+
+## 23. Interrupting from inside a fixedpoint handler cancels the query gracefully
+
+**Symptom.** You want an escape hatch to abort a runaway
+`fp.query(...)` from inside a `newLemma`/`predecessor`/`unfold`
+handler — e.g. stop after N lemmas, or on a wall-clock budget checked
+per-callback.
+
+**Cause / wrapper behaviour.** Calling `fp.ctx.interrupt()` from
+inside a handler is the **sanctioned abort channel** (RFC C1(d)).
+Internally, Z3's Spacer/Datalog query loop reports cancellation very
+differently from `Z3Solver.check()` — it throws a C++ exception
+(surfaced as `Z3OperationError`/`Z3_EXCEPTION`, message `"canceled"`)
+rather than returning gracefully. The wrapper's `query` /
+`queryRelations` / `z3/spacer.queryFromLevel` all catch exactly that
+narrow discriminator and translate it: the in-flight call returns
+`zsUnknown`, and `fp.getReasonUnknown()` reads `"interrupted"` — the
+same contract `Z3Solver.check()` gives you on interrupt, and the same
+string `Z3Solver.reasonUnknown()` reports. Any other `Z3Error` (a
+genuine internal fault, not a cancellation) is **not** swallowed by
+this translation and still raises normally.
+
+**What you should do.** Call `fp.ctx.interrupt()` from inside a
+handler exactly as you would call it from a watchdog thread against a
+`Z3Solver` (see [THREADING.md](THREADING.md)'s `interrupt` section) —
+it's synchronous, same-thread, and takes effect at the next callback
+firing or safe point, not necessarily instantly. After the call
+returns, check `fp.getReasonUnknown() == "interrupted"` to
+distinguish "I cancelled this" from a genuine `zsUnknown` (resource
+limits, incompleteness).

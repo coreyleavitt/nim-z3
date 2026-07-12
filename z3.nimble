@@ -32,7 +32,8 @@ task test, "Run the test suite":
   for tf in [
       # Core / always-on
       "tests/tffi.nim", "tests/tffi_opaque.nim",
-      "tests/tcontext.nim",
+      "tests/tcontext.nim", "tests/tcontext_registry.nim",
+      "tests/td3_ctx_release.nim",
       "tests/tsort.nim",
       "tests/tast.nim", "tests/tast_introspect.nim",
       "tests/tast_print_mode.nim",
@@ -82,7 +83,9 @@ task test, "Run the test suite":
       "tests/toptimize.nim", "tests/toptimize_extra.nim",
       "tests/toptimize_extra2.nim", "tests/toptimize_fp.nim",
       "tests/tfixedpoint.nim", "tests/tfixedpoint_callbacks.nim",
-      "tests/tfixedpoint_extra.nim",
+      "tests/tfixedpoint_extra.nim", "tests/tfixedpoint_ctxbox.nim",
+      "tests/tfixedpoint_handlers.nim", "tests/tfixedpoint_newlemma.nim",
+      "tests/tfixedpoint_typed_callbacks.nim",
       "tests/tproof.nim",
       # Float (fp)
       "tests/tfp.nim",
@@ -121,7 +124,7 @@ task test, "Run the test suite":
       "tests/tpseudo_boolean.nim",
       # Propagators
       "tests/tpropagator.nim", "tests/tpropagator_advanced.nim",
-      "tests/tpropagator_ffi.nim",
+      "tests/tpropagator_ffi.nim", "tests/tpropagator_exception_wall.nim",
       # Misc / context
       "tests/tscratch_ctx.nim",
       "tests/tsemantics.nim",
@@ -186,6 +189,8 @@ task valgrind, "Memory-safety audit — run a subset of tests under valgrind, ga
   # the same #1 blocker as the rest of the matrix; for now this
   # task is a local-dev audit.
   for tf in ["tests/tcontext.nim",
+             "tests/tcontext_registry.nim",
+             "tests/td3_ctx_release.nim",
              "tests/tast.nim",
              "tests/tbitvec.nim",
              "tests/tsolver.nim",
@@ -193,11 +198,15 @@ task valgrind, "Memory-safety audit — run a subset of tests under valgrind, ga
              "tests/tdatatypes.nim",
              "tests/tfp.nim",
              "tests/tfixedpoint.nim",
+             "tests/tfixedpoint_ctxbox.nim",
+             "tests/tfixedpoint_handlers.nim",
+             "tests/tfixedpoint_newlemma.nim",
+             "tests/tfixedpoint_typed_callbacks.nim",
              "tests/tprobe.nim",
              "tests/tparity.nim"]:
     let bin = tf[0 ..< tf.len - 4]  # strip .nim
     let logFile = bin & ".valgrind.log"
-    exec "nim c --threads:on --hints:off -d:debug --debugger:native " &
+    exec "nim c --threads:on --hints:off -d:debug -d:useMalloc --debugger:native " &
          "--opt:none " & tf
     # `--error-exitcode=0`: never fail valgrind on errors. We parse
     # the leak summary ourselves and gate on the one line that

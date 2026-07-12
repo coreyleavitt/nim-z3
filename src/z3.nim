@@ -270,6 +270,16 @@
 ##   callback set (`onFinal`, `onEq`, `onDecide`, `onFixed`,
 ##   `onCreated`). `newPropagator`, `registerPropagator`,
 ##   `propagatorConflict`. Gated `-d:z3WithoutPropagator`. **v2.0.**
+## - `z3/fixedpoint_callbacks` — typed Spacer-engine export-callback
+##   surface for `Z3Fixedpoint`: `Z3FixedpointHandlers` (`newLemma`,
+##   `predecessor`, `unfold`; reduce stays raw-only, §N7.8, deferred
+##   typed form to v2.2). `setHandlers` / `clearHandlers` /
+##   `hasHandlers` / `handlers` install, reset, test, and read back
+##   the handler set; `collectLemmas` / `Z3LemmaLog` is a `newLemma`
+##   convenience that accumulates fired `(lemma, level)` pairs.
+##   Activation is lazy (at the first query) and Spacer-only — export
+##   callbacks silently don't fire under `engine=bmc`/`datalog`. Gated
+##   `-d:z3WithoutFixedpointCallbacks`. **v2.1.**
 ## - `z3/onclause` — `registerOnClause` proof-hint callback. Receives
 ##   clause ASTs as they are added to the solver's proof trace. Gated
 ##   `-d:z3WithoutOnClause`; requires a context created with
@@ -353,6 +363,10 @@ when not defined(z3WithoutRcf):
 when not defined(z3WithoutPropagator):
   import z3/propagator
   export propagator
+
+when not defined(z3WithoutFixedpointCallbacks):
+  import z3/fixedpoint_callbacks
+  export fixedpoint_callbacks
 
 # ============================================================================
 # Gateable theories (re-exported only when the corresponding flag is off)

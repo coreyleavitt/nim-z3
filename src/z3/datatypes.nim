@@ -171,11 +171,24 @@ proc incRefFuncDecl(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
     discard
 
 proc `=destroy`[T](
-    c: Z3ConstructorDeclOwn[T]) {.raises: [].} =
+    c: var Z3ConstructorDeclOwn[T]) {.raises: [].} =
   decRefFuncDecl(c.ctx, c.constructorFD)
   decRefFuncDecl(c.ctx, c.recognizerFD)
   for (_, fd) in c.accessorsFD:
     decRefFuncDecl(c.ctx, fd)
+  # A custom `=destroy` REPLACES field-wise destruction under `--mm:orc`
+  # entirely (ADR-FC-0011) — every owned GC-managed field must be
+  # released by hand, not just `ctx`. `accessorsFD` (seq of
+  # `(string, RawZ3FuncDecl)`) and `cname` (string) both carry heap
+  # buffers that would otherwise leak (confirmed empirically: an
+  # un-released `string`/`seq` field under a custom `=destroy` shows up
+  # as valgrind "definitely lost", same as the `ctx` leak below).
+  `=destroy`(c.accessorsFD)
+  `=destroy`(c.cname)
+  try:
+    `=destroy`(c.ctx)
+  except Exception:
+    discard
 
 # Z3DatatypeDeclOwn has no explicit =destroy — the default suffices.
 # Its `cons` seq carries Z3ConstructorDeclRef[T] refs; ORC will
@@ -336,6 +349,29 @@ proc queryConstructorsInto[T](
       ctx: ctx, cname: c.cname,
       constructorFD: conFD, recognizerFD: recogFD, accessorsFD: accs)
 
+proc delConstructors(ctx: Z3Context, rawCons: openArray[RawZ3Constructor]) =
+  ## Release the raw `Z3_mk_constructor` descriptors built for a
+  ## single-datatype `declareDatatype` call. Factored out so the
+  ## cleanup call is identical on both the success path and (via
+  ## try/finally at each call site) the path where
+  ## `Z3_query_constructor` raises — L8 fix: without try/finally, an
+  ## exception mid-`queryConstructorsInto` would leak every descriptor
+  ## built by `buildRawConstructors` before ever reaching this cleanup.
+  for con in rawCons:
+    Z3_del_constructor(ctx.raw, con)
+
+proc delConstructorLists(ctx: Z3Context,
+                          lists: openArray[RawZ3ConstructorList]) =
+  ## Release the `Z3_mk_constructor_list` descriptors built for a
+  ## `declareDatatypes`/`declareDatatypesN` batch (deleting a list also
+  ## releases the individual constructors Z3 owns through it). Same L8
+  ## rationale as `delConstructors` — every arity-N call site wraps its
+  ## `queryConstructorsInto` calls in try/finally with this in the
+  ## `finally`, so the batch's descriptors are released whether
+  ## `Z3_query_constructor` succeeds or raises.
+  for l in lists:
+    Z3_del_constructor_list(ctx.raw, l)
+
 proc declareDatatype*[T](
     ctx: Z3Context,
     cons: openArray[ConstructorSpec]): Z3DatatypeDecl[T] =
@@ -357,9 +393,15 @@ proc declareDatatype*[T](
   let dtSort = ctx.checkErr Z3_mk_datatype(ctx.raw, dtSym,
     cuint(work.rawCons.len), consPtr)
 
-  let conRefs = queryConstructorsInto[T](ctx, cons, work.rawCons)
-  for con in work.rawCons:
-    Z3_del_constructor(ctx.raw, con)
+  var conRefs: seq[Z3ConstructorDeclRef[T]]
+  try:
+    conRefs = queryConstructorsInto[T](ctx, cons, work.rawCons)
+  finally:
+    # L8 fix: run on both the success and exception paths — if
+    # `Z3_query_constructor` (inside `queryConstructorsInto`) raises,
+    # the raw `Z3_mk_constructor` descriptors built above by
+    # `buildRawConstructors` must still be released, not leaked.
+    delConstructors(ctx, work.rawCons)
 
   # v0.4 step 3: register the produced sort for sortdispatch lookup by
   # marker-type name. Re-registering the same T overwrites — Z3 would
@@ -434,13 +476,17 @@ proc declareDatatypes*[T1, T2](
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
 
-  let conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
-  let conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
-
-  # Z3 owns the descriptors via the lists; deleting the lists releases
-  # the individual constructors too.
-  Z3_del_constructor_list(ctx.raw, list1)
-  Z3_del_constructor_list(ctx.raw, list2)
+  var conRefs1: seq[Z3ConstructorDeclRef[T1]]
+  var conRefs2: seq[Z3ConstructorDeclRef[T2]]
+  try:
+    conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
+    conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
+  finally:
+    # Z3 owns the descriptors via the lists; deleting the lists releases
+    # the individual constructors too. try/finally (L8 fix): runs on
+    # both the success and exception paths, so a `Z3_query_constructor`
+    # failure on either datatype still releases both lists' descriptors.
+    delConstructorLists(ctx, lists)
 
   let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
   let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
@@ -498,13 +544,17 @@ proc declareDatatypes*[T1, T2, T3](
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
 
-  let conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
-  let conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
-  let conRefs3 = queryConstructorsInto[T3](ctx, d3.cons, work3.rawCons)
-
-  Z3_del_constructor_list(ctx.raw, list1)
-  Z3_del_constructor_list(ctx.raw, list2)
-  Z3_del_constructor_list(ctx.raw, list3)
+  var conRefs1: seq[Z3ConstructorDeclRef[T1]]
+  var conRefs2: seq[Z3ConstructorDeclRef[T2]]
+  var conRefs3: seq[Z3ConstructorDeclRef[T3]]
+  try:
+    conRefs1 = queryConstructorsInto[T1](ctx, d1.cons, work1.rawCons)
+    conRefs2 = queryConstructorsInto[T2](ctx, d2.cons, work2.rawCons)
+    conRefs3 = queryConstructorsInto[T3](ctx, d3.cons, work3.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the three datatypes still releases all three lists' descriptors.
+    delConstructorLists(ctx, lists)
 
   let dt1 = Z3DatatypeDecl[T1](ctx: ctx, sort: sortsOut[0], cons: conRefs1)
   let dt2 = Z3DatatypeDecl[T2](ctx: ctx, sort: sortsOut[1], cons: conRefs2)
@@ -564,14 +614,19 @@ proc declareDatatypes*[T1, T2, T3, T4](
     cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
-  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
-  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
-  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
-  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
-  Z3_del_constructor_list(ctx.raw, l1)
-  Z3_del_constructor_list(ctx.raw, l2)
-  Z3_del_constructor_list(ctx.raw, l3)
-  Z3_del_constructor_list(ctx.raw, l4)
+  var c1: seq[Z3ConstructorDeclRef[T1]]
+  var c2: seq[Z3ConstructorDeclRef[T2]]
+  var c3: seq[Z3ConstructorDeclRef[T3]]
+  var c4: seq[Z3ConstructorDeclRef[T4]]
+  try:
+    c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+    c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+    c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+    c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the four datatypes still releases all four lists' descriptors.
+    delConstructorLists(ctx, lists)
   ctx.datatypeRegistry[$T1] = sortsOut[0]
   ctx.datatypeRegistry[$T2] = sortsOut[1]
   ctx.datatypeRegistry[$T3] = sortsOut[2]
@@ -636,16 +691,21 @@ proc declareDatatypes*[T1, T2, T3, T4, T5](
     cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
-  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
-  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
-  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
-  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
-  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
-  Z3_del_constructor_list(ctx.raw, l1)
-  Z3_del_constructor_list(ctx.raw, l2)
-  Z3_del_constructor_list(ctx.raw, l3)
-  Z3_del_constructor_list(ctx.raw, l4)
-  Z3_del_constructor_list(ctx.raw, l5)
+  var c1: seq[Z3ConstructorDeclRef[T1]]
+  var c2: seq[Z3ConstructorDeclRef[T2]]
+  var c3: seq[Z3ConstructorDeclRef[T3]]
+  var c4: seq[Z3ConstructorDeclRef[T4]]
+  var c5: seq[Z3ConstructorDeclRef[T5]]
+  try:
+    c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+    c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+    c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+    c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+    c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the five datatypes still releases all five lists' descriptors.
+    delConstructorLists(ctx, lists)
   ctx.datatypeRegistry[$T1] = sortsOut[0]
   ctx.datatypeRegistry[$T2] = sortsOut[1]
   ctx.datatypeRegistry[$T3] = sortsOut[2]
@@ -718,18 +778,23 @@ proc declareDatatypes*[T1, T2, T3, T4, T5, T6](
     cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
-  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
-  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
-  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
-  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
-  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
-  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
-  Z3_del_constructor_list(ctx.raw, l1)
-  Z3_del_constructor_list(ctx.raw, l2)
-  Z3_del_constructor_list(ctx.raw, l3)
-  Z3_del_constructor_list(ctx.raw, l4)
-  Z3_del_constructor_list(ctx.raw, l5)
-  Z3_del_constructor_list(ctx.raw, l6)
+  var c1: seq[Z3ConstructorDeclRef[T1]]
+  var c2: seq[Z3ConstructorDeclRef[T2]]
+  var c3: seq[Z3ConstructorDeclRef[T3]]
+  var c4: seq[Z3ConstructorDeclRef[T4]]
+  var c5: seq[Z3ConstructorDeclRef[T5]]
+  var c6: seq[Z3ConstructorDeclRef[T6]]
+  try:
+    c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+    c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+    c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+    c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+    c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+    c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the six datatypes still releases all six lists' descriptors.
+    delConstructorLists(ctx, lists)
   ctx.datatypeRegistry[$T1] = sortsOut[0]
   ctx.datatypeRegistry[$T2] = sortsOut[1]
   ctx.datatypeRegistry[$T3] = sortsOut[2]
@@ -813,20 +878,25 @@ proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7](
     cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
-  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
-  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
-  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
-  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
-  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
-  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
-  let c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
-  Z3_del_constructor_list(ctx.raw, l1)
-  Z3_del_constructor_list(ctx.raw, l2)
-  Z3_del_constructor_list(ctx.raw, l3)
-  Z3_del_constructor_list(ctx.raw, l4)
-  Z3_del_constructor_list(ctx.raw, l5)
-  Z3_del_constructor_list(ctx.raw, l6)
-  Z3_del_constructor_list(ctx.raw, l7)
+  var c1: seq[Z3ConstructorDeclRef[T1]]
+  var c2: seq[Z3ConstructorDeclRef[T2]]
+  var c3: seq[Z3ConstructorDeclRef[T3]]
+  var c4: seq[Z3ConstructorDeclRef[T4]]
+  var c5: seq[Z3ConstructorDeclRef[T5]]
+  var c6: seq[Z3ConstructorDeclRef[T6]]
+  var c7: seq[Z3ConstructorDeclRef[T7]]
+  try:
+    c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+    c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+    c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+    c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+    c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+    c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+    c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the seven datatypes still releases all seven lists' descriptors.
+    delConstructorLists(ctx, lists)
   ctx.datatypeRegistry[$T1] = sortsOut[0]
   ctx.datatypeRegistry[$T2] = sortsOut[1]
   ctx.datatypeRegistry[$T3] = sortsOut[2]
@@ -920,22 +990,27 @@ proc declareDatatypes*[T1, T2, T3, T4, T5, T6, T7, T8](
     cast[ptr UncheckedArray[RawZ3Symbol]](addr sortNames[0]),
     cast[ptr UncheckedArray[RawZ3Sort]](addr sortsOut[0]),
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
-  let c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
-  let c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
-  let c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
-  let c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
-  let c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
-  let c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
-  let c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
-  let c8 = queryConstructorsInto[T8](ctx, d8.cons, w8.rawCons)
-  Z3_del_constructor_list(ctx.raw, l1)
-  Z3_del_constructor_list(ctx.raw, l2)
-  Z3_del_constructor_list(ctx.raw, l3)
-  Z3_del_constructor_list(ctx.raw, l4)
-  Z3_del_constructor_list(ctx.raw, l5)
-  Z3_del_constructor_list(ctx.raw, l6)
-  Z3_del_constructor_list(ctx.raw, l7)
-  Z3_del_constructor_list(ctx.raw, l8)
+  var c1: seq[Z3ConstructorDeclRef[T1]]
+  var c2: seq[Z3ConstructorDeclRef[T2]]
+  var c3: seq[Z3ConstructorDeclRef[T3]]
+  var c4: seq[Z3ConstructorDeclRef[T4]]
+  var c5: seq[Z3ConstructorDeclRef[T5]]
+  var c6: seq[Z3ConstructorDeclRef[T6]]
+  var c7: seq[Z3ConstructorDeclRef[T7]]
+  var c8: seq[Z3ConstructorDeclRef[T8]]
+  try:
+    c1 = queryConstructorsInto[T1](ctx, d1.cons, w1.rawCons)
+    c2 = queryConstructorsInto[T2](ctx, d2.cons, w2.rawCons)
+    c3 = queryConstructorsInto[T3](ctx, d3.cons, w3.rawCons)
+    c4 = queryConstructorsInto[T4](ctx, d4.cons, w4.rawCons)
+    c5 = queryConstructorsInto[T5](ctx, d5.cons, w5.rawCons)
+    c6 = queryConstructorsInto[T6](ctx, d6.cons, w6.rawCons)
+    c7 = queryConstructorsInto[T7](ctx, d7.cons, w7.rawCons)
+    c8 = queryConstructorsInto[T8](ctx, d8.cons, w8.rawCons)
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any of
+    # the eight datatypes still releases all eight lists' descriptors.
+    delConstructorLists(ctx, lists)
   ctx.datatypeRegistry[$T1] = sortsOut[0]
   ctx.datatypeRegistry[$T2] = sortsOut[1]
   ctx.datatypeRegistry[$T3] = sortsOut[2]
@@ -1006,13 +1081,16 @@ proc declareDatatypesN*(
     cast[ptr UncheckedArray[RawZ3ConstructorList]](addr lists[0]))
   # Extract constructor func_decls and build results
   result = newSeq[Z3DatatypeDecl[void]](n)
-  for i, (sname, cons) in specs:
-    let conRefs = queryConstructorsInto[void](ctx, cons, works[i].rawCons)
-    result[i] = Z3DatatypeDecl[void](ctx: ctx, sort: sortsOut[i], cons: conRefs)
-    ctx.datatypeRegistry[sname] = sortsOut[i]
-  # Clean up constructor lists
-  for i in 0 ..< n:
-    Z3_del_constructor_list(ctx.raw, lists[i])
+  try:
+    for i, (sname, cons) in specs:
+      let conRefs = queryConstructorsInto[void](ctx, cons, works[i].rawCons)
+      result[i] = Z3DatatypeDecl[void](ctx: ctx, sort: sortsOut[i], cons: conRefs)
+      ctx.datatypeRegistry[sname] = sortsOut[i]
+  finally:
+    # L8 fix: try/finally so a `Z3_query_constructor` failure on any
+    # spec still releases every list's descriptors, not just the ones
+    # already processed.
+    delConstructorLists(ctx, lists)
 
 # ============================================================================
 # Lookup — con, recognizer, accessor

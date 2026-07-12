@@ -943,6 +943,14 @@ Same as v1.
 
 ### N7.8 — Fixedpoint callback FFI stubs (CORRECTED in v3 per round-2 Lens 2 H1)
 
+**RESOLVED in v2.1.0.** The "deferred to a follow-on RFC" typed
+wrapper this section calls for shipped as
+[`docs/RFC-fixedpoint-callbacks.md`](RFC-fixedpoint-callbacks.md) —
+`z3/fixedpoint_callbacks`'s `Z3FixedpointHandlers`/`setHandlers` (see
+CHANGELOG `[2.1.0]`). The raw 4-function/5-typedef FFI surface this
+section describes remains shipped unchanged as the reduce-callback
+escape hatch (typed reduce is further deferred to v2.2).
+
 v2 claimed "7 `Z3_fixedpoint_register_*` FFI entries." Verified against `_audit_headers/z3_fixedpoint.h`: only **one** `Z3_fixedpoint_register_*` function exists (`Z3_fixedpoint_register_relation`) and it's **already wrapped** at `fixedpoint.nim:95`. The actual unwrapped fixedpoint callback API is 4 functions with different prefixes:
 
 - `Z3_fixedpoint_init(c, fp, state)` — initializes callback state.
@@ -1371,7 +1379,7 @@ ADR-N0001 through ADR-N0007. ~1h each, no code.
 46. **N7.6a** — Optimize non-FP-dep (5 procs)
 47. **N7.6b** — Optimize FP-dep + model_eh (7 procs)
 48. **N7.7** — Fixedpoint I/O + descrs + addFact
-49. **N7.8** — Fixedpoint callback FFI stubs (typed wrapper = separate RFC)
+49. **N7.8** — Fixedpoint callback FFI stubs (typed wrapper = separate RFC; **RESOLVED v2.1.0**, see `RFC-fixedpoint-callbacks.md`)
 
 ### Cluster N8 — Solver + Tactic + Simplifier (13 cycles)
 

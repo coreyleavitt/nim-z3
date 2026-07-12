@@ -45,7 +45,12 @@ suite "N8.4c — consequence from fixed":
 
     handlers.fixed = proc(cb: Z3SolverCallback, e, val: Z3AnyAst) =
       # When any variable is fixed, assert: [] ⊢ b (no premises, just assert b)
-      consequence(cb, @[], @[], toAnyAst(bCapture))
+      # toAnyAst's inc_ref bottoms out in an FFI call the softlink layer
+      # declares `raises: [SoftlinkError]`; unreachable in practice once the
+      # propagator's symbols are already resolved (registration succeeded to
+      # get here). Cast to satisfy the handler field's `raises: []` contract.
+      {.cast(raises: []).}:
+        consequence(cb, @[], @[], toAnyAst(bCapture))
 
     let p = newPropagator(s, handlers)
     p.register(a)
@@ -124,7 +129,9 @@ suite "N8.4c — nextSplit from decide":
       inc decideCt
       # Redirect to x with phase=1 (true). Guard against infinite loops.
       if decideCt <= 10:
-        nextSplit(cb, toAnyAst(xCapture), 0, 1)
+        # See the `toAnyAst` note above `consequence` in this file.
+        {.cast(raises: []).}:
+          nextSplit(cb, toAnyAst(xCapture), 0, 1)
 
     let p = newPropagator(s, handlers)
     p.register(x)

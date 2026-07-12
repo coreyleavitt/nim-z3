@@ -190,7 +190,45 @@ AST identity).
 
 ---
 
-## 3. The "for every new family, here's what you implement" rule
+## 3. Handler-record pattern (exempt from §1 and §2)
+
+Some types are neither a `Z3Term` value family (§1: `raw*: RawZ3Ast` +
+`ctx*: Z3Context`) nor a `Z3Term`-adjacent ref handle (§2: `raw*`/
+`ctx*` accessors + refcount lifecycle). A **handler-record** is a
+plain `object` bundling a family of Nim closures — one per callback
+event a Z3 subsystem can fire — that a caller installs on some other
+ref handle (`Z3Solver`, `Z3Fixedpoint`) via a `setXxx`-shaped proc.
+It carries no `raw`/`ctx` fields at all: it's config-in (closures the
+caller supplies), not a Z3-object construction result, so the `mk*`/
+`new*` naming rules and the `raw*`/`ctx*` accessor contract don't
+apply to it.
+
+Exempt from: `mkFoo`/`newFoo` construction-naming rules (§1.4/§2),
+`raw*`/`ctx*` accessors (§1/§2), refcount lifecycle
+(`emitTermLifecycle`/`emitRefcountLifecycle`), `$`/`pretty`/
+`astEqual` (§1.6–1.8), and the evalXxx pairing (§1.9) — none of these
+concepts apply to a bag of closures. What a handler-record **does**
+need: every closure field `{.closure, raises: [].}` (the callback
+crosses a `{.cdecl.}` C-ABI boundary somewhere downstream; a raising
+closure is a wall-breach hazard — see each shim's exception-wall
+doc comment) and a paired `hasXxx`/read-back proc on the owning
+handle if callers need to introspect what's installed.
+
+Two handler-records ship today, both exempt under this category:
+
+- **`Z3PropagatorHandlers`** (`z3/propagator.nim`) — `push`, `pop`,
+  `fresh`, `fixed`, `final`, `eq`, `diseq`, `created`, `decide`.
+  Installed on `Z3Solver` via `registerPropagator`. Shipped v2.0.0;
+  PARITY.md omitted it until this entry (retroactive coverage, RFC
+  C3).
+- **`Z3FixedpointHandlers`** (`z3/fixedpoint_callbacks.nim`) —
+  `newLemma`, `predecessor`, `unfold` (reduce fields cut from
+  v2.1.0; raw §N7.8 procs remain the reduce escape hatch). Installed
+  on `Z3Fixedpoint` via `setHandlers`. Shipped v2.1.0.
+
+---
+
+## 4. The "for every new family, here's what you implement" rule
 
 When you add a new `Z3Foo` typed family:
 
@@ -224,7 +262,7 @@ the exception** — see §1.6.
 
 ---
 
-## 4. Cross-references
+## 5. Cross-references
 
 - `src/z3/lifecycle.nim` — `Z3Term` concept + lifecycle template
   generators (`emitTermLifecycle`, `emitRefcountLifecycle`).

@@ -104,8 +104,27 @@ proc nimNoopErrorHandler(c: RawZ3Context, e: Z3ErrorCode) {.cdecl.} =
 # softlink-wrapped procs can raise SoftlinkError (e.g. if libz3 was
 # unloaded mid-program); =destroy can't propagate exceptions.
 
-proc `=destroy`(c: Z3ContextOwn) {.raises: [].} =
+when defined(z3CtxDestroyCount):
+  var z3CtxDestroyCounter*: int
+    ## Test-only instrument (slice D3, ADR-FC-0012). Compiled in only
+    ## under `-d:z3CtxDestroyCount`; incremented once per
+    ## `Z3ContextOwn.=destroy` invocation (before the `borrowed`
+    ## early-return, so it counts every firing). Gives a test a direct
+    ## way to observe the destructor actually running N times — a
+    ## second, more precise instrument alongside the valgrind
+    ## definitely-lost proof, which only shows aggregate leaked bytes.
+
+proc `=destroy`(c: var Z3ContextOwn) {.raises: [].} =
   try:
+    when defined(z3CtxDestroyCount):
+      inc z3CtxDestroyCounter
+    # A user-defined `=destroy` replaces ALL field-wise destruction
+    # under `--mm:orc` — including the GC-managed `Table` fields
+    # below. They're Nim-side storage we own regardless of whether
+    # Z3 owns the underlying context, so release them unconditionally,
+    # before (and independent of) the `borrowed` early-return.
+    `=destroy`(c.datatypeRegistry)
+    `=destroy`(c.uninterpretedRegistry)
     if c.borrowed: return   # Z3 owns this context; don't free it.
     if not c.raw.isNil: Z3_del_context(c.raw)
     if not c.cfg.isNil: Z3_del_config(c.cfg)

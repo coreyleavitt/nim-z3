@@ -89,6 +89,79 @@ See [GOTCHAS.md §15](GOTCHAS.md#15-interruptctx-is-a-cross-thread-signal--same-
 for the full cross-thread semantics, the same-thread no-op caveat,
 and the contrast with the in-thread `timeout` param.
 
+## Callback threading — propagator and fixedpoint handlers
+
+Two wrapper surfaces let user Nim closures run *inside* a Z3 decision
+procedure: `z3/propagator`'s `Z3PropagatorHandlers` (installed on a
+`Z3Solver` via `registerPropagator`) and
+`z3/fixedpoint_callbacks`'s `Z3FixedpointHandlers` (installed on a
+`Z3Fixedpoint` via `setHandlers`). Neither was documented here before
+v2.1.0; both share the same threading contract.
+
+**Callbacks fire synchronously on the calling thread — the thread
+that is inside `check()` / `query()` / `queryRelations()` /
+`queryFromLevel()`.** There is no background thread, no thread pool,
+and no cross-thread dispatch: Z3 calls back into your closure from
+the same OS thread, at the same point on the call stack, as the
+FFI call you made. This was verified empirically for fixedpoint
+callbacks during the Stage-0 feasibility spike (caller tid ==
+callback tid); propagator callbacks follow the same C-API shape
+(a `{.cdecl.}` function pointer invoked in-line by Z3, not queued
+anywhere) and have no separate dispatch mechanism to diverge with.
+
+**Consequences:**
+
+- **No `{.gcsafe.}` requirement beyond the caller's own.** Because
+  the callback runs on the same thread that called into Z3 (which
+  the caller already owns per the one-context-one-thread rule
+  above), the handler closures don't need to defend against
+  concurrent access from a *different* thread — there isn't one.
+  Both `Z3PropagatorHandlers` and `Z3FixedpointHandlers` deliberately
+  omit `gcsafe` from their closure field pragmas for this reason.
+- **Handles built inside a callback belong to the calling thread's
+  context**, same as any other AST/handle — the "what's not safe"
+  section above still applies in full; a callback is not a loophole
+  for cross-thread handle sharing.
+- **The exception wall is the real safety boundary, not threading.**
+  Every shim (`z3/propagator`'s nine, `z3/fixedpoint_callbacks`'s
+  three) wraps the dispatch to the user closure in `try/except
+  CatchableError: discard`, and every handler field is typed
+  `{.closure, raises: [].}` as a compile-time backstop. A Nim
+  exception unwinding out of a `{.cdecl.}` frame into Z3's C++ call
+  stack is undefined behavior — this holds regardless of which
+  thread is running, so it is enforced independently of the
+  same-thread guarantee above. To abort an in-flight operation from
+  inside a handler, call `ctx.interrupt()` (see the `interrupt`
+  section above) rather than raising.
+- **Re-entrancy, not concurrency, is the hazard to watch for.** Since
+  callbacks run synchronously on the stack that's already inside
+  `check()`/`query()`, calling back into the same `Z3Solver` /
+  `Z3Fixedpoint` from within its own handler (e.g. asserting new
+  constraints mid-callback) is a *re-entrancy* question, not a
+  *thread-safety* question — consult each module's own docs for
+  what's supported mid-callback (`z3/propagator`'s
+  `propagatorConflict`, `z3/fixedpoint_callbacks`'s
+  `fp.ctx.interrupt()`).
+- **Mutating a `Z3Fixedpoint`'s handler set from another thread during
+  a query is still cross-thread mutation, not a callback-threading
+  exception.** `setHandlers`/`clearHandlers` must only be called from
+  the same thread that owns the `Z3Fixedpoint`'s context, and never
+  concurrently with a `query`/`queryRelations`/`queryFromLevel` running
+  on that `fp` — even from a thread that "just wants to swap the
+  handlers real quick." A debug-only assert (`fp.inQuery`, ADR-FC-0005)
+  catches same-thread re-entrant mutation attempts in dev/test builds,
+  but it is compiled out under `-d:release`, and it was never designed
+  to catch a genuinely concurrent write racing in from a second thread
+  — that race can tear the handler closure mid-read and corrupt state
+  with no guard to stop it. This isn't a new restriction: it's the same
+  one-context-one-thread contract as the rest of this document, applied
+  to the handler set the way it already applies to every other part of
+  a `Z3Fixedpoint`.
+
+See [GOTCHAS.md](GOTCHAS.md) for the mixing-hazard, engine-coupling,
+and dormant-not-deregistered pitfalls specific to
+`Z3FixedpointHandlers`.
+
 ## Pattern: parallel solving
 
 The canonical "many independent SMT goals on a thread pool" shape

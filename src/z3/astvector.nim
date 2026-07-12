@@ -50,6 +50,10 @@ type
   Z3AstVectorOwn = object
     raw: RawZ3AstVector
     ctx: Z3Context
+    borrowed: bool
+      ## When true, Z3 owns this vector and frees it at `Z3_del_context`;
+      ## our `=destroy` must skip the `Z3_ast_vector_dec_ref` (see
+      ## `wrapAstVectorBorrowed`). Mirrors `Z3ContextOwn.borrowed`.
   Z3AstVector* = ref Z3AstVectorOwn
 
 emitRefcountLifecycle(Z3AstVectorOwn, Z3_ast_vector_dec_ref)
@@ -66,6 +70,30 @@ proc wrapAstVector*(ctx: Z3Context, raw: RawZ3AstVector): Z3AstVector =
     raise e
   Z3_ast_vector_inc_ref(ctx.raw, raw)
   Z3AstVector(raw: raw, ctx: ctx)
+
+proc wrapAstVectorBorrowed*(ctx: Z3Context, raw: RawZ3AstVector): Z3AstVector =
+  ## Wrap a vector whose lifetime Z3 secretly couples to the originating
+  ## context/model: Z3 registers it in the context's managed-object list
+  ## AND retains an internal (non-refcounted) alias to it, then frees it
+  ## itself at `Z3_del_context`. Such a vector must **not** be released
+  ## by us — dec_ref'ing it to zero frees the block while Z3's alias and
+  ## `~context()` still point at it → use-after-free (valgrind
+  ## Invalid-read; reproduced on Z3 4.13.4 AND 4.15.0).
+  ##
+  ## So, unlike `wrapAstVector`, this issues **no** `inc_ref` (we borrow
+  ## the context's ref) and marks the handle `borrowed` so its `=destroy`
+  ## issues **no** `dec_ref`. It still holds — and releases — the `ctx`
+  ## ARC ref, so the owning context (and hence this vector) stays alive
+  ## for at least as long as the handle. The one net leaked Z3-side ref
+  ## is reclaimed deterministically when `Z3_del_context` runs.
+  ##
+  ## Sole current use: `model.sortUniverse`
+  ## (`Z3_model_get_sort_universe`). See ADR-FC-0012 / slice D3.
+  if raw.isNil:
+    var e = newException(Z3InvalidUsageError, "Z3 returned a nil ast-vector handle.")
+    e.code = Z3_INVALID_USAGE
+    raise e
+  Z3AstVector(raw: raw, ctx: ctx, borrowed: true)
 
 proc newAstVector*(ctx: Z3Context): Z3AstVector =
   ## Fresh empty vector bound to `ctx`.

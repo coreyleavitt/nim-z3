@@ -351,18 +351,18 @@ proc sort*(m: Z3Model, i: int): Z3Sort[stUninterpreted] =
 proc sortUniverse*(m: Z3Model, s: Z3Sort[stUninterpreted]): Z3AstVector =
   ## Finite set of AST nodes assigned to uninterpreted sort `s` in this model.
   ##
-  ## Refcount accounting: `Z3_model_get_sort_universe` returns a vector
-  ## whose refcount is already +1 (caller is responsible for releasing it,
-  ## per Z3 API contract — the header comment on this function reads
-  ## "The vector v is reference counted. It must be released using
-  ## Z3_ast_vector_dec_ref"). `wrapAstVector` issues another inc_ref to
-  ## initialise the `Z3AstVector` finalizer. We immediately cancel the
-  ## Z3-given +1 so the net refcount delta is exactly +1 owned by the
-  ## returned `Z3AstVector`.
+  ## Ownership: despite the Z3 header claiming the caller must release
+  ## this vector, `Z3_model_get_sort_universe` returns a vector Z3 keeps
+  ## for itself — it registers the vector in the context's managed-object
+  ## list and retains an internal alias, then frees it at
+  ## `Z3_del_context`. Releasing it ourselves (dec_ref to zero) frees the
+  ## block out from under Z3's alias and its `~context()`, a
+  ## use-after-free reproduced on both Z3 4.13.4 and 4.15.0. We therefore
+  ## return it as a **borrowed** vector: no inc_ref, and a `=destroy` that
+  ## skips the dec_ref (Z3 frees it via `Z3_del_context`). See
+  ## `wrapAstVectorBorrowed` and ADR-FC-0012 / slice D3.
   let raw = m.ctx.checkErr Z3_model_get_sort_universe(m.ctx.raw, m.raw, s.raw)
-  let v = wrapAstVector(m.ctx, raw)
-  Z3_ast_vector_dec_ref(m.ctx.raw, raw)
-  v
+  wrapAstVectorBorrowed(m.ctx, raw)
 
 proc hasInterp*[ArgsTup: tuple, Ret](m: Z3Model,
     d: Z3FuncDecl[ArgsTup, Ret]): bool =

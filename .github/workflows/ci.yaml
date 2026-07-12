@@ -105,10 +105,15 @@ jobs:
           - "-d:z3WithoutFP"
           - "-d:z3WithoutSeq"
           - "-d:z3WithoutTactics"
+          - "-d:z3WithoutPropagator"
+          - "-d:z3WithoutSpacer"
+          - "-d:z3WithoutFixedpointCallbacks"
           - >-
             -d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutStrings
             -d:z3WithoutRegex -d:z3WithoutFuncDecl -d:z3WithoutDatatypes
             -d:z3WithoutOptimize -d:z3WithoutTactics
+            -d:z3WithoutPropagator -d:z3WithoutSpacer
+            -d:z3WithoutFixedpointCallbacks
     steps:
       - uses: actions/checkout@v6
 
@@ -136,6 +141,55 @@ jobs:
           nim cpp -r --threads:on --hints:off ${{ matrix.flags }} tests/tminimal.nim
 
   # ============================================================================
+  # Gated fixedpoint-callback test files — proves each of the four test
+  # files carrying the `when defined(z3WithoutFixedpointCallbacks): suite
+  # ... skip()` guard (not just tminimal's scope-hiding checks) compiles
+  # and skips cleanly under -d:z3WithoutFixedpointCallbacks. A
+  # `-d:z3WithoutFixedpointCallbacks` row in the gate-flags matrix above
+  # only proves tminimal's compiles() checks pass — it says nothing about
+  # the gated test files themselves, since gate-flags only ever runs
+  # tminimal.nim. This job closes that gap for all four of the RFC's
+  # canonical integration-test files
+  # (docs/RFC-fixedpoint-callbacks.md, slice C2).
+  # ============================================================================
+  gate-fixedpoint-callbacks-skip-suite:
+    runs-on: ubuntu-latest
+    container: nimlang/nim:2.2.0
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - tests/tfixedpoint_ctxbox.nim
+          - tests/tfixedpoint_handlers.nim
+          - tests/tfixedpoint_newlemma.nim
+          - tests/tfixedpoint_typed_callbacks.nim
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: trust workdir for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: install build prerequisites + libz3
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libz3-dev python3 python3-pip pipx git build-essential
+
+      - name: install milpa
+        run: |
+          pipx install --include-deps \
+            git+https://github.com/coreyleavitt/milpa.git
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: milpa fetch
+        run: milpa fetch
+
+      - name: compile + run ${{ matrix.file }} under -d:z3WithoutFixedpointCallbacks
+        run: |
+          nim c -r --threads:on --hints:off -d:z3WithoutFixedpointCallbacks ${{ matrix.file }}
+          nim cpp -r --threads:on --hints:off -d:z3WithoutFixedpointCallbacks ${{ matrix.file }}
+
+  # ============================================================================
   # AddressSanitizer — lifecycle bug catcher (use-after-free in
   # =destroy, double dec_ref, etc.).
   # ============================================================================
@@ -149,6 +203,12 @@ jobs:
   # operator suites, solver/model/bitvec). The property suite is
   # excluded — it dwarfs ASAN's tolerance, and any lifecycle bug it
   # would surface should also surface in the smaller suites.
+  #
+  # Also includes the box/context-registry/ctx-release/stable-box-UAF
+  # lifecycle regressions (ADR-FC-0002/0011/0012/0013, C1a): these are
+  # exactly the tests the fixedpoint-callbacks + context-registry RFCs
+  # designate as their UAF/double-free proofs, so ASAN needs to see them
+  # to give those ADRs real CI coverage.
   asan:
     runs-on: ubuntu-latest
     container: nimlang/nim:2.2.0
@@ -184,9 +244,60 @@ jobs:
           set -e
           for t in tests/tcontext.nim tests/tast.nim tests/tboolean.nim \
                    tests/tarith.nim tests/tsolver.nim tests/tmodel.nim \
-                   tests/tbitvec.nim tests/tversion.nim; do
+                   tests/tbitvec.nim tests/tversion.nim \
+                   tests/tfixedpoint_ctxbox.nim tests/tcontext_registry.nim \
+                   tests/td3_ctx_release.nim tests/tfixedpoint_typed_callbacks.nim; do
             echo "=== ASAN: $t ==="
             nim c -r --threads:on --hints:off -d:useMalloc \
               --passC:-fsanitize=address --passL:-fsanitize=address \
               --debugger:native "$t"
           done
+
+  # ============================================================================
+  # Counting-hook proofs — mechanism-pinned destructor-firing-count regressions
+  # (RFC probe FACT B): ADR-FC-0002 (FixedpointCtxBox) and ADR-FC-0012/0013
+  # (Z3ContextOwn / context-table, ctx-ref leak).
+  # ============================================================================
+  #
+  # These assert a `=destroy` hook fires an EXACT count (N or 2N), not just
+  # "no leak reported" — the designated mechanism proof the RFC calls for,
+  # sitting behind `-d:z3FpBoxDestroyCount` / `-d:z3CtxDestroyCount` so the
+  # counting instrumentation stays out of normal builds. Version-independent
+  # and classification-immune (unlike valgrind, needs no suppression list),
+  # so no new infra beyond what `asan` already sets up — OS-default libz3,
+  # same container/milpa bootstrap. Runs on both Nim backends since the
+  # `=destroy` hooks are backend-agnostic but the RFC's C1a stable-box UAF
+  # history showed backend-specific lifetime bugs are possible.
+  counting-hooks:
+    runs-on: ubuntu-latest
+    container: nimlang/nim:2.2.0
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: trust workdir for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: install build prerequisites + libz3
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            libz3-dev z3 python3 python3-pip pipx git build-essential
+
+      - name: install milpa
+        run: |
+          pipx install --include-deps \
+            git+https://github.com/coreyleavitt/milpa.git
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: milpa fetch
+        run: milpa fetch
+
+      - name: FixedpointCtxBox destroy-count proof (ADR-FC-0002, probe FACT B)
+        run: |
+          nim c   -r --threads:on --hints:off -d:useMalloc -d:z3FpBoxDestroyCount tests/tfixedpoint_ctxbox.nim
+          nim cpp -r --threads:on --hints:off -d:useMalloc -d:z3FpBoxDestroyCount tests/tfixedpoint_ctxbox.nim
+
+      - name: Z3ContextOwn destroy-count proof (ADR-FC-0012/0013, probe FACT B)
+        run: |
+          nim c   -r --threads:on --hints:off -d:useMalloc -d:z3CtxDestroyCount tests/td3_ctx_release.nim
+          nim cpp -r --threads:on --hints:off -d:useMalloc -d:z3CtxDestroyCount tests/td3_ctx_release.nim

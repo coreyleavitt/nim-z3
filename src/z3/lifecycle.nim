@@ -112,6 +112,17 @@ template termDestroy*(v: untyped, decRefSym: untyped) =
       decRefSym(v.ctx.raw, v.raw)
   except CatchableError:
     discard
+  # v.ctx must stay alive through the dec_ref above (it needs
+  # v.ctx.raw); only release it after. Slice D3 (ADR-FC-0012): same
+  # ADR-FC-0011 omission as `emitRefcountLifecycle` above, but for
+  # every value-typed family (Z3Ast, Z3BitVec, Z3Fp, Z3Array, Z3Seq,
+  # Z3Set, Z3Regex, Z3UninterpretedVal, Z3RcfNum, ...) that shares this
+  # body. Without this, every value teardown leaks its `ctx` ref.
+  try:
+    if v.ctx != nil:
+      `=destroy`(v.ctx)
+  except Exception:
+    discard
 
 template termCopy*(dst: untyped, src: untyped,
                    decRefSym: untyped, incRefSym: untyped) =
@@ -160,11 +171,47 @@ template emitRefcountLifecycle*(OwnT: typedesc, decRefSym: untyped) =
   ## Emit `=destroy` for a ref-typed handle's owned-object type (e.g.
   ## `Z3SolverOwn`). Ref types only need `=destroy`; Nim's ref machinery
   ## handles `=copy` / `=dup`.
+  ##
+  ## **WARNING (ADR-FC-0011):** a custom `=destroy` — whether emitted
+  ## here or hand-written, as `Z3ContextOwn` and `Z3ConstructorDeclOwn`
+  ## are — *replaces* Nim's field-wise destruction under `--mm:orc`
+  ## entirely; it does not run alongside it. If `OwnT` grows a
+  ## GC-managed field (`Table`, `seq`, `string`, another `ref`, …)
+  ## after adopting a custom `=destroy`, that field silently stops
+  ## being released unless the hook explicitly destroys it too. See
+  ## `src/z3/context.nim`'s `=destroy` for the fix pattern
+  ## (`` `=destroy`(c.someTableField) `` called unconditionally,
+  ## before any early return). The systemic template-level fix
+  ## (teaching `emitRefcountLifecycle` to hand-release arbitrary
+  ## extra fields automatically) is a separate, later slice — this is
+  ## a discipline reminder, not a guarantee this template enforces.
   proc `=destroy`(v: OwnT) {.raises: [].} =
+    # Borrowed handles (opt-in via a `borrowed: bool` field on `OwnT`)
+    # are owned by Z3 itself — the originating context frees them at
+    # `Z3_del_context`, so we must NOT dec_ref the raw handle or we race
+    # Z3's own teardown into a use-after-free. This is the ref-handle
+    # analogue of `Z3ContextOwn.borrowed`; see `wrapAstVectorBorrowed`
+    # in `z3/astvector` and the upstream Z3 `Z3_model_get_sort_universe`
+    # lifetime-coupling bug that mandates it (ADR-FC-0012, slice D3).
     try:
-      if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
+      when compiles(v.borrowed):
+        let skipRaw = v.borrowed
+      else:
+        const skipRaw = false
+      if not skipRaw and not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
         decRefSym(v.ctx.raw, v.raw)
     except CatchableError:
+      discard
+    # D3 (ADR-FC-0012): release the `ctx: Z3Context` ARC ref AFTER the
+    # raw dec_ref above (which needs `v.ctx.raw` live) — the ref-handle
+    # analogue of the value-type release in `termDestroy`. Without it,
+    # every ref-handle teardown leaks one strong ref to the owning
+    # context (and its config + registry tables). The raw dec_ref keeps
+    # the context alive until this point; only then may we drop it.
+    try:
+      if v.ctx != nil:
+        `=destroy`(v.ctx)
+    except Exception:
       discard
 
 # ============================================================================

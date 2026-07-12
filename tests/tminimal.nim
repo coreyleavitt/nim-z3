@@ -97,3 +97,9 @@ suite "minimal build — scope-hiding invariants":
       check not compiles(mkTactic("simplify"))
     else:
       check compiles(mkTactic("simplify"))
+
+  test "typed fixedpoint callbacks are not in scope when z3WithoutFixedpointCallbacks":
+    when defined(z3WithoutFixedpointCallbacks):
+      check not compiles((var h: Z3FixedpointHandlers))
+    else:
+      check compiles((var h: Z3FixedpointHandlers))

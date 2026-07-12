@@ -58,16 +58,16 @@ when not defined(z3WithoutPropagator):
       ## Record of Nim closures implementing a user theory propagator.
       ##
       ## Required by Z3 (must be non-nil before `check()`):
-      push*:  proc(cb: Z3SolverCallback) {.closure.}
-      pop*:   proc(cb: Z3SolverCallback, numScopes: uint) {.closure.}
-      fresh*: proc(newCtx: Z3Context): Z3PropagatorHandlers {.closure.}
+      push*:  proc(cb: Z3SolverCallback) {.closure, raises: [].}
+      pop*:   proc(cb: Z3SolverCallback, numScopes: uint) {.closure, raises: [].}
+      fresh*: proc(newCtx: Z3Context): Z3PropagatorHandlers {.closure, raises: [].}
       ## Optional theory callbacks:
-      fixed*:   proc(cb: Z3SolverCallback, e, val: Z3AnyAst) {.closure.}
-      final*:   proc(cb: Z3SolverCallback) {.closure.}
-      eq*:      proc(cb: Z3SolverCallback, a, b: Z3AnyAst) {.closure.}
-      diseq*:   proc(cb: Z3SolverCallback, a, b: Z3AnyAst) {.closure.}
-      created*: proc(cb: Z3SolverCallback, e: Z3AnyAst) {.closure.}
-      decide*:  proc(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) {.closure.}
+      fixed*:   proc(cb: Z3SolverCallback, e, val: Z3AnyAst) {.closure, raises: [].}
+      final*:   proc(cb: Z3SolverCallback) {.closure, raises: [].}
+      eq*:      proc(cb: Z3SolverCallback, a, b: Z3AnyAst) {.closure, raises: [].}
+      diseq*:   proc(cb: Z3SolverCallback, a, b: Z3AnyAst) {.closure, raises: [].}
+      created*: proc(cb: Z3SolverCallback, e: Z3AnyAst) {.closure, raises: [].}
+      decide*:  proc(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) {.closure, raises: [].}
       ## gcsafe deliberately omitted; Z3 fires callbacks on the check() thread,
       ## no cross-thread concurrency.
 
@@ -105,8 +105,12 @@ when not defined(z3WithoutPropagator):
     if box.handlers.push != nil:
       let prev = currentBox
       currentBox = box
-      box.handlers.push(cb)
-      currentBox = prev
+      try:
+        box.handlers.push(cb)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorPopShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
                          numScopes: cuint) {.cdecl.} =
@@ -114,8 +118,12 @@ when not defined(z3WithoutPropagator):
     if box.handlers.pop != nil:
       let prev = currentBox
       currentBox = box
-      box.handlers.pop(cb, uint(numScopes))
-      currentBox = prev
+      try:
+        box.handlers.pop(cb, uint(numScopes))
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorFreshShim(ctx: pointer,
                            newContext: RawZ3Context): pointer {.cdecl.} =
@@ -127,9 +135,16 @@ when not defined(z3WithoutPropagator):
     # lifetime; we must not call Z3_del_context on it.
     let newCtx = wrapContextBorrowed(newContext)
     # Invoke the fresh handler to get new handlers for the sub-solver.
+    # Safe fallback (ADR-FC-0010): if `fresh` raises, proceed with an EMPTY
+    # `newHandlers` — still allocate and register the sub-box and return its
+    # pointer, so a raising `fresh` yields a valid empty sub-solver rather
+    # than letting the exception unwind into Z3's C++ stack.
     var newHandlers: Z3PropagatorHandlers
     if box.handlers.fresh != nil:
-      newHandlers = box.handlers.fresh(newCtx)
+      try:
+        newHandlers = box.handlers.fresh(newCtx)
+      except CatchableError:
+        newHandlers = Z3PropagatorHandlers()
     let subBox = PropagatorCtxBox(handlers: newHandlers, ctx: newCtx,
                                   solver: nil)
     # Root via parent's subBoxes seq (ORC reachability path per ADR-N0004 v3).
@@ -146,18 +161,26 @@ when not defined(z3WithoutPropagator):
     if box.handlers.fixed != nil:
       let prev = currentBox
       currentBox = box
-      let eAst = wrap[Z3AnyAst](box.ctx, t)
-      let vAst = wrap[Z3AnyAst](box.ctx, value)
-      box.handlers.fixed(cb, eAst, vAst)
-      currentBox = prev
+      try:
+        let eAst = wrap[Z3AnyAst](box.ctx, t)
+        let vAst = wrap[Z3AnyAst](box.ctx, value)
+        box.handlers.fixed(cb, eAst, vAst)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorFinalShim(ctx: pointer, cb: RawZ3PropagatorCtxBox) {.cdecl.} =
     let box = cast[PropagatorCtxBox](ctx)
     if box.handlers.final != nil:
       let prev = currentBox
       currentBox = box
-      box.handlers.final(cb)
-      currentBox = prev
+      try:
+        box.handlers.final(cb)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorEqShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
                         s: RawZ3Ast, t: RawZ3Ast) {.cdecl.} =
@@ -165,10 +188,14 @@ when not defined(z3WithoutPropagator):
     if box.handlers.eq != nil:
       let prev = currentBox
       currentBox = box
-      let aAst = wrap[Z3AnyAst](box.ctx, s)
-      let bAst = wrap[Z3AnyAst](box.ctx, t)
-      box.handlers.eq(cb, aAst, bAst)
-      currentBox = prev
+      try:
+        let aAst = wrap[Z3AnyAst](box.ctx, s)
+        let bAst = wrap[Z3AnyAst](box.ctx, t)
+        box.handlers.eq(cb, aAst, bAst)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorDiseqShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
                            s: RawZ3Ast, t: RawZ3Ast) {.cdecl.} =
@@ -176,10 +203,14 @@ when not defined(z3WithoutPropagator):
     if box.handlers.diseq != nil:
       let prev = currentBox
       currentBox = box
-      let aAst = wrap[Z3AnyAst](box.ctx, s)
-      let bAst = wrap[Z3AnyAst](box.ctx, t)
-      box.handlers.diseq(cb, aAst, bAst)
-      currentBox = prev
+      try:
+        let aAst = wrap[Z3AnyAst](box.ctx, s)
+        let bAst = wrap[Z3AnyAst](box.ctx, t)
+        box.handlers.diseq(cb, aAst, bAst)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorCreatedShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
                              t: RawZ3Ast) {.cdecl.} =
@@ -187,9 +218,13 @@ when not defined(z3WithoutPropagator):
     if box.handlers.created != nil:
       let prev = currentBox
       currentBox = box
-      let eAst = wrap[Z3AnyAst](box.ctx, t)
-      box.handlers.created(cb, eAst)
-      currentBox = prev
+      try:
+        let eAst = wrap[Z3AnyAst](box.ctx, t)
+        box.handlers.created(cb, eAst)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   proc propagatorDecideShim(ctx: pointer, cb: RawZ3PropagatorCtxBox,
                             t: RawZ3Ast, idx: cuint, phase: bool) {.cdecl.} =
@@ -197,10 +232,14 @@ when not defined(z3WithoutPropagator):
     if box.handlers.decide != nil:
       let prev = currentBox
       currentBox = box
-      let eAst = wrap[Z3AnyAst](box.ctx, t)
-      let p = if phase: 1 else: -1
-      box.handlers.decide(cb, eAst, uint(idx), p)
-      currentBox = prev
+      try:
+        let eAst = wrap[Z3AnyAst](box.ctx, t)
+        let p = if phase: 1 else: -1
+        box.handlers.decide(cb, eAst, uint(idx), p)
+      except CatchableError:
+        discard
+      finally:
+        currentBox = prev
 
   # ---------------------------------------------------------------------------
   # newPropagator
@@ -256,17 +295,27 @@ when not defined(z3WithoutPropagator):
     ## relevant handler whenever it assigns or equates `e`.
     Z3_solver_propagate_register(p.ctx.raw, p.solver.raw, e.raw)
 
-  proc registerCb*[T: Z3Term](cb: Z3SolverCallback, ctx: Z3Context, e: T) =
+  proc registerCb*[T: Z3Term](cb: Z3SolverCallback, ctx: Z3Context, e: T) {.raises: [].} =
     ## Like `register` but callable from within a callback (uses the callback
     ## context rather than the solver handle).
-    Z3_solver_propagate_register_cb(ctx.raw, cb, e.raw)
+    ##
+    ## `raises: []`: the softlink-generated FFI proc declares
+    ## `raises: [SoftlinkError]` (symbol-resolution failure), but by the time
+    ## a callback is executing, the propagator's Z3 symbols are already
+    ## resolved (registration succeeded to get here). Swallow defensively so
+    ## this composes with `Z3PropagatorHandlers` fields (`raises: []`)
+    ## without forcing every caller to handle a practically-unreachable error.
+    try:
+      Z3_solver_propagate_register_cb(ctx.raw, cb, e.raw)
+    except CatchableError:
+      discard
 
   # ---------------------------------------------------------------------------
   # consequence — assert a theory consequence inside a callback
   # ---------------------------------------------------------------------------
 
   proc consequence*(cb: Z3SolverCallback, lits: seq[Z3AnyAst],
-                    eqs: seq[(Z3AnyAst, Z3AnyAst)], conseq: Z3AnyAst) =
+                    eqs: seq[(Z3AnyAst, Z3AnyAst)], conseq: Z3AnyAst) {.raises: [].} =
     ## Assert that `conseq` follows from the premises `lits` (fixed literals)
     ## and `eqs` (pairs of equal ASTs). Valid only inside a callback; the
     ## context is recovered from the thread-local `currentBox`.
@@ -275,6 +324,11 @@ when not defined(z3WithoutPropagator):
     ## pairing invariant at compile time (no runtime doAssert needed).
     ## `Z3_solver_propagate_consequence` takes separate lhs/rhs arrays;
     ## they are split internally just before the FFI call.
+    ##
+    ## `raises: []`: see `registerCb` — the FFI call's `SoftlinkError` is
+    ## swallowed defensively so this composes with `raises: []` handler
+    ## fields. The `doAssert` below signals a Defect (not tracked by
+    ## `raises`), not a recoverable error.
     doAssert currentBox != nil,
       "consequence: called outside a propagator callback (currentBox is nil)"
     let ctx = currentBox.ctx
@@ -301,17 +355,20 @@ when not defined(z3WithoutPropagator):
       if numEqs > 0: cast[ptr UncheckedArray[RawZ3Ast]](addr eqRhs[0])
       else: nil
 
-    discard Z3_solver_propagate_consequence(
-      ctx.raw, cb,
-      cuint(fixedRaws.len), fixedPtr,
-      cuint(numEqs), lhsPtr, rhsPtr,
-      conseq.raw)
+    try:
+      discard Z3_solver_propagate_consequence(
+        ctx.raw, cb,
+        cuint(fixedRaws.len), fixedPtr,
+        cuint(numEqs), lhsPtr, rhsPtr,
+        conseq.raw)
+    except CatchableError:
+      discard
 
   # ---------------------------------------------------------------------------
   # nextSplit — override Z3's next decision from within a decide callback
   # ---------------------------------------------------------------------------
 
-  proc nextSplit*(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) =
+  proc nextSplit*(cb: Z3SolverCallback, t: Z3AnyAst, idx: uint, phase: int) {.raises: [].} =
     ## Override the next decision variable and phase. Call from within a
     ## `decide` handler. `phase` should be -1 (false), 0 (undef), or 1 (true),
     ## matching `Z3LBool`.
@@ -319,18 +376,25 @@ when not defined(z3WithoutPropagator):
     ## Returns false internally if `t` is already assigned; the return value
     ## is not surfaced here since there is no meaningful action the caller can
     ## take in that case.
+    ##
+    ## `raises: []`: see `registerCb` — the FFI call's `SoftlinkError` is
+    ## swallowed defensively so this composes with `raises: []` handler
+    ## fields.
     doAssert currentBox != nil,
       "nextSplit: called outside a propagator callback (currentBox is nil)"
     let ctx   = currentBox.ctx
     let lbool = Z3LBool(phase)
-    discard Z3_solver_next_split(ctx.raw, cb, t.raw, cuint(idx), lbool)
+    try:
+      discard Z3_solver_next_split(ctx.raw, cb, t.raw, cuint(idx), lbool)
+    except CatchableError:
+      discard
 
   # ---------------------------------------------------------------------------
   # propagateConflict — assert a contradiction inside a callback
   # ---------------------------------------------------------------------------
 
   proc propagateConflict*(cb: Z3SolverCallback, lits: seq[Z3AnyAst],
-                          eqs: seq[(Z3AnyAst, Z3AnyAst)] = @[]) =
+                          eqs: seq[(Z3AnyAst, Z3AnyAst)] = @[]) {.raises: [].} =
     ## Assert a contradiction (UNSAT) by propagating `false` as the consequence
     ## of the given premises. Equivalent to calling `consequence` with
     ## `conseq = mkFalse(ctx)`.
@@ -341,11 +405,18 @@ when not defined(z3WithoutPropagator):
     ##
     ## Valid only inside a callback; the context is recovered from the
     ## thread-local `currentBox`.
+    ##
+    ## `raises: []`: see `registerCb` — `mkFalse` and `consequence` bottom out
+    ## in FFI calls that can raise `SoftlinkError`/`Z3Error`; swallowed
+    ## defensively so this composes with `raises: []` handler fields.
     doAssert currentBox != nil,
       "propagateConflict: called outside a propagator callback (currentBox is nil)"
     let ctx = currentBox.ctx
-    let falseLit = mkFalse(ctx)
-    consequence(cb, lits, eqs, toAnyAst(falseLit))
+    try:
+      let falseLit = mkFalse(ctx)
+      consequence(cb, lits, eqs, toAnyAst(falseLit))
+    except CatchableError:
+      discard
 
   # ---------------------------------------------------------------------------
   # clearSubBoxes — release accumulated sub-solver boxes

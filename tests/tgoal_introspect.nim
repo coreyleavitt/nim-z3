@@ -1,7 +1,7 @@
 ## N8.8 — Goal introspection tests.
 ##
 ## Exercises: size, formula, numExprs, depth, precision, isDecidedSat,
-## isDecidedUnsat, inconsistent, assertConstraint, reset, translate,
+## isDecidedUnsat, inconsistent, add, reset, translate,
 ## toDimacs, toString ($), convertModel.
 
 import std/[unittest, strutils]
@@ -102,27 +102,16 @@ suite "goal introspect — isDecidedSat / isDecidedUnsat":
     check r.numSubgoals == 1
     check r.subgoal(0).isDecidedUnsat
 
-suite "goal introspect — assertConstraint":
-  test "assertConstraint grows size":
+suite "goal introspect — add":
+  test "add grows size":
     let ctx = newContext()
     let x = mkIntVar("x")
     let g = newGoal()
     check g.size == 0
-    g.assertConstraint(x > mkInt(0))
+    g.add(x > mkInt(0))
     check g.size == 1
-    g.assertConstraint(x < mkInt(100))
+    g.add(x < mkInt(100))
     check g.size == 2
-
-  test "assertConstraint and add are equivalent":
-    let ctx = newContext()
-    let x = mkIntVar("x")
-    let g1 = newGoal()
-    let g2 = newGoal()
-    let c = x > mkInt(5)
-    g1.add c
-    g2.assertConstraint c
-    check g1.size == g2.size
-    check smtEquiv(g1.formula(0), g2.formula(0))
 
 suite "goal introspect — reset":
   test "reset empties the goal":

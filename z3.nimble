@@ -1,5 +1,5 @@
 # Package
-version       = "2.0.0"
+version       = "2.2.0"
 author        = "Corey Leavitt"
 description   = "Type-safe, memory-safe Nim wrapper for the Z3 SMT solver"
 license       = "Apache-2.0"
@@ -28,7 +28,7 @@ task test, "Run the test suite":
   #   needs flag definitions at compile time. Run it via the dedicated
   #   `nimble testMinimal` task.
   # * N11.1 (torphan_audit) wired in all tests that were committed during
-  #   N8–N10 slices but never added here. 128 tests total (tminimal excluded).
+  #   N8–N10 slices but never added here. 129 tests total (tminimal excluded).
   for tf in [
       # Core / always-on
       "tests/tffi.nim", "tests/tffi_opaque.nim",
@@ -101,13 +101,14 @@ task test, "Run the test suite":
       "tests/tsequence.nim",
       "tests/tseq_eval.nim", "tests/tseq_hof.nim",
       "tests/tseq_int_lifts.nim", "tests/tseq_replace.nim",
-      "tests/tregex.nim", "tests/tregex_rename.nim",
+      "tests/tregex.nim", "tests/tregex_rename.nim", "tests/tregex_index.nim",
       # Chars / arrays / sets / order / algebraic / RCF / spacer
       "tests/tchar.nim", "tests/tchar_ordering.nim",
       "tests/tcharbv.nim",
       "tests/tsets.nim",
       "tests/torder.nim",
       "tests/talgebraic.nim", "tests/talgebraic_introspect.nim",
+      "tests/talgebraic_bounds.nim",
       "tests/trcf.nim",
       "tests/tspacer.nim",
       # Functions / lambdas / uninterpreted
@@ -130,6 +131,7 @@ task test, "Run the test suite":
       "tests/tsemantics.nim",
       "tests/tparamdescrs.nim",
       "tests/tparity.nim",
+      "tests/tmultiversion.nim",
       "tests/tstats_consequences.nim",
       "tests/tunsat_core.nim",
       # Audit / meta-tests (N11.1 — these must stay wired in)

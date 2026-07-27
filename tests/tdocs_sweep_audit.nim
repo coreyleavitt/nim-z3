@@ -4,7 +4,7 @@
 ## slice are present and contain the expected content:
 ##
 ##   1. docs/THREADING.md exists with content > 500 chars.
-##   2. z3.nimble version is "2.0.0".
+##   2. z3.nimble version is "2.2.0".
 ##   3. README.md mentions "2.0.0" and "MIGRATION".
 ##   4. CHANGELOG.md has a "2.0.0" section.
 
@@ -31,14 +31,14 @@ suite "N11.7 — docs/THREADING.md exists and is non-trivial":
     check content.len > 500
 
 # ---------------------------------------------------------------------------
-# Suite 2 — z3.nimble version is 2.0.0
+# Suite 2 — z3.nimble version is 2.2.0
 # ---------------------------------------------------------------------------
 
-suite "N11.7 — z3.nimble version is 2.0.0":
+suite "N11.7 — z3.nimble version is 2.2.0":
 
-  test "z3.nimble contains version = \"2.0.0\"":
+  test "z3.nimble contains version = \"2.2.0\"":
     let content = readFile(nimblePath)
-    check "\"2.0.0\"" in content
+    check "\"2.2.0\"" in content
 
 # ---------------------------------------------------------------------------
 # Suite 3 — README.md mentions 2.0.0 and MIGRATION

@@ -151,7 +151,7 @@ when not defined(z3WithoutFixedpointCallbacks):
         ## Spacer engine only. Fired on each newly discovered lemma at
         ## induction `level`. `level` is `uint` (Z3 gives `cuint`; a
         ## signed `int` would truncate to negative above
-        ## `int32.high` on 32-bit) — matches `propagator.nim`'s `uint`
+        ## `int32.high` on 32-bit) — matches `z3/propagator.nim`'s `uint`
         ## for cuint-sourced counters.
       predecessor*: proc() {.closure, raises: [].}
         ## Spacer engine only. Fired on predecessor-frame exploration.
@@ -255,7 +255,7 @@ when not defined(z3WithoutFixedpointCallbacks):
     ## unwinding out of this `{.cdecl.}` frame into Z3's C++ call stack
     ## is undefined behavior. `box.handlers.newLemma` is declared
     ## `{.raises: [].}` (compile-time defense); the `try/except` here is
-    ## the runtime wall — both ship, mirroring `propagator.nim`'s shims.
+    ## the runtime wall — both ship, mirroring `z3/propagator.nim`'s shims.
     let box = cast[FixedpointCtxBox](state)
     if box != nil and box.handlers.newLemma != nil:
       try:
@@ -515,7 +515,7 @@ when not defined(z3WithoutFixedpointCallbacks):
     ## (The implementation also has a second, broader
     ## `except CatchableError` below the `Z3OperationError` one —
     ## project-wide defensive convention, same as `registerCb` in
-    ## `propagator.nim`: the softlink-generated FFI proc's declared
+    ## `z3/propagator.nim`: the softlink-generated FFI proc's declared
     ## type includes `SoftlinkError`, unrelated to engine support.)
     ##
     ## ## Idempotency / retry

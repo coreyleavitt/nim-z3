@@ -1,0 +1,4774 @@
+{
+  "schema": 1,
+  "lib": "z3",
+  "harvest": {
+    "toolchain": "gcc (SUSE Linux) 15.2.1 20260604",
+    "tier": "builtin-compat",
+    "abi": "linux-lp64",
+    "date": "2026-07-25",
+    "harvesterVersion": "0.11.0"
+  },
+  "corpus": [
+    {
+      "version": "4.13.3",
+      "source": "git:Z3Prover/z3@z3-4.13.3"
+    },
+    {
+      "version": "4.13.4",
+      "source": "git:Z3Prover/z3@z3-4.13.4"
+    },
+    {
+      "version": "4.14.1",
+      "source": "git:Z3Prover/z3@z3-4.14.1"
+    },
+    {
+      "version": "4.15.0",
+      "source": "git:Z3Prover/z3@z3-4.15.0"
+    },
+    {
+      "version": "4.16.0",
+      "source": "git:Z3Prover/z3@z3-4.16.0"
+    }
+  ],
+  "symbols": {
+    "Z3_get_full_version": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_version": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_finalize_memory": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_config": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_del_config": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_set_param_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_context_rc": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_del_context": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_enable_concurrent_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_real_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bool_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_sort_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_uninterpreted_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_string_symbol": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int_symbol": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fresh_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_real": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_numeral": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_true": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_false": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_and": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_or": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_not": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_implies": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_xor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_iff": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ite": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_atmost": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_atleast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_pble": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_pbge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_pbeq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_add": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_sub": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_mul": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_unary_minus": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_div": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_mod": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_rem": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_abs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_power": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_divides": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int2real": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_real2int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_is_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_real_int64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_gt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_distinct": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_constructor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_del_constructor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_datatype": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_constructor_list": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_del_constructor_list": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_datatypes": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_query_constructor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_enumeration_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_tuple_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_datatype_sort_num_constructors": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_datatype_sort_constructor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_datatype_sort_recognizer": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_datatype_sort_constructor_accessor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_datatype_update_field": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_app": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_func_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fresh_func_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_rec_func_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_add_rec_def": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_to_app": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_set_bool": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_set_uint": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_set_double": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_set_symbol": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_params_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_goal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_assert": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_formula": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_inconsistent": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_is_decided_sat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_is_decided_unsat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_num_exprs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_depth": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_reset": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_translate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_to_dimacs_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_precision": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_tactic": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_and_then": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_or_else": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_repeat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_try_for": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_using_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_skip": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_fail": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_num_tactics": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_tactic_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_probe": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_apply": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_gt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_ge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_and": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_or": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_probe_not": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_cond": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_when": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_par_or": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_par_and_then": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_num_probes": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_probe_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_num_simplifiers": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_simplifier_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_global_param_set": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_global_param_reset_all": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_global_param_get": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_set_ast_print_mode": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_interrupt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_apply": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_apply_ex": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_apply_result_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_apply_result_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_apply_result_get_num_subgoals": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_apply_result_get_subgoal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_apply_result_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_goal_convert_model": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_optimize": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_assert": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_assert_soft": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_maximize": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_minimize": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_check": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_model": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_reason_unknown": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_upper": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_lower": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_push": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_pop": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_set_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_assert_and_track": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_unsat_core": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_from_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_from_file": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_help": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_statistics": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_assertions": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_objectives": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_set_initial_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_lower_as_vector": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_get_upper_as_vector": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_optimize_register_model_eh": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fixedpoint": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_register_relation": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_rule": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_fact": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_assert": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_update_rule": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_constraint": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_cover": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_query": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_query_relations": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_answer": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_reason_unknown": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_num_levels": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_cover_delta": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_rules": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_assertions": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_help": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_set_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_from_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_from_file": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_init": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_set_reduce_assign_callback": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_set_reduce_app_callback": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_callback": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_query_from_lvl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_add_invariant": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_reachable": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_ground_sat_answer": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_rules_along_trace": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_extrapolate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_qe_lite": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_qe_model_project": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_pattern": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_pattern_to_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_forall_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_exists_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_lambda_const": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_decl_to_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_to_func_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_sort_to_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_func_interp": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_get_num_entries": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_get_entry": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_get_arity": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_get_else": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_entry_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_entry_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_entry_get_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_entry_get_num_args": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_entry_get_arg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_model": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_add_const_interp": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_add_func_interp": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_set_else": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_func_interp_add_entry": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_tactic_get_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_get_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_get_kind": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_get_documentation": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_param_descrs_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_global_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_well_sorted": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_app": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_numeral_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_ast_id": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_sort_id": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_index_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_type_variable": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_array_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_const_array": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_store": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_select": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_array_default": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_array_sort_n": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_map": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_array_ext": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_as_array": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bv_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_unsigned_int64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_numeral_uint64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_numeral_int64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_bv_sort_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bv2int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int2bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_ast_kind": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_sort_kind": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_relation_arity": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_relation_column": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_app_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_app_num_args": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_app_arg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_array_sort_domain": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_array_sort_range": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_seq_sort_basis": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_re_sort_basis": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_ebits": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_sbits": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_sort_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_substitute": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_substitute_funs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_substitute_vars": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bound": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_translate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_num_bound": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_bound_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_bound_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_body": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_num_patterns": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_pattern_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_num_no_patterns": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_no_pattern_ast": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_quantifier_forall": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_quantifier_exists": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_lambda": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_weight": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_id": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_quantifier_skolem_id": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_kind": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_proof": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_symbol_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvadd": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsub": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvmul": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvneg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvudiv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsdiv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvurem": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsrem": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsmod": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvand": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvxor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvnot": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvnand": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvnor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvxnor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvshl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvlshr": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvashr": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvredand": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvredor": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ext_rotate_left": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ext_rotate_right": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvadd_no_overflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvadd_no_underflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsub_no_overflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsub_no_underflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvmul_no_overflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvmul_no_underflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvneg_no_overflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsdiv_no_overflow": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvult": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvule": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvugt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvuge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvslt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsle": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsgt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_bvsge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_extract": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_concat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_zero_ext": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_sign_ext": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_repeat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_solver": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_simple_solver": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_solver_from_tactic": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_set_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_assert": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_assert_and_track": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_unsat_core": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_get_key": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_is_uint": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_is_double": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_get_uint_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_get_double_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_stats_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_statistics": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fixedpoint_get_statistics": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_consequences": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_check": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_check_assumptions": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_assertions": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_translate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_model": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_push": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_pop": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_reset": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_reason_unknown": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_trail": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_units": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_non_units": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_levels": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_set_initial_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_cube": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_congruence_root": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_congruence_next": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_solver_for_logic": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_get_num_scopes": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_to_dimacs_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_import_model_converter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_interrupt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_eval": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_numeral_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_numeral_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_numeral_double": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_bool_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_error_code": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_error_msg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_set_error_handler": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplify": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplify_ex": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parse_smtlib2_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parse_smtlib2_file": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_eval_smtlib2_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_benchmark_to_smtlib_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_from_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_from_file": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_parser_context": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parser_context_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parser_context_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parser_context_add_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parser_context_add_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_parser_context_from_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ast_vector": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_set": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_resize": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_push": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_get": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_vector_translate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_ast_hash": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_has_interp": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_num_consts": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_const_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_num_funcs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_func_decl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_num_sorts": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_get_sort_universe": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_model_translate": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_name": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_num_parameters": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_parameter_kind": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_int_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_double_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_symbol_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_sort_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_ast_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_func_decl_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_decl_rational_parameter": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_domain_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_domain": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_range": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_func_decl_id": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_to_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_is_digit": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_to_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_char_from_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_string_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_lstring": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_lstring": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_is_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_string_length": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_get_string_contents": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_empty": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_unit": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_nth": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_length": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_concat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_at": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_extract": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_contains": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_prefix": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_suffix": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_index": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_replace": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_last_index": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_map": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_mapi": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_foldl": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_foldli": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_str_to_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_int_to_str": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_string_to_code": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_string_from_code": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_ubv_to_str": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_sbv_to_str": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_str_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_str_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sort_half": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sort_single": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sort_double": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sort_quadruple": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_rounding_mode_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_nearest_ties_to_even": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_nearest_ties_to_away": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_toward_positive": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_toward_negative": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_toward_zero": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_nan": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_inf": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_zero": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_fp": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_numeral_float": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_numeral_double": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_numeral_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_abs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_neg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_rem": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_min": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_max": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_add": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sub": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_mul": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_div": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_fma": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_sqrt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_round_to_integral": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_leq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_geq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_gt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_normal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_subnormal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_zero": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_infinite": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_nan": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_negative": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_is_positive": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_nan": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_inf": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_zero": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_normal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_subnormal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_positive": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_is_numeral_negative": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_fp_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_fp_float": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_fp_real": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_fp_signed": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_fp_unsigned": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_ubv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_sbv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_real": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_fpa_to_ieee_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_sign": {
+      "header": {
+        "verified": [
+          {
+            "hi": "4.16.0"
+          }
+        ],
+        "mismatch": [
+          {
+            "lo": "4.16.0"
+          }
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_significand_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_significand_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_significand_uint64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_exponent_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_exponent_int64": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_fpa_get_numeral_exponent_bv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_sort": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_to_re": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_in_re": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_empty": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_full": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_allchar": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_plus": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_star": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_option": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_complement": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_concat": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_union": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_intersect": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_range": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_loop": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_re_power": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_empty_set": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_full_set": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_add": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_del": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_union": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_intersect": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_difference": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_complement": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_member": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_subset": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_set_has_size": {
+      "header": {
+        "verified": [
+          {
+            "hi": "4.16.0"
+          }
+        ],
+        "absent": [
+          {
+            "lo": "4.16.0"
+          }
+        ]
+      }
+    },
+    "Z3_mk_ast_map": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_contains": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_find": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_insert": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_erase": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_reset": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_size": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_keys": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_ast_map_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_del": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_rational": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_small_int": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_pi": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_e": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_infinitesimal": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_add": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_sub": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mul": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_div": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_neg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_inv": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_power": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_gt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_ge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_neq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_num_to_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_num_to_decimal_string": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_rcf_mk_roots": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_is_value": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_is_pos": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_is_neg": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_is_zero": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_sign": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_add": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_sub": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_mul": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_div": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_root": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_power": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_lt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_gt": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_le": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_ge": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_neq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_roots": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_eval": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_get_poly": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_algebraic_get_i": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_polynomial_subresultants": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_init": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_fixed": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_final": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_eq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_diseq": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_created": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_decide": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_next_split": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_declare": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_register": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_register_cb": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_propagate_consequence": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_register_on_clause": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_simplifier": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_inc_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_dec_ref": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_using_params": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_and_then": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_solver_add_simplifier": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_get_param_descrs": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_simplifier_get_help": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_linear_order": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_partial_order": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_piecewise_linear_order": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_tree_order": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_transitive_closure": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_open_log": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_append_log": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_close_log": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_toggle_warning_messages": {
+      "header": {
+        "verified": [
+          {}
+        ]
+      }
+    },
+    "Z3_mk_seq_replace_all": {
+      "header": {
+        "verified": [
+          {
+            "lo": "4.16.0"
+          }
+        ],
+        "absent": [
+          {
+            "hi": "4.16.0"
+          }
+        ]
+      }
+    }
+  }
+}

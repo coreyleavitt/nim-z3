@@ -168,6 +168,26 @@ want the smallest fixedpoint-adjacent footprint, combine
 `getSpacerLevel`/`mkFpQuery`) — the fixedpoint core itself always
 ships.
 
+### A different category: opt-*in* feature flags
+
+The `z3WithoutX` flags above are opt-**out** — they *hide* always-on
+surface to shrink the build. nim-z3 also has a few opt-**in** flags that do
+the opposite: they *expose* wrappers whose underlying Z3 C symbols are
+absent from some distributions, so they ship off by default and you enable
+them explicitly:
+
+| Flag | Enables |
+|---|---|
+| `-d:z3WithSeqReplaceAll` | `Z3Seq.replaceAll` (`Z3_mk_seq_replace_all`) |
+
+Listed here only so the full `-d:` flag surface lives in one place. See
+[`MULTI_VERSION.md`](MULTI_VERSION.md) for why a symbol may be absent on a
+given Z3, and GOTCHAS #24 for the regex-index soundness contract.
+
+The regex-replace variants (`replaceRe` / `replaceReAll`) are **not** shipped —
+Z3's solver can't reason about `str.replace_re{,_all}`; deferred pending
+upstream (RFC-regex-index §7).
+
 ## The `nimble test-minimal` task
 
 The nim-z3 repo ships a `nimble test-minimal` task that compiles

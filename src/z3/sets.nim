@@ -179,6 +179,23 @@ when not defined(z3WithoutSets):
 
   proc member*[E](e: E, s: Z3Set[E]): Z3Bool =
     ## Membership predicate: `e ∈ s`. Returns a Z3Bool AST.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let x = mkInt(ctx, 5)
+      let y = mkInt(ctx, 6)
+      # Build {5} by adding a single element to the empty set.
+      let s = mkEmptySet[Z3Int](ctx).add(x)
+      let solver = newSolver(ctx)
+      # 5 is a member of {5} ...
+      solver.push()
+      solver.add(not member(x, s))
+      doAssert solver.check() == zsUnsat
+      solver.pop()
+      # ... but 6 is not.
+      solver.add(member(y, s))
+      doAssert solver.check() == zsUnsat
     let ctx = setCtx(s)
     wrap[Z3Bool](ctx,
       ctx.checkErr Z3_mk_set_member(ctx.raw, e.raw, setRaw(s)))
@@ -262,6 +279,26 @@ when not defined(z3WithoutSets):
     ## Cardinality constraint: `|s| = k`. Returns a Z3Bool AST.
     ##
     ## Note: Z3's `Z3_mk_set_has_size` takes an `Int`-sorted `k` operand.
+    ##
+    ## Raises `Z3FeatureUnavailableError` if `Z3_mk_set_has_size` is not
+    ## available on the loaded libz3 — the symbol was removed at Z3 4.16.
+    ## There is no honest "unavailable" `Z3Bool` to degrade to, so this
+    ## raises rather than returning a term that would silently mean
+    ## something else. Check `Z3_mk_set_has_sizeAvailable()` first to
+    ## avoid this exception.
+    ##
+    ## Note two independent failure modes: if the *symbol* is absent
+    ## (removed at Z3 >= 4.16) this raises `Z3FeatureUnavailableError` —
+    ## guard with `Z3_mk_set_has_sizeAvailable()`; separately, some builds
+    ## resolve the symbol but the *solver feature* is unsupported,
+    ## surfacing as `Z3OperationError` at call time, which `Available()`
+    ## cannot predict.
+    if not Z3_mk_set_has_sizeAvailable():
+      raise newException(Z3FeatureUnavailableError,
+        "Z3_mk_set_has_size is not available on the loaded Z3 " &
+        z3Compat().runtimeVersion &
+        " (removed at 4.16). Check Z3_mk_set_has_sizeAvailable() before " &
+        "calling hasSize.")
     let ctx = setCtx(s)
     wrap[Z3Bool](ctx,
       ctx.checkErr Z3_mk_set_has_size(ctx.raw, setRaw(s), k.raw))

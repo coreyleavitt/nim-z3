@@ -3,9 +3,9 @@
 ## This module exists solely to break the `funcdecl → model → funcdecl`
 ## circular import. It holds the type definition and the minimal lifecycle
 ## machinery (`incRefFD` / `decRefFD` / `=destroy` / `wrapFuncDecl`) so
-## that `model.nim` can import only this module and use
+## that `z3/model.nim` can import only this module and use
 ## `Z3FuncDecl[tuple[], Z3AnyAst]` on its enumeration surface without
-## pulling in the full `funcdecl.nim` (which in turn imports `model.nim`).
+## pulling in the full `z3/funcdecl.nim` (which in turn imports `z3/model.nim`).
 ##
 ## All functional surface (apply, mkFuncDecl, defineFun, defineRecFun,
 ## Z3FuncInterp, seqMap, …) lives in `z3/funcdecl`.

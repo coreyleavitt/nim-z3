@@ -45,6 +45,7 @@
 
 import ./ffi, ./error
 import std/tables
+import std/strutils
 import softlink
 
 # Note: `z3/error` is **not** re-exported. Modules that need the
@@ -389,8 +390,15 @@ proc z3FullVersion*(): string =
   ## Vendor-formatted version string, e.g. "4.13.3.0". Always equivalent
   ## to `$z3Version().major & "." & …` modulo whitespace, but the vendor
   ## string is the canonical wire form (it's what `z3 --version` prints).
+  ##
+  ## `Z3_get_full_version()` prepends a `"Z3 "` tag (it returns
+  ## `"Z3 4.13.3.0"`); this strips it so the result is the bare dotted
+  ## version the docstring promises — matching `z3Version()` and the
+  ## `versionProbe` in `z3/ffi.nim`.
   ensureLoaded()
-  $Z3_get_full_version()
+  result = ($Z3_get_full_version()).strip()
+  if result.startsWith("Z3 "):
+    result = result[3 .. ^1].strip()
 
 proc finalizeZ3Memory*() =
   ## Process-wide Z3 cleanup. Frees Z3's internal globals (hash-cons

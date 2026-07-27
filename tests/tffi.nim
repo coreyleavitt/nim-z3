@@ -20,27 +20,35 @@ template inc(ctx: RawZ3Context, a: RawZ3Ast) = Z3_inc_ref(ctx, a)
 template dec(ctx: RawZ3Context, a: RawZ3Ast) = Z3_dec_ref(ctx, a)
 
 suite "z3/ffi — softlink loads libz3":
-  test "loadZ3 returns lrOk on a system with libz3 installed":
+  test "loadZ3 succeeds (lrOk / lrOkPartial) on a system with libz3 installed":
     let r = loadZ3()
-    check r.kind == lrOk
+    # lrOkPartial is a *successful* load: nim-z3 declares forward/back-compat
+    # symbols `{.optional.}` (e.g. `Z3_mk_seq_replace_all`, added at 4.16, is
+    # absent on 4.13–4.15; `Z3_mk_set_has_size`, removed at 4.16, is absent
+    # there; `Z3_fpa_get_numeral_sign` is drift-refused at ≥4.16), so a
+    # partial load is the *expected* result on every supported Z3 in range.
+    check r.kind in {lrOk, lrOkPartial}
 
   test "z3Loaded reports true after a successful load":
     discard loadZ3()
     check z3Loaded()
 
 suite "z3/ffi — version":
-  test "Z3_get_full_version returns 4.x version string":
+  test "Z3_get_full_version returns a 4.x version string":
     discard loadZ3()
     let v = $Z3_get_full_version()
     check v.len > 0
-    check v.startsWith("4.")  # CI matrix may swing across 4.10–4.13.x
+    # Z3_get_full_version() is documented to return a "Z3 <maj>.<min>.<build>.<rev>"
+    # string (note the "Z3 " prefix); the version tuple sits inside it, so match
+    # on containment rather than a bare prefix. CI may swing across 4.13–4.16.x.
+    check "4." in v
 
   test "Z3_get_version components agree with the string form":
     discard loadZ3()
     var major, minor, build, rev: cuint
     Z3_get_version(addr major, addr minor, addr build, addr rev)
     let stringForm = $Z3_get_full_version()
-    check stringForm.startsWith($major & "." & $minor & "." & $build)
+    check ($major & "." & $minor & "." & $build) in stringForm
 
 suite "z3/ffi — configuration + context lifecycle":
   test "Z3_mk_config / Z3_del_config round-trip":

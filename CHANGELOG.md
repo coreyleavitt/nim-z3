@@ -70,6 +70,66 @@ fixes that landed on top of the initial 2.0.0 RFC implementation.
 - `assertConstraint` alias for `Z3Goal.add` (two names for one op).
 - `varsCopy` micro-pattern in `solver.nim` (no-op on a ref).
 
+## [2.2.0]
+
+The **regex-index + multi-version** release (RFC-regex-index.md, issue #2).
+Adds encoded regex-position helpers, and makes a single nim-z3 build support
+**Z3 4.13.x → 4.16.x** by handling the two symbols that drift across that
+range gracefully at load time.
+
+### Added
+
+- **`z3/regex` position helpers** (encoded, not 1:1 FFI — each carries a
+  soundness/completeness contract in its docstring):
+  - `matchStartsAt(s, re, i)` — `re` matches a prefix of `s` at position
+    `i`. Sound and total (no bound).
+  - `containsRe(s, re)` — some substring of `s` is in `L(re)`. Sound **and**
+    complete for any `s`. Also spelled `re in s` (via a `contains` overload).
+  - `indexOfRe(s, re[, start], bound)` — leftmost match index or `-1`, as a
+    bounded `ite`-chain. Unconditionally sound; complete iff `len(s) ≤ bound`
+    (see GOTCHAS #24).
+  - `MatchBound = distinct Natural` + `matchBound(n)` ctor + `boundHolds(s, b)`
+    companion (asserts `len(s) ≤ b`, the completeness obligation).
+- **Multi-version Z3 support** (softlink version-compat). `z3Compat(): CompatReport`
+  reports the loaded runtime version, attestation state, and per-symbol
+  `missingReasons`; the softlink compat types (`CompatReport`, `Attestation`,
+  `MissingReason` incl. `mrDriftRefused`, `MissingReasonEntry`,
+  `VersionInterval`) are re-exported through `import z3` — no separate
+  `import softlink` needed. See [`docs/MULTI_VERSION.md`](docs/MULTI_VERSION.md).
+
+### Changed
+
+- **Supported Z3 range corrected to 4.13.x → 4.16.x** (was documented, stalely,
+  as "4.10 → 4.13.x"). A 674-symbol audit shows the surface is stable from
+  4.13.0; below that, required symbols are missing (4.11 and earlier won't load)
+  or signatures drifted (4.12).
+- `Z3_mk_set_has_size` (removed in Z3 4.16) is now `{.optional.}` — its absence
+  degrades the load to `lrOkPartial` instead of failing it.
+- `Z3_fpa_get_numeral_sign` (out-param `int*`→`bool*` at 4.16) is now
+  `{.optional, until: "4.16.0".}` — on ≥4.16 the historical signature is
+  drift-refused rather than bound with a mismatched ABI.
+
+### Fixed
+
+- **`seq.replace_all` FFI build gate** (regression, shipped broken since the
+  `ad0b8fb` dynlib refactor): the `Z3_mk_seq_replace*` procs lived in colliding
+  `when defined(): dynlib "z3":` blocks (multiple `dynlib "z3"` blocks in one
+  module always collide on the derived handle ident). `Z3_mk_seq_replace_all`
+  is now in the single main `dynlib "z3"` block as `{.optional, prototype.}`;
+  the gated build compiles clean with full prototype verification.
+
+### Not shipped (deferred)
+
+- **Regex-replace wrappers** (`replaceRe` / `replaceReAll`, wrapping
+  `Z3_mk_seq_replace_re{,_all}`) are intentionally **not** shipped. Z3's string
+  solver returns `unknown` on `str.replace_re{,_all}` even for fully concrete
+  inputs (unlike `str.replace_all`, which it decides), so the wrappers would
+  build correct terms that no solver query can reason about. The FFI decls and
+  `-d:z3WithSeqReplaceRe{,All}` flags were removed. Deferred pending upstream
+  Z3 decidability — see RFC-regex-index §7 and GOTCHAS #24. The decidable
+  regex-index helpers (`indexOfRe` / `matchStartsAt` / `containsRe`) ship as
+  above; a regex replace-all can be encoded via `indexOfRe` + `substr`.
+
 ## [2.1.0]
 
 The **typed fixedpoint callback** release (RFC-fixedpoint-callbacks.md).

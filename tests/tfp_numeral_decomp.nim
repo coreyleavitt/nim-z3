@@ -14,28 +14,55 @@ import z3
 # getNumeralSign
 # ---------------------------------------------------------------------------
 
+## `getNumeralSign` sits atop the `{.optional, until: "4.16.0".}` symbol
+## `Z3_fpa_get_numeral_sign` (out-param drifted `int*` -> `bool*` at 4.16).
+## On a >= 4.16 runtime the symbol is drift-refused and the wrapper raises
+## `Z3FeatureUnavailableError` instead of calling it; below 4.16 it behaves
+## as documented. Each test below branches on the softlink-generated
+## `Z3_fpa_get_numeral_signAvailable()` predicate so the suite pins both
+## behaviours and passes on every harness runtime.
 suite "getNumeralSign — N6.4b":
 
   test "positive 1.0 → some(false)":
     let ctx = newContext()
-    check getNumeralSign(mkFloat64(1.0)) == some(false)
+    if Z3_fpa_get_numeral_signAvailable():
+      check getNumeralSign(mkFloat64(1.0)) == some(false)
+    else:
+      expect Z3FeatureUnavailableError:
+        discard getNumeralSign(mkFloat64(1.0))
 
   test "negative -1.0 → some(true)":
     let ctx = newContext()
-    check getNumeralSign(mkFloat64(-1.0)) == some(true)
+    if Z3_fpa_get_numeral_signAvailable():
+      check getNumeralSign(mkFloat64(-1.0)) == some(true)
+    else:
+      expect Z3FeatureUnavailableError:
+        discard getNumeralSign(mkFloat64(-1.0))
 
   test "symbolic var → none (not a numeral)":
     let ctx = newContext()
     let x = mkFloat64Var("x")
-    check getNumeralSign(x) == none(bool)
+    if Z3_fpa_get_numeral_signAvailable():
+      check getNumeralSign(x) == none(bool)
+    else:
+      expect Z3FeatureUnavailableError:
+        discard getNumeralSign(x)
 
   test "+0 → some(false)":
     let ctx = newContext()
-    check getNumeralSign(mkFpZero[11, 53]()) == some(false)
+    if Z3_fpa_get_numeral_signAvailable():
+      check getNumeralSign(mkFpZero[11, 53]()) == some(false)
+    else:
+      expect Z3FeatureUnavailableError:
+        discard getNumeralSign(mkFpZero[11, 53]())
 
   test "-0 → some(true)":
     let ctx = newContext()
-    check getNumeralSign(mkFpZero[11, 53](negative = true)) == some(true)
+    if Z3_fpa_get_numeral_signAvailable():
+      check getNumeralSign(mkFpZero[11, 53](negative = true)) == some(true)
+    else:
+      expect Z3FeatureUnavailableError:
+        discard getNumeralSign(mkFpZero[11, 53](negative = true))
 
 # ---------------------------------------------------------------------------
 # getNumeralSignificandUint64

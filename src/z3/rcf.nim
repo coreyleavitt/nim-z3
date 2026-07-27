@@ -161,13 +161,12 @@ when not defined(z3WithoutRcf):
     runnableExamples:
       import z3
       let ctx = newContext()
-      let two  = mkSmallInt(ctx, 2)
-      let pi   = mkPi(ctx)
-      let sum  = mkSmallInt(ctx, 2) + mkPi(ctx)
+      let sum = mkSmallInt(ctx, 2) + mkPi(ctx)
       let five = mkSmallInt(ctx, 5)
-      # 2 + π > 5 is false; 2 + π > 4 is true.
-      doAssert not (sum > five)
-      doAssert sum > mkSmallInt(ctx, 4)
+      let six = mkSmallInt(ctx, 6)
+      # 2 + π ≈ 5.14159 lies strictly between 5 and 6.
+      doAssert sum > five
+      doAssert not (sum > six)
     wrapRcf(a.ctx, Z3_rcf_add(a.ctx.raw, a.raw, b.raw))
 
   proc `-`*(a, b: Z3RcfNum): Z3RcfNum =

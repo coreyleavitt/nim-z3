@@ -40,6 +40,7 @@
 21. [Fixedpoint export callbacks only fire under `engine=spacer`, and the engine locks at first use](#21-fixedpoint-export-callbacks-only-fire-under-enginespacer-and-the-engine-locks-at-first-use)
 22. [`clearHandlers` doesn't deregister at the Z3 level — it just goes dormant](#22-clearhandlers-doesnt-deregister-at-the-z3-level--it-just-goes-dormant)
 23. [Interrupting from inside a fixedpoint handler cancels the query gracefully](#23-interrupting-from-inside-a-fixedpoint-handler-cancels-the-query-gracefully)
+24. [`indexOfRe(...) == -1` does not mean "no match" unless you bound the length](#24-indexofre--1-does-not-mean-no-match-unless-you-bound-the-length)
 
 ---
 
@@ -185,8 +186,10 @@ including errors you wanted to handle differently. `e.code` gives you
 discrimination but `except` clauses can't filter on a field.
 
 **Cause.** v0.5 step 4 introduced 12 typed subclasses of `Z3Error`
-(see `z3/error.nim`). The base class still works as a catch-all, but
-narrow handlers should target the specific subclass.
+(see `z3/error.nim`); a 13th, `Z3FeatureUnavailableError`, was added
+later for the multi-version compat story (below). The base class
+still works as a catch-all, but narrow handlers should target the
+specific subclass.
 
 **Wrapper behaviour.** `raiseZ3Error` dispatches based on the Z3
 error code:
@@ -204,6 +207,14 @@ error code:
 | `Z3_INVALID_USAGE` | `Z3InvalidUsageError` |
 | `Z3_DEC_REF_ERROR` | `Z3RefcountError` |
 | `Z3_EXCEPTION` | `Z3OperationError` |
+
+`Z3FeatureUnavailableError` is the odd one out: it has no `Z3ErrorCode`
+counterpart and is never raised by `raiseZ3Error`. It's raised directly
+by wrapper procs (`getNumeralSign`, `hasSize`, `replaceAll`) sitting atop
+a `{.optional.}` FFI symbol, *before* the FFI call is attempted, when the
+symbol is unavailable on the loaded libz3 — see
+[docs/MULTI_VERSION.md](../docs/MULTI_VERSION.md) for the multi-version
+compat story this supports.
 
 **Naming note:** `Z3SortMismatchError` (not `Z3SortError`) and
 `Z3ParseError` (not `Z3ParserError`) because Nim's style-insensitive
@@ -587,20 +598,23 @@ Surprising if you're coming from Nim's stdlib `strutils.replace`
 (which is replace-all).
 
 **Cause.** `Z3_mk_seq_replace` in Z3's C API replaces the first
-match; Z3's replace-all surface (`Z3_mk_seq_replace_all`) is a
-separate FFI entry point that the wrapper hasn't surfaced yet (see
-CHANGELOG `[Unreleased]` "Deferred to v1.x").
+match; Z3's replace-all surface is a separate FFI entry point.
 
 **Wrapper behaviour.** `replace` faithfully wraps the
 first-occurrence FFI. The contract matches Z3 / SMT-LIB, not Nim's
 stdlib.
 
-**What you should do.** For replace-all today, encode it as a
-fixed-point loop using `indexOf` + `substr`, or use
-`parseSmt2String` with an SMT-LIB script that calls the underlying
-Z3 4.12+ replace-all directly. The v1.x release will surface
-`replaceAll`, `replaceRegex`, and `splitRegex` as first-class
-wrappers (tracked in the CHANGELOG deferral list).
+**What you should do.** For *literal* replace-all, v2.2.0 ships
+`replaceAll` (opt-in `-d:z3WithSeqReplaceAll`; Z3 decides it). The
+**regex** replace variants (`replaceRe` / `replaceReAll`, wrapping
+`str.replace_re{,_all}`) are deliberately **not** shipped: Z3's solver
+returns `unknown` on those even for concrete inputs, so a wrapper would
+build a term no solver query could reason about — deferred pending
+upstream Z3 (see §7 of RFC-regex-index). For regex-driven position work
+that *is* decidable, use the v2.2.0 regex-index helpers `indexOfRe` /
+`matchStartsAt` / `containsRe` (see `z3/regex` and GOTCHAS #24); a
+regex replace-all can be encoded as a fixed-point loop over `indexOfRe`
++ `substr`. Plain first-occurrence `replace` remains always-on.
 
 ---
 
@@ -795,3 +809,30 @@ firing or safe point, not necessarily instantly. After the call
 returns, check `fp.getReasonUnknown() == "interrupted"` to
 distinguish "I cancelled this" from a genuine `zsUnknown` (resource
 limits, incompleteness).
+
+---
+
+## 24. `indexOfRe(...) == -1` does not mean "no match" unless you bound the length
+
+**Symptom.** You assert `indexOfRe(s, re, matchBound(k)) == mkInt(-1)`
+to mean "`re` does not occur in `s`", and the solver finds a model
+where `s` clearly *does* contain a match — an apparent unsoundness.
+
+**Cause.** `indexOfRe` (and the `matchStartsAt` it's built on) is a
+**bounded encoding**, not a native Z3 operation. It unrolls the match
+test over positions `i ∈ [0, bound]` as an `ite`-chain. It is
+*unconditionally sound* — a returned index `≥ 0` is always a real
+match — but it is *complete only if `len(s) ≤ bound`*. When the string
+can be longer than `bound`, `-1` means "no match in `[0, bound]`", not
+"no match anywhere": a match starting past `bound` is invisible to the
+encoding, so `== -1` is satisfiable even though a longer `s` matches.
+
+**What you should do.** If you rely on the `-1` (no-match) direction,
+discharge the completeness obligation by also constraining the length:
+`s.boundHolds(matchBound(k))` (i.e. `len(s) ≤ k`) asserts exactly what
+`indexOfRe` needs to be complete. Assert it on the **same** `s` you
+pass to `indexOfRe`. The positive direction (index `≥ 0` ⇒ real match)
+needs no such guard. Note also the nullable-`re` caveat: for a `re`
+that matches the empty string, `matchStartsAt` is trivially true at
+every in-range position — see the `matchStartsAt` docstring in
+`z3/regex`.

@@ -168,7 +168,7 @@ var exportActivateHook*: proc(fp: Z3Fixedpoint) {.nimcall, raises: [].}
   ## (circular import — see `cbBoxRef`'s doc comment). `nil` unless the
   ## gated module is compiled in, in which case it assigns itself here
   ## at module-init time (`exportActivateHook = activateExportCallbacks`
-  ## in `fixedpoint_callbacks.nim`).
+  ## in `z3/fixedpoint_callbacks.nim`).
   ##
   ## Called from `withInQuery` (the single choke point shared by
   ## `query`, `queryRelations`, and `z3/spacer.queryFromLevel`) just
@@ -318,7 +318,7 @@ const z3SolverConsistentCancelReason = "interrupted"
   ## The exact string `Z3Solver.reasonUnknown()` reports after
   ## `Z3Context.interrupt()` cancels an in-flight `Z3Solver.check()`
   ## — verified empirically (`scratchpad/spike_c1_step0_reason.nim`)
-  ## against `context.nim`'s existing `interrupt()` docstring, which
+  ## against `z3/context.nim`'s existing `interrupt()` docstring, which
   ## already documents this exact word. `getReasonUnknown` below
   ## reports the same string on a cancelled fixedpoint query, per the
   ## RFC C1(d) uniformity requirement — Solver and Fixedpoint agree on

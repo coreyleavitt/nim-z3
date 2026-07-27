@@ -1,9 +1,12 @@
-## `z3/sequence` + `z3/regex` tests — N5.4 slice:
-##   `lastIndexOf`, `replaceAll`, `replaceRe`.
+## `z3/sequence` tests — N5.4 slice: `lastIndexOf`, `replaceAll`.
 ##
-## `replaceAll` and `replaceRe` are gated: compile with
-## `-d:z3WithSeqReplaceAll` / `-d:z3WithSeqReplaceRe` on Z3 builds
-## that ship `Z3_mk_seq_replace_all` / `Z3_mk_seq_replace_re`.
+## `replaceAll` is gated: compile with `-d:z3WithSeqReplaceAll` on Z3 builds
+## that ship `Z3_mk_seq_replace_all`.
+##
+## The regex-replace wrappers (`replaceRe` / `replaceReAll`) are intentionally
+## not shipped — Z3's solver returns `unknown` on `str.replace_re{,_all}` even
+## for concrete inputs, so they can't be verified with `smtValid`. Deferred
+## pending upstream Z3 (see docs/RFC-regex-index.md §7, GOTCHAS #24).
 
 import std/[unittest]
 import z3
@@ -39,13 +42,3 @@ when defined(z3WithSeqReplaceAll):
       let old = mkString("z")
       let neu = mkString("y")
       check smtValid(replaceAll(s, old, neu) == mkString("abc"))
-
-when defined(z3WithSeqReplaceRe):
-  suite "replaceRe":
-    test "replaceRe replaces first regex match":
-      ## "abc123def".replaceRe(digit+, "X") == "abcXdef"
-      let ctx = newContext()
-      let s = mkString("abc123def")
-      let digitRe = range("0", "9").plus
-      let replacement = mkString("X")
-      check smtValid(replaceRe(s, digitRe, replacement) == mkString("abcXdef"))

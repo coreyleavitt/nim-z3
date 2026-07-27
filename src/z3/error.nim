@@ -30,10 +30,14 @@
 ##   site.
 ## - `checkErrVoid(ctx, callExpr)` — void-returning peer.
 ##
-## The typed-subclass tree (12 subclasses of the abstract `Z3Error`
+## The typed-subclass tree (13 subclasses of the abstract `Z3Error`
 ## base: `Z3SortMismatchError`, `Z3InvalidUsageError`, `Z3ParseError`,
 ## …) lives below; `raiseZ3Error` dispatches on `code` to the right
-## subclass. See GOTCHAS #6 for the catching-pattern guidance.
+## subclass for the 12 that correspond to a `Z3ErrorCode`. The 13th,
+## `Z3FeatureUnavailableError`, is raised directly by wrapper procs
+## guarding an `{.optional.}` FFI symbol — it has no `Z3ErrorCode`
+## counterpart since the underlying C function was never called. See
+## GOTCHAS #6 for the catching-pattern guidance.
 
 import ./ffi
 
@@ -138,6 +142,20 @@ type
     ## recognise. Imported-enum out-of-range fallback. Forward-
     ## compatible: a new Z3 version adding a code lands here until
     ## the wrapper is updated.
+
+  Z3FeatureUnavailableError* = object of Z3Error
+    ## The requested Z3 operation is not available on the loaded libz3 —
+    ## e.g. a symbol removed at 4.16 (`Z3_mk_set_has_size`), or a
+    ## signature-drifted symbol refused for safety on this version
+    ## (`Z3_fpa_get_numeral_sign` on ≥4.16). Raised by wrapper procs that
+    ## sit atop a `{.optional.}` FFI symbol *before* the FFI call is even
+    ## attempted — not by `checkErr`/`raiseZ3Error` (there is no
+    ## `Z3ErrorCode` for "symbol absent"; `code` on this exception is left
+    ## at its zero value and should not be inspected). Check the
+    ## corresponding `<Symbol>Available()` predicate first to avoid this;
+    ## see `docs/MULTI_VERSION.md` for the multi-version compat story and
+    ## `z3LoadIsHealthy()` / `z3CompatWarnings()` for a whole-load
+    ## health check.
 
 template raiseSubclass(SubT: untyped, fullMsg: string,
                        errCode: Z3ErrorCode) =

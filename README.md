@@ -40,7 +40,7 @@ That five-line example uses everything you need to be productive: a context, fre
 Two prerequisites are non-negotiable:
 
 - Nim 2.0+.
-- A system `libz3.so` at runtime — `apt install libz3-dev` (Debian/Ubuntu), `brew install z3` (macOS), or unpack a [Z3 release tarball](https://github.com/Z3Prover/z3/releases) into the loader path. nim-z3 supports Z3 4.10 → 4.13.x.
+- A system `libz3.so` at runtime — `apt install libz3-dev` (Debian/Ubuntu), `brew install z3` (macOS), or unpack a [Z3 release tarball](https://github.com/Z3Prover/z3/releases) into the loader path. nim-z3 supports **Z3 4.13.x → 4.16.x** across a single build — later minors that dropped or drifted a symbol degrade gracefully rather than failing the load; see [`docs/MULTI_VERSION.md`](docs/MULTI_VERSION.md).
 
 You then have two ways to wire nim-z3 into your project.
 

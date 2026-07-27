@@ -40,7 +40,7 @@
 ##
 ## Gated on `-d:z3WithoutAstMap`. When built with that flag, this file
 ## imports cleanly but exports nothing. Match the existing pattern from
-## `spacer.nim`, `simplifier.nim`, `order.nim`, `onclause.nim`.
+## `z3/spacer.nim`, `z3/simplifier.nim`, `z3/order.nim`, `z3/onclause.nim`.
 
 when not defined(z3WithoutAstMap):
 

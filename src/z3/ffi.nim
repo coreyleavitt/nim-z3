@@ -22,12 +22,32 @@
 ## ignores case and underscores, so `Z3_context` (the C typedef) and
 ## `Z3Context` (our idiomatic ref) would collide without the prefix.
 ##
-## The dynlib's library pattern `libz3.so(.4|.4.13|.4.12|.4.11|.4.10|)`
-## supports Z3 4.10 → 4.13.x. softlink resolves the first match in
-## order; the bare `|)` at the end falls through to `libz3.so` for
-## development setups without a versioned symlink.
+## softlink auto-derives the library pattern from `"z3"` — the bare
+## `libz3.so` (dev symlink) plus the major soname `libz3.so.4` that every
+## Z3 4.x ships. nim-z3 supports **Z3 4.13.x → 4.16.x** (all resolve via
+## `libz3.so.4`); see `docs/MULTI_VERSION.md` for the drift story and how
+## `z3Compat()` attests the loaded version. openSUSE-style multi-component
+## sonames (`libz3.so.4.15`, no bare/major symlink) need an explicit pin.
 
 import softlink
+import std/[strutils, sequtils]
+
+# Re-export softlink's compat types through this module — and thus through the
+# `import z3` umbrella (which re-exports `ffi`). `z3Compat()` is generated into
+# the `dynlib` block below by softlink, but its return type (`CompatReport`) and
+# the `Attestation` / `MissingReason` enums (incl. `mrExpected` / `mrAnomalous`
+# / `mrDriftRefused`) live in softlink; without this, callers of `z3Compat()`
+# would need their own `import softlink` just to name a `MissingReason`.
+export softlink.CompatReport, softlink.Attestation, softlink.MissingReason,
+       softlink.MissingReasonEntry, softlink.VersionInterval
+
+proc z3ProbeVersion(full: string): string =
+  ## `versionProbe` body helper: "Z3 4.15.0.0" -> "4.15.0". softlink parses
+  ## the returned string as the runtime version.
+  var s = full.strip()
+  if s.startsWith("Z3 "): s = s[3 .. ^1]
+  let parts = s.split('.')
+  parts[0 .. min(2, parts.high)].join(".")
 
 # ============================================================================
 # Opaque Z3 types — `typedef struct _Z3_X * Z3_X;` in C
@@ -477,6 +497,12 @@ type
 # theory is the next FFI expansion step.
 
 dynlib "z3":
+
+  versionMacros("Z3_MAJOR_VERSION", "Z3_MINOR_VERSION", "Z3_BUILD_NUMBER",
+                header = "z3_version.h")
+  versionProbe:
+    z3ProbeVersion($Z3_get_full_version())
+  compatManifest "z3.compat.json"
 
   # --- Version --------------------------------------------------------------
 
@@ -2688,9 +2714,16 @@ dynlib "z3":
   # `Z3_get_numeral_uint64`, then reinterpret-cast in Nim.
 
   # Numeral decomposition — N6.4b
+  # Drifted signature (RFC-regex-index.md §6.3 slice 4): `sgn` was
+  # `int*` through 4.15 and became `bool*` at 4.16. The `versionMacros`
+  # gate above (with its `header = "z3_version.h"` arg) pulls the version
+  # macros into the verify TU, so softlink synthesizes `until`'s predicate;
+  # the signature itself is verified against the real z3.h decl. `optional`
+  # so a 4.16 runtime re-nils this symbol (mrDriftRefused) instead of
+  # unwinding the load.
   proc Z3_fpa_get_numeral_sign(c: RawZ3Context, t: RawZ3Ast,
                                 sgn: ptr cint): bool
-    {.cdecl, header: "z3.h".}
+    {.cdecl, optional, header: "z3.h", until: "4.16.0".}
   proc Z3_fpa_get_numeral_significand_string(c: RawZ3Context,
                                               t: RawZ3Ast): cstring
     {.cdecl, header: "z3.h".}
@@ -2773,7 +2806,8 @@ dynlib "z3":
   proc Z3_mk_set_subset(c: RawZ3Context, arg1, arg2: RawZ3Ast): RawZ3Ast
     {.cdecl, header: "z3.h".}
   proc Z3_mk_set_has_size(c: RawZ3Context, set, k: RawZ3Ast): RawZ3Ast
-    {.cdecl, header: "z3.h".}
+    {.cdecl, optional, header: "z3.h",
+      prototype: "Z3_ast Z3_mk_set_has_size(Z3_context c, Z3_ast set, Z3_ast k);".}
 
   # --- AST map (z3_ast_containers.h) — N1.2 --------------------------------
 
@@ -3102,17 +3136,80 @@ dynlib "z3":
     ## warnings (e.g. "WARNING: quantifiers detected" in test suites) without
     ## disabling the error channel.
 
-# N5.4 — Z3_mk_seq_replace_all / Z3_mk_seq_replace_re are absent from
-# some Z3 builds (including the openSUSE Tumbleweed 4.15.0-1.3 package).
-# Gate their FFI declarations behind `-d:z3WithSeqReplaceAll` and
-# `-d:z3WithSeqReplaceRe` so users on capable builds can opt in.
+  # --- Sequence replace (optional + prototype-verified) ---------------------
+  # Z3_mk_seq_replace_all is absent from some Z3 builds (e.g. openSUSE
+  # Tumbleweed 4.15.0-1.3) and from older C headers. Two constraints:
+  #   1. It MUST live inside this single `dynlib "z3"` block: softlink (≥ v0.7.0)
+  #      rejects a second `dynlib "z3"` block in the same module (both derive the
+  #      same module-scope `softlinkHandleZ3`).
+  #   2. Compiling against an older `z3.h` that lacks the symbol would fail the
+  #      verify TU with "implicit declaration of Z3_mk_seq_replace_all".
+  # Pragmas:
+  #   {.optional.}  — symbol may be missing at runtime; `loadZ3()` then returns
+  #                   `lrOkPartial`, which `context.nim` accepts as a good load.
+  #   {.prototype.} — verify against a vendored upstream C declaration instead of
+  #                   requiring the symbol in the installed header (softlink ≥
+  #                   v0.8.0). Keeps softlink's `_Static_assert` type-safety even
+  #                   on old headers — strictly better than {.noverify.} (which
+  #                   would skip verification entirely). `header:` is retained so
+  #                   the `Z3_context`/`Z3_ast` typedefs resolve and, on a newer
+  #                   header that *does* declare the symbol, the C compiler
+  #                   cross-checks the vendored prototype against the real one.
+  # The `replaceAll` wrapper stays `-d`-gated (`z3WithSeqReplaceAll`) in
+  # sequence.nim, so the default public surface is unchanged. The regex-replace
+  # FFI (`Z3_mk_seq_replace_re{,_all}`) is intentionally NOT declared: Z3's
+  # solver can't reason about `str.replace_re{,_all}` (returns `unknown` on
+  # concrete inputs), so no wrapper ships for it — deferred pending upstream Z3
+  # (RFC-regex-index.md §7).
 
-when defined(z3WithSeqReplaceAll):
-  dynlib "z3":
-    proc Z3_mk_seq_replace_all(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
-      {.cdecl, header: "z3.h".}
+  proc Z3_mk_seq_replace_all(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
+    {.cdecl, optional, header: "z3.h",
+      prototype: "Z3_ast Z3_mk_seq_replace_all(Z3_context c, Z3_ast s, Z3_ast src, Z3_ast dst);".}
 
-when defined(z3WithSeqReplaceRe):
-  dynlib "z3":
-    proc Z3_mk_seq_replace_re(c: RawZ3Context, s, r, dst: RawZ3Ast): RawZ3Ast
-      {.cdecl, header: "z3.h".}
+# ============================================================================
+# Compat facade — nim-z3-owned convenience predicates over `z3Compat()`
+# ============================================================================
+#
+# `z3Compat()` and its `MissingReason` vocabulary (`mrExpected` /
+# `mrAnomalous` / `mrDriftRefused`) are softlink's, generated into this
+# module by the `dynlib` block above. The two procs below give callers who
+# just want "is my Z3 healthy?" an answer without first learning what each
+# `MissingReason` variant means.
+
+proc z3LoadIsHealthy*(): bool =
+  ## **`true` does not mean every optional-backed proc is callable.** A
+  ## symbol legitimately absent for your Z3 version (e.g. `hasSize` on Z3
+  ## >= 4.16, or `Z3_mk_seq_replace_all` below 4.16) still raises
+  ## `Z3FeatureUnavailableError`. To decide whether a *specific* feature is
+  ## callable, check its `<Symbol>Available()` predicate — this proc
+  ## answers "did the load hold any *unexpected* surprises?", not "is
+  ## feature X present?".
+  ##
+  ## **Reflects the most recent load.** Before the first `loadZ3()` /
+  ## `newContext()`, nothing has been probed, so `missingReasons` is empty
+  ## and this trivially returns `true`; call it after a context exists.
+  ##
+  ## `true` iff every symbol missing from the loaded libz3 is missing for a
+  ## reason that's *expected on this version*: either `mrExpected` (a
+  ## documented since/until interval excludes this runtime) or
+  ## `mrDriftRefused` (a signature-drifted symbol correctly refused on this
+  ## runtime because it falls outside its declared bound — e.g.
+  ## `Z3_fpa_get_numeral_sign` on Z3 >= 4.16). A declared-bound refusal is
+  ## the wrapper doing exactly what it was built to do, not an anomaly, so
+  ## it does NOT make this `false`.
+  ##
+  ## Only `mrAnomalous` — a symbol the manifest's corpus says *should* have
+  ## resolved for this version but didn't — makes this `false`. That's the
+  ## one case worth investigating before shipping: it means either an
+  ## unexpected libz3 build (vendor patch, partial install) or a nim-z3
+  ## manifest that's out of date with a real Z3 release.
+  z3Compat().missingReasons.allIt(it.reason != mrAnomalous)
+
+proc z3CompatWarnings*(): seq[MissingReasonEntry] =
+  ## Symbols missing from the loaded libz3 for a NON-expected reason
+  ## (`mrAnomalous`) — empty on a healthy load. Excludes `mrExpected` and
+  ## `mrDriftRefused`: both are expected given the loaded version's
+  ## declared since/until bounds (see `z3LoadIsHealthy` for why a
+  ## declared-bound drift refusal isn't a warning). Use this to list
+  ## *what* is anomalous once `z3LoadIsHealthy()` has said `false`.
+  z3Compat().missingReasons.filterIt(it.reason == mrAnomalous)

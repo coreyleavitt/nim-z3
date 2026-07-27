@@ -22,6 +22,7 @@ examples/*.dll
 # isolation; the resulting binary lands at `src/z3/foo` (no extension).
 src/z3/*
 !src/z3/*.nim
+!src/z3/z3.compat.json
 nimcache/
 *.o
 *.exe

@@ -18,7 +18,7 @@
 ## `Z3AlgebraicNum` is a distinct type wrapping `Z3Real`. All Z3 algebraic
 ## operations take and return `Z3AlgebraicNum`, NOT `Z3Real`. This eliminates
 ## the overload-resolution ambiguity between algebraic concrete operations
-## (which return `bool` or `Z3AlgebraicNum`) and `arith.nim`'s symbolic SMT
+## (which return `bool` or `Z3AlgebraicNum`) and `z3/arith.nim`'s symbolic SMT
 ## operators (which return `Z3Bool` or `Z3Real`). With the distinct type,
 ## operator overloads `+/-/*//` and `</<=/>=/>=/==/!=` are now safe to expose.
 ##
@@ -48,7 +48,7 @@
 ##
 ## Gated on `-d:z3WithoutAlgebraic`. When built with that flag, this file
 ## imports cleanly but exports nothing. Match the existing pattern from
-## `spacer.nim`, `simplifier.nim`, `order.nim`, `onclause.nim`.
+## `z3/spacer.nim`, `z3/simplifier.nim`, `z3/order.nim`, `z3/onclause.nim`.
 
 when not defined(z3WithoutAlgebraic):
 
@@ -62,7 +62,7 @@ when not defined(z3WithoutAlgebraic):
     Z3AlgebraicNum* = distinct Z3Real
       ## A Z3 algebraic numeral: an exact real root of an integer polynomial.
       ## Distinct from `Z3Real` to prevent silent overload-resolution
-      ## collisions with `arith.nim`'s symbolic operators.
+      ## collisions with `z3/arith.nim`'s symbolic operators.
       ## Lifecycle: Nim 2.2 propagates Z3Real's =destroy/=copy/=dup hooks.
 
   # --------------------------------------------------------------------------
@@ -168,6 +168,17 @@ when not defined(z3WithoutAlgebraic):
   proc algebraicRoot*(a: Z3AlgebraicNum, k: int): Z3AlgebraicNum =
     ## Return a^(1/k), the k-th root of algebraic numeral `a`.
     ## Precondition: k is odd OR a >= 0.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      let two = mkReal(ctx, 2).toAlgebraic
+      let sqrt2 = algebraicRoot(two, 2)
+      # sqrt(2) is a genuine algebraic numeral: positive, and squaring it
+      # back via algebraicPower recovers the original value exactly.
+      doAssert algebraicIsValue(sqrt2)
+      doAssert algebraicIsPos(sqrt2)
+      doAssert algebraicEq(algebraicPower(sqrt2, 2), two)
     Z3AlgebraicNum(wrap[Z3Real](a.algCtx,
       a.algCtx.checkErr Z3_algebraic_root(a.algCtx.raw, a.algRaw, cuint(k))))
 
@@ -254,6 +265,19 @@ when not defined(z3WithoutAlgebraic):
   proc algebraicRoots*(p: Z3Real, vals: openArray[Z3AlgebraicNum]): seq[Z3AlgebraicNum] =
     ## Given polynomial `p` built with `mkBoundReal`, return its real roots
     ## as `Z3AlgebraicNum`. Pass `vals = []` for a univariate polynomial.
+    ##
+    runnableExamples:
+      import z3
+      let ctx = newContext()
+      # Build the univariate polynomial p(x) = x^2 - 2 using a bound
+      # variable (index 0 stands for the polynomial's indeterminate).
+      let x = mkBoundReal(ctx, 0)
+      let p = x * x - mkReal(ctx, 2)
+      let roots = algebraicRoots(p, [])
+      # x^2 - 2 has exactly two real roots: -sqrt(2) and +sqrt(2), whose
+      # signs cancel regardless of the order Z3 returns them in.
+      doAssert roots.len == 2
+      doAssert algebraicSign(roots[0]) + algebraicSign(roots[1]) == 0
     let ctx = p.ctx
     var rawVals = newSeq[RawZ3Ast](vals.len)
     for i, v in vals:

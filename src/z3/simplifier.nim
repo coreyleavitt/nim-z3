@@ -10,7 +10,7 @@
 ## ```nim
 ## let ctx = newContext()
 ## let s = newSolver(ctx)
-## let simp = mkSimplifier(ctx, "elim-and")
+## let simp = mkSimplifier(ctx, "simplify")
 ## addSimplifier(s, simp)
 ## s.add(x > 0)
 ## doAssert s.check() == zsSat
@@ -21,7 +21,7 @@
 ## Two simplifiers can be composed sequentially with `andThen`:
 ##
 ## ```nim
-## let composed = andThen(mkSimplifier(ctx, "elim-and"),
+## let composed = andThen(mkSimplifier(ctx, "simplify"),
 ##                        mkSimplifier(ctx, "propagate-values"))
 ## addSimplifier(s, composed)
 ## ```
@@ -29,9 +29,9 @@
 ## ## Built-in simplifier names
 ##
 ## Run `allSimplifierNames(ctx)` for the full list. Common names:
-## - `"elim-and"` — eliminate conjunctions
+## - `"simplify"` — general-purpose expression simplification
 ## - `"propagate-values"` — constant propagation
-## - `"ctx-simplify"` — contextual simplification
+## - `"elim-unconstrained"` — eliminate unconstrained subterms
 ## - `"bit-blast"` — bit-vector blasting
 ##
 ## ## Feature gate
@@ -84,7 +84,7 @@ when not defined(z3WithoutSimplifierObject):
     runnableExamples:
       import z3
       let ctx = newContext()
-      let simp = mkSimplifier(ctx, "elim-and")
+      let simp = mkSimplifier(ctx, "simplify")
       doAssert simp != nil
     wrapSimplifier(ctx, ctx.checkErr Z3_mk_simplifier(ctx.raw, name.cstring))
 
@@ -109,14 +109,14 @@ when not defined(z3WithoutSimplifierObject):
     runnableExamples:
       import z3
       let ctx = newContext()
-      let simp = mkSimplifier(ctx, "elim-and")
+      let simp = mkSimplifier(ctx, "simplify")
       let x = mkIntVar(ctx, "x")
       let s = newSolver(ctx).addSimplifier(simp)
       s.add(x > mkInt(ctx, 0))
       doAssert s.check() == zsSat
     ##
     ## ```nim
-    ## let s = newSolver(ctx).addSimplifier(mkSimplifier(ctx, "elim-and"))
+    ## let s = newSolver(ctx).addSimplifier(mkSimplifier(ctx, "simplify"))
     ## ```
     wrapSolver(s.ctx,
       s.ctx.checkErr Z3_solver_add_simplifier(s.ctx.raw, s.raw, simp.raw))

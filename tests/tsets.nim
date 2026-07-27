@@ -193,19 +193,24 @@ suite "Z3Set — subset":
 # ---------------------------------------------------------------------------
 suite "Z3Set — hasSize":
   test "hasSize(emptySet, 0) is valid":
-    # Z3_mk_set_has_size is not supported by all Z3 builds / backends.
-    # We wrap the call in a try/expect so the test reports a useful
-    # message rather than crashing, while still verifying the FFI
-    # binding compiles and is callable.
+    # Z3_mk_set_has_size was removed at Z3 4.16 — `hasSize` raises
+    # `Z3FeatureUnavailableError` there (guarded by the softlink-generated
+    # `Z3_mk_set_has_sizeAvailable()` predicate) rather than calling an
+    # unbound symbol. On <= 4.15 the call should succeed and the
+    # cardinality constraint should hold.
     let ctx = newContext()
     let empty = mkEmptySet[Z3Int](ctx)
-    try:
-      let h = hasSize(empty, mkInt(0))
-      check isUnsat(not h)
-    except Z3OperationError:
-      # Z3 4.13.3 raises "set-has-size is not supported" on some platforms.
-      # The binding is correct; skip when the feature is unavailable.
-      skip()
+    if not Z3_mk_set_has_sizeAvailable():
+      expect Z3FeatureUnavailableError:
+        discard hasSize(empty, mkInt(0))
+    else:
+      try:
+        let h = hasSize(empty, mkInt(0))
+        check isUnsat(not h)
+      except Z3OperationError:
+        # Z3 4.13.3 raises "set-has-size is not supported" on some platforms.
+        # The binding is correct; skip when the feature is unavailable.
+        skip()
 
 # ---------------------------------------------------------------------------
 suite "Z3Set — equality":

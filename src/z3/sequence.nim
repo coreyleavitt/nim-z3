@@ -209,7 +209,20 @@ when defined(z3WithSeqReplaceAll):
     ##
     ## Requires `-d:z3WithSeqReplaceAll`. The underlying C function
     ## `Z3_mk_seq_replace_all` is absent from some Z3 distributions
-    ## (e.g. the openSUSE Tumbleweed 4.15.0-1.3 package).
+    ## (e.g. the openSUSE Tumbleweed 4.15.0-1.3 package) and from every
+    ## Z3 build below 4.16 (the symbol was added at 4.16).
+    ##
+    ## Raises `Z3FeatureUnavailableError` if `Z3_mk_seq_replace_all` is not
+    ## available on the loaded libz3. There is no honest "unavailable"
+    ## `Z3Seq[E]` to degrade to, so this raises rather than returning a
+    ## term that would silently mean something else. Check
+    ## `Z3_mk_seq_replace_allAvailable()` first to avoid this exception.
+    if not Z3_mk_seq_replace_allAvailable():
+      raise newException(Z3FeatureUnavailableError,
+        "Z3_mk_seq_replace_all is not available on the loaded Z3 " &
+        z3Compat().runtimeVersion &
+        " (added at 4.16; absent below). Check " &
+        "Z3_mk_seq_replace_allAvailable() before calling replaceAll.")
     let raw = a.ctx.checkErr Z3_mk_seq_replace_all(a.ctx.raw, a.raw, old.raw, new.raw)
     wrap[Z3Seq[E]](a.ctx, raw)
 

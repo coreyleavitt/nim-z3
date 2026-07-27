@@ -50,25 +50,36 @@ width-arithmetic helpers, and the cross-module-internal seams in
 `docs/INTERNAL_API.md` are explicitly NOT part of the public
 surface.
 
-## What lands next (v2.1.0 target)
+## What lands next
 
 No fixed schedule. The plan opens when a substantive new batch is
 ready or when an external user files an issue that warrants a
 minor bump. Until then this file stays as the stability anchor —
-confirming that v2.0 is the current release and that any code
+confirming that **v2.2 is the current release** and that any code
 change either fits one of the SemVer categories above or needs
 the major-bump treatment.
 
-**v2.1.0 batch — typed fixedpoint callbacks.** RFC
+**Shipped — v2.1.0, typed fixedpoint callbacks.** RFC
 [`docs/RFC-fixedpoint-callbacks.md`](RFC-fixedpoint-callbacks.md)
-closes the one open item `docs/RFC-completeness.md` deferred out of
+closed the one open item `docs/RFC-completeness.md` deferred out of
 the v2.0.0 audit (§N7.8's typed-closure wrapper for
-`Z3_fixedpoint_add_callback`'s Spacer export events). Adds
-`z3/fixedpoint_callbacks` (`Z3FixedpointHandlers`/`setHandlers`/
-`clearHandlers`/`hasHandlers`/`handlers`/`collectLemmas`/
-`Z3LemmaLog`, gated `-d:z3WithoutFixedpointCallbacks`) and batches in
-four latent-bug backfixes to shipped v2.0 code (propagator exception
-wall; two ctx-ref lifecycle-template leak fixes; a hand-written
-`=destroy` audit) — see CHANGELOG `[2.1.0]` for the full list. Typed
-reduce callbacks (`reduceApp`/`reduceAssign`) are scoped out to v2.2;
-the raw §N7.8 procs remain the reduce escape hatch in the meantime.
+`Z3_fixedpoint_add_callback`'s Spacer export events). Added
+`z3/fixedpoint_callbacks` (gated `-d:z3WithoutFixedpointCallbacks`)
+plus four latent-bug backfixes to shipped v2.0 code — see CHANGELOG
+`[2.1.0]`.
+
+**Shipped — v2.2.0, regex-index + multi-version.** RFC
+[`docs/RFC-regex-index.md`](RFC-regex-index.md) (issue #2). Encoded
+regex-position helpers (`matchStartsAt`/`containsRe`/`indexOfRe`), plus
+single-build support for **Z3 4.13.x → 4.16.x** via softlink
+version-compat (`z3Compat()`; see
+[`docs/MULTI_VERSION.md`](MULTI_VERSION.md)). See CHANGELOG `[2.2.0]`.
+
+**Deferred.** Regex-replace wrappers (`replaceRe`/`replaceReAll`) are not
+shipped — Z3's solver can't reason about `str.replace_re{,_all}`; deferred
+pending upstream Z3 (RFC-regex-index §7). Typed reduce callbacks
+(`reduceApp`/`reduceAssign`) remain scoped out to a future minor; the raw
+§N7.8 procs remain the reduce escape hatch. The 4.13–4.16 compat manifest
+(`z3.compat.json`, adding `atAttested`) is pending an upstream softlink
+enhancement for parameter-drifted symbols — see
+`scratchpad/softlink-ground-truth-harvest-issue.md`.

@@ -656,6 +656,22 @@ proc getNumeralSign*[E, S: static int](a: Z3Fp[E, S]): Option[bool] =
   ## Returns `some(false)` for positive, `some(true)` for negative.
   ## Returns `none` when `a` is not a numeral (e.g. a free variable).
   ## NaN is not a valid argument; results are unspecified.
+  ##
+  ## Raises `Z3FeatureUnavailableError` if `Z3_fpa_get_numeral_sign` is not
+  ## available on the loaded libz3. The C symbol's `sgn` out-param drifted
+  ## `int*` → `bool*` at Z3 4.16; nim-z3 declares the historical `int*`
+  ## shape `until: "4.16.0"`, so on a ≥4.16 runtime the symbol is refused
+  ## (never resolved) rather than risk silently reading a `bool` through
+  ## an `int*` cast. `none` is reserved for "not a numeral" and would be
+  ## an unsound stand-in for "the op itself is unavailable" — check
+  ## `Z3_fpa_get_numeral_signAvailable()` first to avoid this exception.
+  if not Z3_fpa_get_numeral_signAvailable():
+    raise newException(Z3FeatureUnavailableError,
+      "Z3_fpa_get_numeral_sign is not available on the loaded Z3 " &
+      z3Compat().runtimeVersion &
+      " (signature drifted int*->bool* at 4.16; refused on >=4.16 for " &
+      "safety). Check Z3_fpa_get_numeral_signAvailable() before calling " &
+      "getNumeralSign.")
   var sgn: cint
   if Z3_fpa_get_numeral_sign(a.ctx.raw, a.raw, addr sgn):
     some(sgn != 0)

@@ -3157,14 +3157,25 @@ dynlib "z3":
   #                   cross-checks the vendored prototype against the real one.
   # The `replaceAll` wrapper stays `-d`-gated (`z3WithSeqReplaceAll`) in
   # sequence.nim, so the default public surface is unchanged. The regex-replace
-  # FFI (`Z3_mk_seq_replace_re{,_all}`) is intentionally NOT declared: Z3's
-  # solver can't reason about `str.replace_re{,_all}` (returns `unknown` on
-  # concrete inputs), so no wrapper ships for it — deferred pending upstream Z3
-  # (RFC-regex-index.md §7).
+  # FFI (`Z3_mk_seq_replace_re{,_all}`) is declared the same way and gated
+  # behind `z3WithSeqReplaceRe{,All}` in regex.nim: Z3's solver returns
+  # `unknown` on `str.replace_re{,_all}` even for fully concrete inputs (unlike
+  # `str.replace_all`, which it decides), so the wrappers build CORRECT terms
+  # that no solver query can currently discharge — their contract is term
+  # construction / SMT-LIB export, not solver-decidability (RFC-regex-index.md
+  # §7; GOTCHAS #19, #24).
 
   proc Z3_mk_seq_replace_all(c: RawZ3Context, s, src, dst: RawZ3Ast): RawZ3Ast
     {.cdecl, optional, header: "z3.h",
       prototype: "Z3_ast Z3_mk_seq_replace_all(Z3_context c, Z3_ast s, Z3_ast src, Z3_ast dst);".}
+
+  proc Z3_mk_seq_replace_re(c: RawZ3Context, s, re, dst: RawZ3Ast): RawZ3Ast
+    {.cdecl, optional, header: "z3.h",
+      prototype: "Z3_ast Z3_mk_seq_replace_re(Z3_context c, Z3_ast s, Z3_ast re, Z3_ast dst);".}
+
+  proc Z3_mk_seq_replace_re_all(c: RawZ3Context, s, re, dst: RawZ3Ast): RawZ3Ast
+    {.cdecl, optional, header: "z3.h",
+      prototype: "Z3_ast Z3_mk_seq_replace_re_all(Z3_context c, Z3_ast s, Z3_ast re, Z3_ast dst);".}
 
 # ============================================================================
 # Compat facade — nim-z3-owned convenience predicates over `z3Compat()`

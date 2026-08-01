@@ -27,8 +27,8 @@
 ## Z3's SMT-LIB tactic combinators are `and-then`, `or-else`, `repeat`,
 ## `try-for`, `using-params`. We expose them as `andThen`, `orElse`,
 ## `repeat`, `tryFor`, `withParams`. The v0.2 plan §2 sketched
-## ``proc `then` `` and ``proc `or` `` — `or` would shadow the boolean
-## `or` we use everywhere else, and `andThen`/`orElse` match the
+## operator-style `then` and `or` procs — but `or` would shadow the
+## boolean `or` we use everywhere else, and `andThen`/`orElse` match the
 ## upstream names more cleanly.
 ##
 ## ## Built-in tactic names

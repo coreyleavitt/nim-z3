@@ -179,14 +179,18 @@ them explicitly:
 | Flag | Enables |
 |---|---|
 | `-d:z3WithSeqReplaceAll` | `Z3Seq.replaceAll` (`Z3_mk_seq_replace_all`) |
+| `-d:z3WithSeqReplaceRe` | `z3/regex.replaceRe` (`Z3_mk_seq_replace_re`) |
+| `-d:z3WithSeqReplaceReAll` | `z3/regex.replaceReAll` (`Z3_mk_seq_replace_re_all`) |
 
 Listed here only so the full `-d:` flag surface lives in one place. See
 [`MULTI_VERSION.md`](MULTI_VERSION.md) for why a symbol may be absent on a
 given Z3, and GOTCHAS #24 for the regex-index soundness contract.
 
-The regex-replace variants (`replaceRe` / `replaceReAll`) are **not** shipped —
-Z3's solver can't reason about `str.replace_re{,_all}`; deferred pending
-upstream (RFC-regex-index §7).
+The regex-replace variants (`replaceRe` / `replaceReAll`) build CORRECT
+`str.replace_re{,_all}` terms, but Z3's solver returns `unknown` — in both
+directions — on those constraints even for fully concrete inputs; their
+contract is term construction / SMT-LIB export, not solver-decidability
+(GOTCHAS #19, #24; RFC-regex-index §7).
 
 ## The `nimble test-minimal` task
 

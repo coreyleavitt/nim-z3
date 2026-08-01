@@ -75,11 +75,18 @@ single-build support for **Z3 4.13.x → 4.16.x** via softlink
 version-compat (`z3Compat()`; see
 [`docs/MULTI_VERSION.md`](MULTI_VERSION.md)). See CHANGELOG `[2.2.0]`.
 
-**Deferred.** Regex-replace wrappers (`replaceRe`/`replaceReAll`) are not
-shipped — Z3's solver can't reason about `str.replace_re{,_all}`; deferred
-pending upstream Z3 (RFC-regex-index §7). Typed reduce callbacks
-(`reduceApp`/`reduceAssign`) remain scoped out to a future minor; the raw
-§N7.8 procs remain the reduce escape hatch. The 4.13–4.16 compat manifest
-(`z3.compat.json`, adding `atAttested`) is pending an upstream softlink
-enhancement for parameter-drifted symbols — see
+**Shipped — regex-replace wrappers (`replaceRe`/`replaceReAll`), opt-in.**
+Reinstated 2026-07-28 after a brief descope: they build CORRECT
+`str.replace_re{,_all}` terms (useful for constraint construction / SMT-LIB
+export) behind `-d:z3WithSeqReplaceRe` / `-d:z3WithSeqReplaceReAll`, gated
+and `Available()`-guarded like `replaceAll`. Z3's solver still returns
+`unknown` — in both directions — on those constraints for concrete inputs,
+so they don't extend what's solver-decidable; see GOTCHAS #19/#24 and
+RFC-regex-index §7.
+
+**Deferred.** Typed reduce callbacks (`reduceApp`/`reduceAssign`) remain
+scoped out to a future minor; the raw §N7.8 procs remain the reduce escape
+hatch. The 4.13–4.16 compat manifest (`z3.compat.json`, adding
+`atAttested`) is pending an upstream softlink enhancement for
+parameter-drifted symbols — see
 `scratchpad/softlink-ground-truth-harvest-issue.md`.

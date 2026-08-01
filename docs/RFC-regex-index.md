@@ -11,18 +11,28 @@
 > **§6**. Net RFC = regex-index/replace surface (§3–§5) **+**
 > version-compat plumbing (§6). Still v2.2.0, still additive.
 >
-> **Descope (2026-07-22, Corey):** `replaceRe` / `replaceReAll`
-> (`str.replace_re{,_all}`, §4.3) are **NOT shipped**. Implementation
-> testing on a fully capable runtime (Z3 4.16.0) showed Z3's solver
-> returns `unknown` on `str.replace_re{,_all}` for even fully concrete
-> inputs (probed both directions; contrast `str.replace_all`, which it
-> decides) — so the wrappers build correct terms no solver query can
-> reason about, and the `smtValid`-based tests fail on every runtime.
-> The FFI decls and `-d:z3WithSeqReplaceRe{,All}` flags were removed;
-> deferred pending upstream Z3 decidability. What ships from this RFC:
-> the **regex-index helpers** (`matchStartsAt`/`containsRe`/`indexOfRe`,
-> §3–§4.2, decidable) **+** multi-version compat (§6). §4.3 and the
-> `replace_re_all` half of the title are superseded by this note.
+> **Descope (2026-07-22, Corey), superseded (2026-07-28, Corey):**
+> `replaceRe` / `replaceReAll` (`str.replace_re{,_all}`, §4.3) were
+> temporarily NOT shipped. Implementation testing on a fully capable
+> runtime (Z3 4.16.0) showed Z3's solver returns `unknown` on
+> `str.replace_re{,_all}` for even fully concrete inputs (probed both
+> directions; contrast `str.replace_all`, which it decides) — so the
+> `smtValid`-based tests from the original slice failed on every runtime.
+> The FFI decls and `-d:z3WithSeqReplaceRe{,All}` flags were removed at
+> the time. **They are shipped again as of 2026-07-28**: the wrappers
+> build CORRECT `str.replace_re{,_all}` terms — useful for constraint
+> construction / SMT-LIB export even though the solver can't currently
+> decide concrete instances of them — so Corey reinstated them opt-in
+> behind the same `-d:z3WithSeqReplaceRe` / `-d:z3WithSeqReplaceReAll`
+> flags, gated the same way as `replaceAll` (`Available()`-guarded,
+> raises `Z3FeatureUnavailableError` when the symbol is absent from the
+> loaded libz3). Tests now verify TERM CONSTRUCTION (SMT-LIB rendering
+> shape) rather than `smtValid`, plus a regression guard documenting the
+> solver-opacity caveat. See GOTCHAS #19, #24 and the [2.2.0] CHANGELOG
+> entry. §4.3 and §7's old "no `replaceRe`/`replaceReAll`" non-goal are
+> superseded by this note; the regex-index helpers
+> (`matchStartsAt`/`containsRe`/`indexOfRe`, §3–§4.2, decidable) plus
+> multi-version compat (§6) remain unaffected.
 
 ## 1. Motivation
 
@@ -86,12 +96,15 @@ and the `indexOfRe` convenience — see §4.1/§4.2.)*
 | `matchStartsAt` | QF predicate (encoded from 1:1 wrappers) | none | — (composition) |
 | `containsRe` | QF predicate, sound **and** complete (encoded) | none | — (composition) |
 | `indexOfRe` | bounded-unroll convenience (encoded) | none | — (composition) |
-| `replaceReAll` | strict 1:1 wrapper | `-d:z3WithSeqReplaceReAll` | `Z3_mk_seq_replace_re_all` |
+| `replaceRe` | strict 1:1 wrapper (term construction; solver returns `unknown`) | `-d:z3WithSeqReplaceRe` | `Z3_mk_seq_replace_re` |
+| `replaceReAll` | strict 1:1 wrapper (term construction; solver returns `unknown`) | `-d:z3WithSeqReplaceReAll` | `Z3_mk_seq_replace_re_all` |
 
-All three land in `src/z3/regex.nim` (they bridge `Z3Seq`/`Z3Regex`
-and sit beside the existing `matches` / `replaceRe`). The first two are
-unconditional (they use only already-shipped ops); `replaceReAll` is
-gated like its siblings.
+All land in `src/z3/regex.nim` (they bridge `Z3Seq`/`Z3Regex` and sit
+beside the existing `matches`). The first three are unconditional (they
+use only already-shipped ops); `replaceRe` / `replaceReAll` are gated
+like `sequence.replaceAll`, and their contract is correct term
+construction / SMT-LIB export — not solver-decidability (see the
+Descope/superseded note above).
 
 ## 4. Design
 
@@ -580,10 +593,13 @@ that changes, dual-ABI is a clean future follow-up (no API break).
 
 ## 7. Non-goals
 
-- **No `replaceRe` / `replaceReAll`** (`str.replace_re{,_all}`) — descoped
-  during implementation (see the Descope note at the top). Z3's solver returns
-  `unknown` on these for concrete inputs, so a wrapper is un-testable/un-usable
-  via the solver; deferred pending upstream Z3. §4.3 is superseded.
+- ~~No `replaceRe` / `replaceReAll`~~ — **superseded 2026-07-28** (see the
+  top-of-doc note): both ship opt-in as strict 1:1 term-construction
+  wrappers (`-d:z3WithSeqReplaceRe` / `-d:z3WithSeqReplaceReAll`). Z3's
+  solver still returns `unknown` on `str.replace_re{,_all}` for concrete
+  inputs, so they are NOT usable to *decide* concrete equalities via
+  `smtValid`/`check()` — only to build correct constraints / emit
+  SMT-LIB. §3 and §4.3 reflect the shipped surface.
 - No `∀`-quantified symbolic-length `find` (hang-forbidden). Symbolic
   length is the consumer's degrade-to-`sxUnknown` decision.
 - No `split_re` wrapper (separate gap; out of scope for #2).

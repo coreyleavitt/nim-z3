@@ -606,15 +606,21 @@ stdlib.
 
 **What you should do.** For *literal* replace-all, v2.2.0 ships
 `replaceAll` (opt-in `-d:z3WithSeqReplaceAll`; Z3 decides it). The
-**regex** replace variants (`replaceRe` / `replaceReAll`, wrapping
-`str.replace_re{,_all}`) are deliberately **not** shipped: Z3's solver
-returns `unknown` on those even for concrete inputs, so a wrapper would
-build a term no solver query could reason about — deferred pending
-upstream Z3 (see §7 of RFC-regex-index). For regex-driven position work
-that *is* decidable, use the v2.2.0 regex-index helpers `indexOfRe` /
-`matchStartsAt` / `containsRe` (see `z3/regex` and GOTCHAS #24); a
-regex replace-all can be encoded as a fixed-point loop over `indexOfRe`
-+ `substr`. Plain first-occurrence `replace` remains always-on.
+**regex** replace variants also ship opt-in: `replaceRe` (first match,
+`-d:z3WithSeqReplaceRe`) and `replaceReAll` (all matches,
+`-d:z3WithSeqReplaceReAll`), wrapping `str.replace_re{,_all}`. Both
+build CORRECT terms, but **Z3's solver returns `unknown` — in both
+directions — on `str.replace_re{,_all}` constraints even for fully
+concrete inputs** (verified on Z3 4.16.0). Their contract is correct
+*term construction* / SMT-LIB export, not solver-decidability: use them
+to build constraints or emit SMT-LIB, not to `smtValid`/`check()` a
+concrete equality over the result (see §7 of RFC-regex-index). For
+regex-driven position/existence work that *is* decidable, use the
+v2.2.0 regex-index helpers `indexOfRe` / `matchStartsAt` / `containsRe`
+(see `z3/regex` and GOTCHAS #24); a regex replace-all can also be
+encoded as a fixed-point loop over `indexOfRe` + `substr` if you need a
+decidable substitute. Plain first-occurrence `replace` remains
+always-on.
 
 ---
 
@@ -836,3 +842,13 @@ needs no such guard. Note also the nullable-`re` caveat: for a `re`
 that matches the empty string, `matchStartsAt` is trivially true at
 every in-range position — see the `matchStartsAt` docstring in
 `z3/regex`.
+
+**Related but distinct opacity:** `indexOfRe`'s completeness trap above
+is about a *bound* you must discharge; the opt-in `replaceRe` /
+`replaceReAll` (`-d:z3WithSeqReplaceRe{,All}`, wrapping
+`str.replace_re{,_all}`) have a different, more fundamental limit —
+Z3's solver answers `unknown` (not `sat`/`unsat`) on those constraints
+even for fully concrete inputs, with no bound that fixes it. Don't
+reach for `replaceRe`/`replaceReAll` expecting `smtValid`/`check()` to
+decide anything about the result; they're for term construction / SMT-
+LIB export only. See GOTCHAS #19 and RFC-regex-index.md §7.

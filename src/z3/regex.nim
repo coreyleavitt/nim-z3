@@ -388,10 +388,78 @@ proc indexOfReChecked*[E](s: Z3Seq[E], re: Z3Regex[Z3Seq[E]],
   ## `start = 0` convenience overload.
   indexOfReChecked(s, re, mkInt(s.ctx, 0), bound)
 
-# NOTE: the regex-replace wrappers `replaceRe` / `replaceReAll`
-# (`Z3_mk_seq_replace_re{,_all}`) were deliberately NOT shipped. Z3's string
-# solver returns `unknown` on `str.replace_re` / `str.replace_re_all` even for
-# fully concrete inputs (unlike `str.replace_all`, which it decides), so the
-# wrappers would build correct ASTs that no solver query could reason about.
-# Deferred pending upstream Z3 decidability — see docs/RFC-regex-index.md §7
-# and GOTCHAS #24. Plain `Z3Seq.replaceAll` (non-regex, decidable) stays.
+# Regex-replace: `replaceRe` / `replaceReAll` (`Z3_mk_seq_replace_re{,_all}`).
+#
+# Both build CORRECT terms — Z3's string solver just can't currently decide
+# `str.replace_re` / `str.replace_re_all` even for fully concrete inputs
+# (unlike `str.replace_all`, which it decides). Their contract is TERM
+# CONSTRUCTION / SMT-LIB export, not solver-decidability: use them to build
+# constraints or export SMT-LIB, but expect `smtValid`/`check()` to answer
+# `zsUnknown` rather than proving concrete equalities. See
+# docs/RFC-regex-index.md §7 and GOTCHAS #19, #24. Plain `Z3Seq.replaceAll`
+# (non-regex, decidable) stays available unconditionally behind its own gate.
+
+when defined(z3WithSeqReplaceRe):
+  proc replaceRe*[E](a: Z3Seq[E], pattern: Z3Regex[Z3Seq[E]],
+                     replacement: Z3Seq[E]): Z3Seq[E] =
+    ## SMT `(seq.replace_re a pattern replacement)`. Replaces the first
+    ## substring of `a` matching `pattern` with `replacement`.
+    ##
+    ## Requires `-d:z3WithSeqReplaceRe`. The underlying C function
+    ## `Z3_mk_seq_replace_re` is absent from some Z3 distributions and
+    ## from every Z3 build before ~4.15.8.
+    ##
+    ## Raises `Z3FeatureUnavailableError` if `Z3_mk_seq_replace_re` is not
+    ## available on the loaded libz3. There is no honest "unavailable"
+    ## `Z3Seq[E]` to degrade to, so this raises rather than returning a
+    ## term that would silently mean something else. Check
+    ## `Z3_mk_seq_replace_reAvailable()` first to avoid this exception.
+    ##
+    ## **Solver-opacity caveat:** the returned term is a CORRECT encoding
+    ## of `str.replace_re`, but Z3's solver returns `unknown` — not `sat`
+    ## or `unsat` — on `str.replace_re` constraints even for fully
+    ## concrete `a` / `pattern` / `replacement`. Use this to build
+    ## constraints or emit SMT-LIB; do not expect `smtValid` or `check()`
+    ## to decide equalities/inequalities over the result.
+    if not Z3_mk_seq_replace_reAvailable():
+      raise newException(Z3FeatureUnavailableError,
+        "Z3_mk_seq_replace_re is not available on the loaded Z3 " &
+        z3Compat().runtimeVersion &
+        " (added ~4.15.8; absent below). Check " &
+        "Z3_mk_seq_replace_reAvailable() before calling replaceRe.")
+    let raw = a.ctx.checkErr Z3_mk_seq_replace_re(a.ctx.raw, a.raw,
+                                                   pattern.raw, replacement.raw)
+    wrap[Z3Seq[E]](a.ctx, raw)
+
+when defined(z3WithSeqReplaceReAll):
+  proc replaceReAll*[E](a: Z3Seq[E], pattern: Z3Regex[Z3Seq[E]],
+                        replacement: Z3Seq[E]): Z3Seq[E] =
+    ## SMT `(seq.replace_re_all a pattern replacement)`. Replaces every
+    ## non-overlapping substring of `a` matching `pattern` with
+    ## `replacement`.
+    ##
+    ## Requires `-d:z3WithSeqReplaceReAll`. The underlying C function
+    ## `Z3_mk_seq_replace_re_all` is absent from some Z3 distributions and
+    ## from every Z3 build before ~4.15.8.
+    ##
+    ## Raises `Z3FeatureUnavailableError` if `Z3_mk_seq_replace_re_all` is
+    ## not available on the loaded libz3. There is no honest "unavailable"
+    ## `Z3Seq[E]` to degrade to, so this raises rather than returning a
+    ## term that would silently mean something else. Check
+    ## `Z3_mk_seq_replace_re_allAvailable()` first to avoid this exception.
+    ##
+    ## **Solver-opacity caveat:** the returned term is a CORRECT encoding
+    ## of `str.replace_re_all`, but Z3's solver returns `unknown` — not
+    ## `sat` or `unsat` — on `str.replace_re_all` constraints even for
+    ## fully concrete `a` / `pattern` / `replacement`. Use this to build
+    ## constraints or emit SMT-LIB; do not expect `smtValid` or `check()`
+    ## to decide equalities/inequalities over the result.
+    if not Z3_mk_seq_replace_re_allAvailable():
+      raise newException(Z3FeatureUnavailableError,
+        "Z3_mk_seq_replace_re_all is not available on the loaded Z3 " &
+        z3Compat().runtimeVersion &
+        " (added ~4.15.8; absent below). Check " &
+        "Z3_mk_seq_replace_re_allAvailable() before calling replaceReAll.")
+    let raw = a.ctx.checkErr Z3_mk_seq_replace_re_all(a.ctx.raw, a.raw,
+                                                       pattern.raw, replacement.raw)
+    wrap[Z3Seq[E]](a.ctx, raw)

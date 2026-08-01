@@ -323,7 +323,7 @@ when not defined(z3WithoutAlgebraic):
   proc algebraicGetPoly*(a: Z3AlgebraicNum): Z3AstVector =
     ## Return the defining polynomial of algebraic numeral `a` as a
     ## `Z3AstVector` of coefficients ordered from lowest to highest degree.
-    ## Precondition: a was obtained via algebraic ops (algebraicRoot, +, -, *, /, etc.)
+    ## Precondition: a was obtained via algebraic ops (algebraicRoot, `+`, `-`, `*`, `/`, etc.)
     ## OR via toAlgebraic on a Z3Real that satisfies algebraicIsValue.
     ## The distinct-type wrapper makes most misuse a type error; toAlgebraic's debug
     ## assertion catches the remaining case.
@@ -332,7 +332,7 @@ when not defined(z3WithoutAlgebraic):
 
   proc algebraicGetI*(a: Z3AlgebraicNum): int =
     ## Return the 1-based root index among the roots of the defining polynomial.
-    ## Precondition: a was obtained via algebraic ops (algebraicRoot, +, -, *, /, etc.)
+    ## Precondition: a was obtained via algebraic ops (algebraicRoot, `+`, `-`, `*`, `/`, etc.)
     ## OR via toAlgebraic on a Z3Real that satisfies algebraicIsValue.
     ## The distinct-type wrapper makes most misuse a type error; toAlgebraic's debug
     ## assertion catches the remaining case.

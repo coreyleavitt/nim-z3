@@ -90,6 +90,20 @@ range gracefully at load time.
     (see GOTCHAS #24).
   - `MatchBound = distinct Natural` + `matchBound(n)` ctor + `boundHolds(s, b)`
     companion (asserts `len(s) ≤ b`, the completeness obligation).
+- **`z3/regex` replace wrappers** (strict 1:1 FFI, opt-in): `replaceRe(a,
+  pattern, replacement)` / `replaceReAll(a, pattern, replacement)` wrap
+  `Z3_mk_seq_replace_re` / `Z3_mk_seq_replace_re_all` (first- and
+  all-occurrences regex replace). Gated behind `-d:z3WithSeqReplaceRe` /
+  `-d:z3WithSeqReplaceReAll`, `Available()`-guarded like `replaceAll`
+  (raise `Z3FeatureUnavailableError` when the symbol is absent from the
+  loaded libz3 — both are absent below ~4.15.8). **Solver-opacity
+  caveat:** both build CORRECT `str.replace_re{,_all}` terms, but Z3's
+  solver currently answers `zsUnknown` — in both directions — on these
+  constraints even for fully concrete inputs (verified on Z3 4.16.0; see
+  RFC-regex-index.md §7, GOTCHAS #19/#24). Their contract is correct term
+  construction / SMT-LIB export, not solver-decidability; reach for the
+  decidable `indexOfRe`/`matchStartsAt`/`containsRe` helpers above when a
+  query needs to be *decided*.
 - **Multi-version Z3 support** (softlink version-compat). `z3Compat(): CompatReport`
   reports the loaded runtime version, attestation state, and per-symbol
   `missingReasons`; the softlink compat types (`CompatReport`, `Attestation`,
@@ -117,18 +131,6 @@ range gracefully at load time.
   module always collide on the derived handle ident). `Z3_mk_seq_replace_all`
   is now in the single main `dynlib "z3"` block as `{.optional, prototype.}`;
   the gated build compiles clean with full prototype verification.
-
-### Not shipped (deferred)
-
-- **Regex-replace wrappers** (`replaceRe` / `replaceReAll`, wrapping
-  `Z3_mk_seq_replace_re{,_all}`) are intentionally **not** shipped. Z3's string
-  solver returns `unknown` on `str.replace_re{,_all}` even for fully concrete
-  inputs (unlike `str.replace_all`, which it decides), so the wrappers would
-  build correct terms that no solver query can reason about. The FFI decls and
-  `-d:z3WithSeqReplaceRe{,All}` flags were removed. Deferred pending upstream
-  Z3 decidability — see RFC-regex-index §7 and GOTCHAS #24. The decidable
-  regex-index helpers (`indexOfRe` / `matchStartsAt` / `containsRe`) ship as
-  above; a regex replace-all can be encoded via `indexOfRe` + `substr`.
 
 ## [2.1.0]
 

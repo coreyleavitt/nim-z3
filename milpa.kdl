@@ -6,6 +6,15 @@ src_dir "src"
 
 deps {
     "softlink" git=(url)"https://github.com/coreyleavitt/softlink.git" ref="v0.11.1"
+}
+
+// proptest is used only by nim-z3's own test suite (tests/*.nim), never by
+// src/ — it is a development/test dependency. Declaring it here (not in
+// `deps`) keeps it out of the resolved graph of any package that consumes
+// nim-z3 (milpa spec S4 §3.3: a transitive dep's dev-deps are not enrolled),
+// so a downstream consumer no longer pulls a stale copy of proptest into its
+// own lockfile via the z3 -> proptest back-edge.
+dev-deps {
     "proptest" git=(url)"https://github.com/coreyleavitt/proptest.git" ref="main"
 }
 

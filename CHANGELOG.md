@@ -6,13 +6,36 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [2.2.0]
 
-### Changed — behavior (z3 4.13+ alignment)
+### Fixed — multi-version support (z3 4.13–4.16)
 
-- **`Z3Optimize.model()` on an unsat optimiser now raises
-  `Z3OperationError`** instead of returning a trivial handle. z3 4.13+
-  changed `Z3_optimize_get_model` to raise `model is not available` after
-  unsat, matching `Z3Solver`; the wrapper surfaces it. There is no model
-  when unsat, so raising is the correct contract.
+- **Corrected the z3 4.15.5 API break.** Three C-API symbols change at
+  exactly z3 **4.15.5** — `Z3_mk_set_has_size` removed, `Z3_mk_seq_replace_all`
+  added, and `Z3_fpa_get_numeral_sign`'s out-param drifting `int*`→`bool*`.
+  The compat harvest previously sampled `{…, 4.15.0, 4.16.0}`, jumping the
+  break and mis-recording all three boundaries at 4.16.0. The consequence was
+  a hard one: nim-z3 **failed to compile against z3 4.15.5–4.15.8** (the
+  historical `int*` decl rejected against the real `bool*` header). The corpus
+  is re-harvested with 4.15.4/4.15.5/4.15.8 added and the manifest now pins
+  every boundary at 4.15.5; `Z3_fpa_get_numeral_sign` is bounded
+  `until: "4.15.5"`.
+- **`globalParamDescrs` now requires z3 ≥ 4.15.0.** On 4.13/4.14
+  `Z3_get_global_param_descrs` returns a manager-owned, non-refcountable
+  descrs that corrupts the allocator when accessed; the wrapper detects the
+  runtime version and raises `Z3FeatureUnavailableError` there instead of
+  crashing.
+- **Thread-safe lazy load.** The one-time `loadZ3()` behind `newContext()` is
+  now guarded by double-checked locking (a lock for load exclusion + a
+  release/acquire ready flag for safe publication), so concurrent cold-callers
+  from multiple threads can no longer observe a half-resolved libz3 and hit
+  `SoftlinkError: library not loaded`.
+
+### Changed — behavior
+
+- **`Z3Optimize.model()` on an unsat optimiser is version-dependent.** z3's
+  optimize backend changed mid-4.15.x: ≤ 4.15.0 returns a trivial model
+  handle, ≥ 4.15.8 raises (surfaced as `Z3OperationError`). The wrapper
+  faithfully surfaces whichever the loaded z3 does — it does not normalise
+  the two. (Prior CHANGELOG drafts incorrectly attributed this to "z3 4.13+".)
 
 ### Changed — tooling
 
@@ -21,7 +44,8 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
   orchestration, now re-homed verbatim into `run-tests.sh` (plain shell, no
   NimScript). The `softlink` dependency tracks its latest release (v0.11.1).
 - **CI modernized** to Nim 2.2.10 and the supported z3 range (4.13.x–4.16.x,
-  downloaded per-version rather than the OS `libz3`).
+  downloaded per-version rather than the OS `libz3`), matrix-tested on
+  4.13.4 / 4.14.1 / 4.15.8 / 4.16.0.
 
 ## [Unreleased]
 

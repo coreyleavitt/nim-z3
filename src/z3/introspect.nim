@@ -531,9 +531,27 @@ proc indexValue*(ctx: Z3Context, ast: RawZ3Ast): int {.inline.} =
 proc globalParamDescrs*(ctx: Z3Context): Z3ParamDescrs =
   ## Returns a `Z3ParamDescrs` schema describing all Z3
   ## process-wide (manager-global) parameters: `verbose`,
-  ## `trace`, `memory_max_size`, etc.  The schema is owned by the
-  ## Z3 manager singleton; the returned handle is reference-counted
-  ## as usual.
+  ## `trace`, `memory_max_size`, etc.
+  ##
+  ## **Requires z3 >= 4.15.0.** On 4.13/4.14 `Z3_get_global_param_descrs`
+  ## returns a manager-owned descrs object that is *not* a valid
+  ## reference-counted heap object: touching it (even a bare
+  ## `Z3_param_descrs_size`, with or without inc_ref/dec_ref) corrupts
+  ## the allocator and faults on the next context allocation. The symbol
+  ## is present with a valid signature on every version, so this is a
+  ## runtime-behaviour boundary — not a symbol-presence or ABI drift one,
+  ## which is why it's gated here on the probed runtime version rather
+  ## than through softlink's `{.since.}`/`optional` symbol windows (the
+  ## harvest correctly records the *header* as verified on 4.13–4.14).
+  ## On an unsupported runtime this raises `Z3FeatureUnavailableError`;
+  ## guard with a `z3Version()` check first if you want to branch.
+  let v = z3Version()
+  if (v.major, v.minor) < (4, 15):
+    raise newException(Z3FeatureUnavailableError,
+      "globalParamDescrs (Z3_get_global_param_descrs) is unusable on z3 " &
+      z3FullVersion() & ": on <4.15 it returns a manager-owned descrs that " &
+      "corrupts memory when accessed. Fixed upstream in 4.15.0. Check " &
+      "z3Version() before calling globalParamDescrs on older runtimes.")
   let raw = ctx.checkErr Z3_get_global_param_descrs(ctx.raw)
   wrapParamDescrs(ctx, raw)
 

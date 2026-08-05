@@ -2,11 +2,11 @@
   "schema": 1,
   "lib": "z3",
   "harvest": {
-    "toolchain": "gcc (SUSE Linux) 15.2.1 20260604",
+    "toolchain": "gcc (Debian 14.2.0-19) 14.2.0",
     "tier": "builtin-compat",
     "abi": "linux-lp64",
-    "date": "2026-07-25",
-    "harvesterVersion": "0.11.0"
+    "date": "2026-08-05",
+    "harvesterVersion": "0.11.1"
   },
   "corpus": [
     {
@@ -24,6 +24,18 @@
     {
       "version": "4.15.0",
       "source": "git:Z3Prover/z3@z3-4.15.0"
+    },
+    {
+      "version": "4.15.4",
+      "source": "git:Z3Prover/z3@z3-4.15.4"
+    },
+    {
+      "version": "4.15.5",
+      "source": "git:Z3Prover/z3@z3-4.15.5"
+    },
+    {
+      "version": "4.15.8",
+      "source": "git:Z3Prover/z3@z3-4.15.8"
     },
     {
       "version": "4.16.0",
@@ -3913,12 +3925,12 @@
       "header": {
         "verified": [
           {
-            "hi": "4.16.0"
+            "hi": "4.15.5"
           }
         ],
         "mismatch": [
           {
-            "lo": "4.16.0"
+            "lo": "4.15.5"
           }
         ]
       }
@@ -4151,12 +4163,12 @@
       "header": {
         "verified": [
           {
-            "hi": "4.16.0"
+            "hi": "4.15.5"
           }
         ],
         "absent": [
           {
-            "lo": "4.16.0"
+            "lo": "4.15.5"
           }
         ]
       }
@@ -4760,12 +4772,40 @@
       "header": {
         "verified": [
           {
-            "lo": "4.16.0"
+            "lo": "4.15.5"
           }
         ],
         "absent": [
           {
-            "hi": "4.16.0"
+            "hi": "4.15.5"
+          }
+        ]
+      }
+    },
+    "Z3_mk_seq_replace_re": {
+      "header": {
+        "verified": [
+          {
+            "lo": "4.15.5"
+          }
+        ],
+        "absent": [
+          {
+            "hi": "4.15.5"
+          }
+        ]
+      }
+    },
+    "Z3_mk_seq_replace_re_all": {
+      "header": {
+        "verified": [
+          {
+            "lo": "4.15.5"
+          }
+        ],
+        "absent": [
+          {
+            "hi": "4.15.5"
           }
         ]
       }

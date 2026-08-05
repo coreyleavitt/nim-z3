@@ -221,17 +221,30 @@ suite "Z3Optimize — withFrame + getParamDescrs (medium B2/B3)":
     check pd.len > 0
 
 suite "Z3Optimize — model() after unsat":
-  test "model() on an unsat optimiser raises (z3 >= 4.13)":
-    # z3 >= 4.13 changed the optimize backend to raise
-    # `Z3_EXCEPTION: model is not available` on get_model after unsat —
-    # bringing it in line with Z3Solver (earlier z3 returned a trivial
-    # model). The wrapper surfaces that as `Z3OperationError`. There is no
-    # model when the problem is unsat, so raising is the correct contract.
+  test "model() on an unsat optimiser is version-faithful":
+    # There is no meaningful model for an unsat problem, but z3's optimize
+    # backend disagrees with itself across the supported matrix on how to
+    # report that from `Z3_optimize_get_model`:
+    #   * z3 <= 4.15.0 returns a (trivial) model handle with no error set;
+    #   * z3 >= 4.15.8 sets Z3_INVALID_USAGE, which `model()` surfaces as
+    #     `Z3OperationError`.
+    # The drift landed *mid-4.15.x* (4.15.0 still returns a handle, 4.15.8
+    # raises), so there is no clean minor-version line to branch on. The
+    # wrapper faithfully surfaces whichever behaviour the loaded z3 exhibits;
+    # this test asserts exactly that — one of the two known-good outcomes,
+    # never a crash. Behaviour verified at the C-ABI level across
+    # {4.13.4, 4.14.1, 4.15.0, 4.15.8, 4.16.0}.
     let ctx = newContext()
     let x = mkIntVar("x")
     let o = newOptimize()
     o.add x > mkInt(5)
     o.add x < mkInt(3)
     check o.check() == zsUnsat
-    expect Z3OperationError:
-      discard o.model()
+    var raised = false
+    var gotHandle = false
+    try:
+      let m = o.model()
+      gotHandle = not m.isNil
+    except Z3OperationError:
+      raised = true
+    check raised or gotHandle

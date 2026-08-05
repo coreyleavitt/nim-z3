@@ -47,15 +47,33 @@ suite "Bound-variable index — indexValue":
     check indexValue(ctx, bv.raw) == 0
 
 suite "Global param descriptors — globalParamDescrs":
+  # globalParamDescrs requires z3 >= 4.15.0: on 4.13/4.14 the underlying
+  # Z3_get_global_param_descrs returns a manager-owned descrs that corrupts
+  # memory when accessed (proven at the C-ABI level across the release
+  # matrix). The wrapper gates on z3Version() and raises
+  # Z3FeatureUnavailableError there instead of faulting — so the contract
+  # is version-split.
+  let hasGlobalDescrs = block:
+    let v = z3Version()
+    (v.major, v.minor) >= (4, 15)
+
   test "globalParamDescrs returns a non-nil Z3ParamDescrs":
     let ctx = newContext()
-    let pd = globalParamDescrs(ctx)
-    check not pd.isNil
+    if hasGlobalDescrs:
+      let pd = globalParamDescrs(ctx)
+      check not pd.isNil
+    else:
+      expect Z3FeatureUnavailableError:
+        discard globalParamDescrs(ctx)
 
   test "globalParamDescrs schema is non-empty":
     let ctx = newContext()
-    let pd = globalParamDescrs(ctx)
-    check pd.len > 0
+    if hasGlobalDescrs:
+      let pd = globalParamDescrs(ctx)
+      check pd.len > 0
+    else:
+      expect Z3FeatureUnavailableError:
+        discard globalParamDescrs(ctx)
 
 suite "Type variable sort — mkTypeVariable":
   test "mkTypeVariable returns a non-nil sort handle":

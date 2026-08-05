@@ -2714,16 +2714,22 @@ dynlib "z3":
   # `Z3_get_numeral_uint64`, then reinterpret-cast in Nim.
 
   # Numeral decomposition — N6.4b
-  # Drifted signature (RFC-regex-index.md §6.3 slice 4): `sgn` was
-  # `int*` through 4.15 and became `bool*` at 4.16. The `versionMacros`
-  # gate above (with its `header = "z3_version.h"` arg) pulls the version
-  # macros into the verify TU, so softlink synthesizes `until`'s predicate;
-  # the signature itself is verified against the real z3.h decl. `optional`
-  # so a 4.16 runtime re-nils this symbol (mrDriftRefused) instead of
-  # unwinding the load.
+  # Drifted signature (RFC-regex-index.md §6.3 slice 4): `sgn` was `int*`
+  # through 4.15.4 and became `bool*` at 4.15.5 (verified against Z3's
+  # committed z3_fpa.h across the z3-4.15.x tags: int* on 4.15.0–4.15.4,
+  # bool* from 4.15.5 on). The drift is a *mid-4.15.x patch*, not the 4.16
+  # boundary the original harvest corpus ({…,4.15.0,4.16.0}, skipping the
+  # 4.15.x drift zone) inferred — so the bound is `until: "4.15.5"`. The
+  # `versionMacros` gate above (with its `header = "z3_version.h"` arg)
+  # pulls the version macros into the verify TU, so softlink synthesizes
+  # `until`'s predicate; the signature itself is verified against the real
+  # z3.h decl. `optional` so a >=4.15.5 runtime re-nils this symbol
+  # (mrDriftRefused) instead of unwinding the load — and, crucially, so the
+  # compile-time header check does not reject the historical int* decl
+  # against a bool* header on 4.15.5–4.15.x.
   proc Z3_fpa_get_numeral_sign(c: RawZ3Context, t: RawZ3Ast,
                                 sgn: ptr cint): bool
-    {.cdecl, optional, header: "z3.h", until: "4.16.0".}
+    {.cdecl, optional, header: "z3.h", until: "4.15.5".}
   proc Z3_fpa_get_numeral_significand_string(c: RawZ3Context,
                                               t: RawZ3Ast): cstring
     {.cdecl, header: "z3.h".}

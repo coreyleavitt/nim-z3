@@ -83,7 +83,7 @@ That prints `x = 4, y = 6` on success and confirms libz3.so is reachable.
 
 ### Test-only dep: `proptest`
 
-[`proptest`](https://github.com/coreyleavitt/proptest) is required to run the property-test suite (`nimble test` exercises `tests/tproperty.nim`, `tests/tsimplify.nim`, and a few shape-property suites). v1.0.0 pins it via `local=` in `milpa.kdl` (a local working-copy path) because nim-z3 consumes a proptest commit not yet on the proptest GitHub remote. To run the full test suite, either:
+[`proptest`](https://github.com/coreyleavitt/proptest) is required to run the property-test suite (`run-tests.sh test` exercises `tests/tproperty.nim`, `tests/tsimplify.nim`, and a few shape-property suites). v1.0.0 pins it via `local=` in `milpa.kdl` (a local working-copy path) because nim-z3 consumes a proptest commit not yet on the proptest GitHub remote. To run the full test suite, either:
 
 1. Clone `proptest` to the path listed in `milpa.kdl` and run `milpa update proptest`, or
 2. Edit `milpa.kdl` to point `proptest` at your own checkout / fork, or
@@ -164,7 +164,7 @@ That prints `x = 4, y = 6` on success and confirms libz3.so is reachable.
 | [`examples/datatypes_list.nim`](examples/datatypes_list.nim) | Inductive `IntList` via `declareDatatype`. Build `cons(1, cons(2, cons(3, nil)))`, walk via `head`/`tail`, prove `cons` is injective. |
 | [`examples/smt2_roundtrip.nim`](examples/smt2_roundtrip.nim) | `toSmt2Benchmark` → `parseSmt2String` → re-solve in a fresh context, plus the same via `parseSmt2File` from disk. |
 
-Run an individual example with `nim c -r examples/basic_solve.nim`, or `nimble examples` to compile + run all of them on both backends.
+Run an individual example with `nim c -r examples/basic_solve.nim`, or `run-tests.sh examples` to compile + run all of them on both backends.
 
 ## Design
 

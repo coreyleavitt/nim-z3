@@ -3,8 +3,14 @@ version 1
 strategy "maxver"
 
 dep "proptest" {
+    source {
+        kind "git"
+        url (url)"https://github.com/coreyleavitt/proptest"
+        ref "main"
+    }
     identity "dag-sha256:8482015fec07da97a3bb00e34ce9c900615716a6a87b55ac38f81b83e29d3054"
-    version "0.0.1"
+    version "0.1.0"
+    declared_version_source "nimble"
     src_dir "src"
     requires "softlink"
     provenance {
@@ -17,8 +23,14 @@ dep "proptest" {
 }
 
 dep "softlink" {
+    source {
+        kind "git"
+        url (url)"https://github.com/coreyleavitt/softlink"
+        ref "v0.11.1"
+    }
     identity "dag-sha256:2f1a4cfba684ff907927d09b504bae854d5d41253344bd5d5e72aa16a74fa764"
-    version "0.0.1"
+    version "0.11.1"
+    declared_version_source "nimble"
     src_dir "src"
     requires
     provenance {

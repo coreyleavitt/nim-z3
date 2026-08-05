@@ -79,12 +79,13 @@ jobs:
       - name: milpa fetch (resolve softlink + proptest, emit nim.cfg)
         run: milpa fetch
 
-      - name: nimble test
-        # Runs both backends per z3.nimble's test task (c + cpp). The
-        # tversion.nim probe asserts major==4 && minor>=10 on whichever
-        # libz3 the row provides; any matrix row whose libz3 fails to
-        # load (missing symbol, ABI drift) fails inside that probe.
-        run: nimble -y test
+      - name: test suite
+        # Both backends (c + cpp), via tests/run.sh (milpa resolves deps +
+        # emits nim.cfg; no nimble). The tversion.nim probe asserts
+        # major==4 && minor>=10 on whichever libz3 the row provides; any
+        # matrix row whose libz3 fails to load (missing symbol, ABI drift)
+        # fails inside that probe.
+        run: bash run-tests.sh test
 
   # ============================================================================
   # Gate-flag matrix — smoke-tests the z3WithoutX umbrella gates under

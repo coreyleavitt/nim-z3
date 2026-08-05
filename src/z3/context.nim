@@ -46,6 +46,8 @@
 import ./ffi, ./error
 import std/tables
 import std/strutils
+import std/locks
+import std/atomics
 import softlink
 
 # Note: `z3/error` is **not** re-exported. Modules that need the
@@ -180,26 +182,49 @@ type LibZ3UnavailableError* = object of Defect
   ## "not installed" from "missing required symbol" (i.e. libz3 too
   ## old for the symbols we declared).
 
+var loadLock: Lock
+loadLock.initLock()
+var z3Ready: Atomic[bool]  ## published `true` only after loadZ3() fully returns
+
 proc ensureLoaded*() =
   ## Idempotent first-call hook that loads libz3 via softlink. Called
   ## by `newContext`; users don't normally need to invoke this
   ## directly, but it's idempotent and cheap so calling extra times
   ## is harmless.
-  if z3Loaded(): return
-  let r = loadZ3()
-  case r.kind
-  of lrOk, lrOkPartial:
-    discard
-  of lrLibNotFound:
-    raise newException(LibZ3UnavailableError,
-      "libz3 not found on system. Install libz3-dev (Debian/Ubuntu), " &
-      "z3 (Homebrew/Arch), or copy libz3.so.4 from the Z3 GitHub releases " &
-      "into the loader path.")
-  of lrSymbolNotFound:
-    raise newException(LibZ3UnavailableError,
-      "libz3 loaded but a required symbol is missing (likely too-old Z3 " &
-      "version): " & r.symbol & ". nim-z3 supports Z3 4.10+; upgrade your " &
-      "libz3 install.")
+  ##
+  ## **Thread-safe** (double-checked locking, done correctly). Two subtle
+  ## races have to be closed for concurrent cold-callers — e.g. worker
+  ## threads that each call `newContext()` with no prior main-thread load:
+  ##
+  ## 1. *Load exclusion.* `loadZ3()` mutates process-global state (the lib
+  ##    handle + every resolved symbol pointer); two threads running it at
+  ##    once corrupt that. `loadLock` serialises it to exactly one loader.
+  ## 2. *Safe publication.* softlink's own `z3Loaded()` (handle ≠ nil) flips
+  ##    true at the *start* of the load, while symbol pointers are still
+  ##    being resolved — so gating on it lets a second thread proceed and
+  ##    call a still-nil `Z3_mk_config` (`SoftlinkError: library not
+  ##    loaded`). We instead gate on our own `z3Ready` flag, stored with
+  ##    release ordering *after* `loadZ3()` fully returns and loaded with
+  ##    acquire ordering, so any thread that sees it `true` also sees every
+  ##    pointer the load resolved.
+  if z3Ready.load(moAcquire): return
+  withLock loadLock:
+    if z3Ready.load(moAcquire): return
+    let r = loadZ3()
+    case r.kind
+    of lrOk, lrOkPartial:
+      discard
+    of lrLibNotFound:
+      raise newException(LibZ3UnavailableError,
+        "libz3 not found on system. Install libz3-dev (Debian/Ubuntu), " &
+        "z3 (Homebrew/Arch), or copy libz3.so.4 from the Z3 GitHub releases " &
+        "into the loader path.")
+    of lrSymbolNotFound:
+      raise newException(LibZ3UnavailableError,
+        "libz3 loaded but a required symbol is missing (likely too-old Z3 " &
+        "version): " & r.symbol & ". nim-z3 supports Z3 4.10+; upgrade your " &
+        "libz3 install.")
+    z3Ready.store(true, moRelease)
 
 proc newContext*(params: varargs[(string, string)]): Z3Context =
   ## Allocate a fresh Z3 context. Auto-loads libz3 on first call; no

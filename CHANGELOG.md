@@ -4,6 +4,25 @@ All notable changes to nim-z3. Format loosely follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 1.0 ships.
 
+## [2.2.0]
+
+### Changed — behavior (z3 4.13+ alignment)
+
+- **`Z3Optimize.model()` on an unsat optimiser now raises
+  `Z3OperationError`** instead of returning a trivial handle. z3 4.13+
+  changed `Z3_optimize_get_model` to raise `model is not available` after
+  unsat, matching `Z3Solver`; the wrapper surfaces it. There is no model
+  when unsat, so raising is the correct contract.
+
+### Changed — tooling
+
+- **Dropped `z3.nimble`.** milpa is the dependency resolver (`milpa.kdl`);
+  the nimble file only still hosted the test/example/valgrind/minimal task
+  orchestration, now re-homed verbatim into `run-tests.sh` (plain shell, no
+  NimScript). The `softlink` dependency tracks its latest release (v0.11.1).
+- **CI modernized** to Nim 2.2.10 and the supported z3 range (4.13.x–4.16.x,
+  downloaded per-version rather than the OS `libz3`).
+
 ## [Unreleased]
 
 Post-RFC review pass (2 rounds, 24 fix commits). All correctness

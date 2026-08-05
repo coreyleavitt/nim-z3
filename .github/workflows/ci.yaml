@@ -260,9 +260,13 @@ jobs:
                    tests/tfixedpoint_ctxbox.nim tests/tcontext_registry.nim \
                    tests/td3_ctx_release.nim tests/tfixedpoint_typed_callbacks.nim; do
             echo "=== ASAN: $t ==="
+            # -lstdc++: the C backend produces a C binary, but libz3 is C++ and
+            # throws internally. Without libstdc++ loaded at startup, ASAN's
+            # __cxa_throw interceptor sees a NULL real symbol on the first throw
+            # ("CHECK failed: real___cxa_throw != 0"). Linking it fixes that.
             nim c -r --threads:on --hints:off -d:useMalloc \
               --passC:-fsanitize=address --passL:-fsanitize=address \
-              --debugger:native "$t"
+              --passL:-lstdc++ --debugger:native "$t"
           done
 
   # ============================================================================

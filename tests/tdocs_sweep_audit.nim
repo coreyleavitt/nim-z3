@@ -4,16 +4,17 @@
 ## slice are present and contain the expected content:
 ##
 ##   1. docs/THREADING.md exists with content > 500 chars.
-##   2. z3.nimble version is "2.2.0".
-##   3. README.md mentions "2.0.0" and "MIGRATION".
-##   4. CHANGELOG.md has a "2.0.0" section.
+##   2. README.md mentions "2.0.0" and "MIGRATION".
+##   3. CHANGELOG.md has a "2.0.0" section.
+##
+## (The former "z3.nimble version" check was dropped: milpa is the dependency
+## resolver, the nimble file is gone, and the package version is the git tag.)
 
 import std/[unittest, os, strutils]
 
 const
   repoRoot    = currentSourcePath().parentDir.parentDir
   threadingMd = repoRoot / "docs" / "THREADING.md"
-  nimblePath  = repoRoot / "z3.nimble"
   readmePath  = repoRoot / "README.md"
   changelogPath = repoRoot / "CHANGELOG.md"
 
@@ -31,17 +32,7 @@ suite "N11.7 — docs/THREADING.md exists and is non-trivial":
     check content.len > 500
 
 # ---------------------------------------------------------------------------
-# Suite 2 — z3.nimble version is 2.2.0
-# ---------------------------------------------------------------------------
-
-suite "N11.7 — z3.nimble version is 2.2.0":
-
-  test "z3.nimble contains version = \"2.2.0\"":
-    let content = readFile(nimblePath)
-    check "\"2.2.0\"" in content
-
-# ---------------------------------------------------------------------------
-# Suite 3 — README.md mentions 2.0.0 and MIGRATION
+# Suite 2 — README.md mentions 2.0.0 and MIGRATION
 # ---------------------------------------------------------------------------
 
 suite "N11.7 — README.md mentions 2.0.0 and MIGRATION":

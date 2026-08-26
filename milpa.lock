@@ -26,10 +26,10 @@ dep "softlink" {
     source {
         kind "git"
         url (url)"https://github.com/coreyleavitt/softlink"
-        ref "v0.11.1"
+        ref "v0.11.2"
     }
-    identity "dag-sha256:2f1a4cfba684ff907927d09b504bae854d5d41253344bd5d5e72aa16a74fa764"
-    version "0.11.1"
+    identity "dag-sha256:9788e3757f25f3ef26f1bc7db0f570a08cc0153a1324bd9301b941b745c37b70"
+    version "0.11.2"
     declared_version_source "nimble"
     src_dir "src"
     requires
@@ -37,7 +37,7 @@ dep "softlink" {
         origin "observed"
         kind "git"
         url "https://github.com/coreyleavitt/softlink.git"
-        ref "v0.11.1"
-        commit_sha "321b13c0c70de340d646876affe0ca8939a5c8f3"
+        ref "v0.11.2"
+        commit_sha "872042789d93942e2258d08ff167f44ebc5c8104"
     }
 }

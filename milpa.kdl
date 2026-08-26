@@ -5,7 +5,7 @@ name "z3"
 src_dir "src"
 
 deps {
-    "softlink" git=(url)"https://github.com/coreyleavitt/softlink.git" ref="v0.11.1"
+    "softlink" git=(url)"https://github.com/coreyleavitt/softlink.git" ref="v0.11.2"
 }
 
 // proptest is used only by nim-z3's own test suite (tests/*.nim), never by

@@ -5,20 +5,20 @@ strategy "maxver"
 dep "proptest" {
     source {
         kind "git"
-        url (url)"https://github.com/coreyleavitt/proptest"
-        ref "main"
+        url (url)"https://github.com/coreyleavitt/nelli"
+        ref "ec7a405c354e79c30717b0692ad548bc8bee7414"
     }
-    identity "dag-sha256:8482015fec07da97a3bb00e34ce9c900615716a6a87b55ac38f81b83e29d3054"
-    version "0.1.0"
-    declared_version_source "nimble"
+    identity "dag-sha256:0406e5ace06f9bf3be85cbf993a027f467646f2edfe4395f756dce63a2fd3c2b"
+    version "0.3.4"
+    declared_version_source "manifest"
     src_dir "src"
-    requires "softlink"
+    requires "z3"
     provenance {
         origin "observed"
         kind "git"
-        url "https://github.com/coreyleavitt/proptest.git"
-        ref "main"
-        commit_sha "14cf5007502bbfcb61c238c5b3503cdb56eeda58"
+        url "https://github.com/coreyleavitt/nelli.git"
+        ref "ec7a405c354e79c30717b0692ad548bc8bee7414"
+        commit_sha "ec7a405c354e79c30717b0692ad548bc8bee7414"
     }
 }
 
@@ -39,5 +39,20 @@ dep "softlink" {
         url "https://github.com/coreyleavitt/softlink.git"
         ref "v0.11.2"
         commit_sha "872042789d93942e2258d08ff167f44ebc5c8104"
+    }
+}
+
+dep "z3" {
+    source {
+        kind "member"
+        name "z3"
+    }
+    version "0.0.0"
+    src_dir "src"
+    requires
+    provenance {
+        origin "observed"
+        kind "root"
+        name "z3"
     }
 }

@@ -14,8 +14,22 @@ deps {
 // nim-z3 (milpa spec S4 §3.3: a transitive dep's dev-deps are not enrolled),
 // so a downstream consumer no longer pulls a stale copy of proptest into its
 // own lockfile via the z3 -> proptest back-edge.
+// The URL names the CANONICAL repo, `nelli` -- github.com/coreyleavitt/proptest
+// was renamed 2026-08-13 and the redirect works today, but the freed
+// `proptest` name is claimable by anyone, at which point this dep would
+// silently retarget. The local alias stays "proptest": `import proptest` is
+// what must keep resolving, and Nim resolves that from the fetched package's
+// own src/proptest.nim, not from this alias.
+//
+// Pinned to the last commit BEFORE `785307c refactor: rename package proptest
+// -> nelli`, which renamed src/proptest.nim -> src/nelli.nim and with it the
+// umbrella-module identity. Every `import proptest` in tests/ and examples/
+// (5 files) breaks past that commit, so following `main` -- which the previous
+// ref="main" did, resolving through the redirect straight to nelli 0.7.0 --
+// left this suite unbuildable. Moving to nelli proper is a deliberate
+// `import proptest` -> `import nelli` sweep, not a dep-hygiene fix.
 dev-deps {
-    "proptest" git=(url)"https://github.com/coreyleavitt/proptest.git" ref="main"
+    "proptest" git=(url)"https://github.com/coreyleavitt/nelli.git" ref="ec7a405c354e79c30717b0692ad548bc8bee7414"
 }
 
 kind "library"

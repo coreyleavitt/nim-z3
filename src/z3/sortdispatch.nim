@@ -69,3 +69,34 @@ template sortOfType*[T](ctx: Z3Context): RawZ3Sort =
   ## family set without needing this module to know about them.
   mixin sortOf
   sortOf(T, ctx)
+
+# ============================================================================
+# Holding a sort across later API calls
+# ============================================================================
+#
+# In a ref-counted context Z3 keeps only its LAST API result alive. A sort
+# no live term references (a floating-point, array or sequence sort before
+# any term of it exists) is freed by the next API call that returns an AST.
+# A constructor that builds two or more sorts before the call consuming them
+# (`Z3_mk_array_sort(c, sortOf(K), sortOf(V))`, a function declaration's
+# domain and range) therefore handed Z3 a dangling sort for every one but
+# the last. It holds each sort as it is built and releases them once the
+# consuming call has returned (the constructed sort or declaration
+# references them itself).
+
+proc holdSort*(ctx: Z3Context, s: RawZ3Sort): RawZ3Sort {.inline.} =
+  ## Take a reference on `s` and return it.
+  Z3_inc_ref(ctx.raw, Z3_sort_to_ast(ctx.raw, s))
+  s
+
+proc releaseSort*(ctx: Z3Context, s: RawZ3Sort) {.inline.} =
+  ## Drop a reference `holdSort` took.
+  Z3_dec_ref(ctx.raw, Z3_sort_to_ast(ctx.raw, s))
+
+proc releaseSorts*(ctx: Z3Context, ss: openArray[RawZ3Sort]) =
+  ## `releaseSort` each of `ss`.
+  for s in ss: releaseSort(ctx, s)
+
+template heldSortOfType*[T](ctx: Z3Context): RawZ3Sort =
+  ## `sortOfType[T]` with a reference taken (`holdSort`).
+  holdSort(ctx, sortOfType[T](ctx))

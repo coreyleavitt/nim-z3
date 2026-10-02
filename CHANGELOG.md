@@ -4,6 +4,24 @@ All notable changes to nim-z3. Format loosely follows [Keep a
 Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 1.0 ships.
 
+## [Unreleased — 2.2.1]
+
+### Fixed — sort lifetime across sort-consuming calls
+
+- **`sortOf(Z3Array[K, V])` built the array sort over a dangling sort.**
+  In a ref-counted context Z3 keeps only its last API result alive, so a
+  sort no live term references (a float, array or sequence sort before any
+  term of it exists) is freed by the next API call. `Z3_mk_array_sort(c,
+  sortOf(K), sortOf(V))` builds both sorts first; whichever came first was
+  freed by the second (the C++ backend evaluates the arguments right to
+  left, so `Z3Array[K, Z3Float64]` got a dangling range: "fp sorts
+  expected" at the first comparison). The new `holdSort` / `releaseSort` /
+  `heldSortOfType` (`z3/sortdispatch`) keep each sort referenced until the
+  consuming call returns. Applied to `sortOf(Z3Array)`, `mkFuncDecl`,
+  `freshFuncDecl`, every `defineFun` / `defineRecFun` arity (domain and
+  range), and datatype constructor field sorts. Regression test:
+  `tests/tarray_sort_lifetime.nim` (both argument orders, both backends).
+
 ## [2.2.0]
 
 ### Fixed — multi-version support (z3 4.13–4.16)

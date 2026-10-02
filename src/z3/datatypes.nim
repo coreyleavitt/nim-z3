@@ -289,7 +289,10 @@ proc buildRawConstructors(
         ctx.checkErr Z3_mk_string_symbol(ctx.raw, f.fname.cstring)
       case f.kind
       of fkSort:
-        result.fieldSorts[ci][fi] = f.sortFn(ctx)
+        # Held until `Z3_mk_constructor` has read it (`holdSort`): Z3
+        # keeps only its last API result alive, so a field sort no live
+        # term references was freed by the next field's.
+        result.fieldSorts[ci][fi] = holdSort(ctx, f.sortFn(ctx))
         result.fieldRefs[ci][fi] = 0
       of fkRecursive:
         result.fieldSorts[ci][fi] = RawZ3Sort()    # nil
@@ -320,6 +323,8 @@ proc buildRawConstructors(
     result.rawCons[ci] = ctx.checkErr Z3_mk_constructor(ctx.raw,
       cnameSym, recogSym, cuint(c.fields.len),
       fieldNamesPtr, fieldSortsPtr, fieldRefsPtr)
+    for fi, f in c.fields:
+      if f.kind == fkSort: releaseSort(ctx, result.fieldSorts[ci][fi])
 
 proc queryConstructorsInto[T](
     ctx: Z3Context,

@@ -78,10 +78,18 @@ proc `=dup`[Key, Val](src: Z3Array[Key, Val]): Z3Array[Key, Val] {.raises: [].} 
 # Z3Array[Z3Int, Z3Bool]]`) close the v0.2 §8 deferral here: any K or V
 # with a `sortOf` overload in scope at the instantiation site works,
 # including Z3Array itself for nesting.
+#
+# Both sorts are held across `Z3_mk_array_sort` (`holdSort`): Z3 keeps only
+# its last API result alive, so whichever sort was built first was freed by
+# the second's construction, and the array sort was made over a dangling
+# sort (any float, array or sequence key or value).
 proc sortOf*[K, V](_: typedesc[Z3Array[K, V]],
-                   ctx: Z3Context): RawZ3Sort {.inline.} =
-  ctx.checkErr Z3_mk_array_sort(ctx.raw,
-    sortOfType[K](ctx), sortOfType[V](ctx))
+                   ctx: Z3Context): RawZ3Sort =
+  let k = heldSortOfType[K](ctx)
+  let v = heldSortOfType[V](ctx)
+  result = ctx.checkErr Z3_mk_array_sort(ctx.raw, k, v)
+  releaseSort(ctx, k)
+  releaseSort(ctx, v)
 
 # `wrapArray` removed v0.3 step 1 — call sites use the unified
 # `wrap[Z3Array[Key, Val]](ctx, raw)` from `z3/lifecycle` directly.

@@ -22,7 +22,7 @@ cd "$(dirname "$0")"   # repo root, regardless of caller's cwd
 
 # --- curated lists (ported verbatim from the former z3.nimble tasks) --------
 
-# `test`: 129 files. tminimal.nim is intentionally excluded — it needs the
+# `test`: 130 files. tminimal.nim is intentionally excluded — it needs the
 # z3WithoutX flags at compile time; run it via the `minimal` subcommand.
 TESTS=(
   # Core / always-on
@@ -38,6 +38,7 @@ TESTS=(
   tests/tarith.nim tests/tarith_conv.nim
   tests/tarith_extractors.nim tests/tarith_extras.nim
   tests/tarray.nim tests/tarray_extra.nim
+  tests/tarray_sort_lifetime.nim
   tests/tbitvec.nim tests/tbigbitvec.nim
   tests/tbitvec_opt.nim tests/tbitvec_overflow.nim
   tests/tbitvec_red_rot.nim tests/tbitvec_theory_conv.nim

@@ -71,14 +71,14 @@ type
 # Lifecycle hooks
 # ============================================================================
 
-proc `=destroy`[T](v: Z3UninterpretedVal[T]) {.raises: [].} =
+proc `=destroy`[T](v: Z3UninterpretedVal[T]) {.raises: [], quirky.} =
   termDestroy(v, Z3_dec_ref)
 
 proc `=copy`[T](dst: var Z3UninterpretedVal[T],
-                src: Z3UninterpretedVal[T]) {.raises: [].} =
+                src: Z3UninterpretedVal[T]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[T](src: Z3UninterpretedVal[T]): Z3UninterpretedVal[T] {.raises: [].} =
+proc `=dup`[T](src: Z3UninterpretedVal[T]): Z3UninterpretedVal[T] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # ============================================================================

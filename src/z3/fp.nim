@@ -73,11 +73,11 @@ type
   Z3Float64*  = Z3Fp[11, 53]
   Z3Float128* = Z3Fp[15, 113]
 
-proc `=destroy`[E, S: static int](v: Z3Fp[E, S]) {.raises: [].} =
+proc `=destroy`[E, S: static int](v: Z3Fp[E, S]) {.raises: [], quirky.} =
   termDestroy(v, Z3_dec_ref)
-proc `=copy`[E, S: static int](dst: var Z3Fp[E, S], src: Z3Fp[E, S]) {.raises: [].} =
+proc `=copy`[E, S: static int](dst: var Z3Fp[E, S], src: Z3Fp[E, S]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
-proc `=dup`[E, S: static int](src: Z3Fp[E, S]): Z3Fp[E, S] {.raises: [].} =
+proc `=dup`[E, S: static int](src: Z3Fp[E, S]): Z3Fp[E, S] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # Step 9 sortOf overload — participates in z3/sortdispatch's resolution.

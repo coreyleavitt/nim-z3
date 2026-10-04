@@ -103,9 +103,11 @@ proc nimNoopErrorHandler(c: RawZ3Context, e: Z3ErrorCode) {.cdecl.} =
 # --- =destroy hook on the underlying object type ----------------------------
 #
 # Nim 2's hook signatures require the underlying object type, not the
-# ref alias. {.raises: [].} + try/except CatchableError: discard because
-# softlink-wrapped procs can raise SoftlinkError (e.g. if libz3 was
-# unloaded mid-program); =destroy can't propagate exceptions.
+# ref alias. Raise-free by construction (see the hook discipline in
+# `z3/lifecycle`): `{.raises: [], quirky.}`, no `try`, and the raw C entry
+# points rather than the softlink wrappers (which raise `SoftlinkError`
+# when libz3 is not loaded). This hook can run with an exception in flight
+# on the C backend; a `try` here used to swallow it.
 
 when defined(z3CtxDestroyCount):
   var z3CtxDestroyCounter*: int
@@ -117,22 +119,21 @@ when defined(z3CtxDestroyCount):
     ## second, more precise instrument alongside the valgrind
     ## definitely-lost proof, which only shows aggregate leaked bytes.
 
-proc `=destroy`(c: var Z3ContextOwn) {.raises: [].} =
-  try:
-    when defined(z3CtxDestroyCount):
-      inc z3CtxDestroyCounter
-    # A user-defined `=destroy` replaces ALL field-wise destruction
-    # under `--mm:orc` — including the GC-managed `Table` fields
-    # below. They're Nim-side storage we own regardless of whether
-    # Z3 owns the underlying context, so release them unconditionally,
-    # before (and independent of) the `borrowed` early-return.
-    `=destroy`(c.datatypeRegistry)
-    `=destroy`(c.uninterpretedRegistry)
-    if c.borrowed: return   # Z3 owns this context; don't free it.
-    if not c.raw.isNil: Z3_del_context(c.raw)
-    if not c.cfg.isNil: Z3_del_config(c.cfg)
-  except CatchableError:
-    discard
+proc `=destroy`(c: var Z3ContextOwn) {.raises: [], quirky.} =
+  when defined(z3CtxDestroyCount):
+    inc z3CtxDestroyCounter
+  # A user-defined `=destroy` replaces ALL field-wise destruction
+  # under `--mm:orc` — including the GC-managed `Table` fields
+  # below. They're Nim-side storage we own regardless of whether
+  # Z3 owns the underlying context, so release them unconditionally,
+  # before (and independent of) the `borrowed` early-return.
+  `=destroy`(c.datatypeRegistry)
+  `=destroy`(c.uninterpretedRegistry)
+  if c.borrowed: return   # Z3 owns this context; don't free it.
+  let delContext = Z3_del_contextPtr()
+  let delConfig = Z3_del_configPtr()
+  if not c.raw.isNil and delContext != nil: delContext(c.raw)
+  if not c.cfg.isNil and delConfig != nil: delConfig(c.cfg)
 
 # ============================================================================
 # Current-context threadvar

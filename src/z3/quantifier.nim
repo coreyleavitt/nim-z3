@@ -47,33 +47,35 @@ type
     raw*: RawZ3Pattern
     ctx*: Z3Context
 
-proc decRefPattern(ctx: Z3Context, raw: RawZ3Pattern) {.raises: [].} =
-  try:
-    if not raw.isNil and ctx != nil and not ctx.raw.isNil:
-      let asAst = Z3_pattern_to_ast(ctx.raw, raw)
-      Z3_dec_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+# The pattern refcount pair runs inside the hooks below, so it follows the
+# hook discipline (`z3/lifecycle`): `{.raises: [], quirky.}`, no `try`, raw
+# C entry points only.
 
-proc incRefPattern(ctx: Z3Context, raw: RawZ3Pattern) {.raises: [].} =
-  try:
-    if not raw.isNil and ctx != nil and not ctx.raw.isNil:
-      let asAst = Z3_pattern_to_ast(ctx.raw, raw)
-      Z3_inc_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+proc decRefPattern(ctx: Z3Context, raw: RawZ3Pattern) {.raises: [], quirky.} =
+  let toAst = Z3_pattern_to_astPtr()
+  let decRef = Z3_dec_refPtr()
+  if not raw.isNil and ctx != nil and not ctx.raw.isNil and
+      toAst != nil and decRef != nil:
+    decRef(ctx.raw, toAst(ctx.raw, raw))
 
-proc `=destroy`(p: Z3Pattern) {.raises: [].} =
+proc incRefPattern(ctx: Z3Context, raw: RawZ3Pattern) {.raises: [], quirky.} =
+  let toAst = Z3_pattern_to_astPtr()
+  let incRef = Z3_inc_refPtr()
+  if not raw.isNil and ctx != nil and not ctx.raw.isNil and
+      toAst != nil and incRef != nil:
+    incRef(ctx.raw, toAst(ctx.raw, raw))
+
+proc `=destroy`(p: Z3Pattern) {.raises: [], quirky.} =
   decRefPattern(p.ctx, p.raw)
 
-proc `=copy`(dst: var Z3Pattern, src: Z3Pattern) {.raises: [].} =
+proc `=copy`(dst: var Z3Pattern, src: Z3Pattern) {.raises: [], quirky.} =
   if dst.raw != src.raw:
     decRefPattern(dst.ctx, dst.raw)
     dst.raw = src.raw
     dst.ctx = src.ctx
     incRefPattern(dst.ctx, dst.raw)
 
-proc `=dup`(src: Z3Pattern): Z3Pattern {.raises: [].} =
+proc `=dup`(src: Z3Pattern): Z3Pattern {.raises: [], quirky.} =
   result.raw = src.raw
   result.ctx = src.ctx
   incRefPattern(result.ctx, result.raw)

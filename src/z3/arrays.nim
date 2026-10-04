@@ -63,14 +63,14 @@ type
 
 # Lifecycle hooks parallel Z3Ast[S]; same body, two generic params.
 
-proc `=destroy`[Key, Val](a: Z3Array[Key, Val]) {.raises: [].} =
+proc `=destroy`[Key, Val](a: Z3Array[Key, Val]) {.raises: [], quirky.} =
   termDestroy(a, Z3_dec_ref)
 
 proc `=copy`[Key, Val](dst: var Z3Array[Key, Val],
-                      src: Z3Array[Key, Val]) {.raises: [].} =
+                      src: Z3Array[Key, Val]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[Key, Val](src: Z3Array[Key, Val]): Z3Array[Key, Val] {.raises: [].} =
+proc `=dup`[Key, Val](src: Z3Array[Key, Val]): Z3Array[Key, Val] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # Step 9 sortOf overload — recurses via `sortOfType[K]` / `sortOfType[V]`

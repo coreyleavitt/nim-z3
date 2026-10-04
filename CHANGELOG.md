@@ -6,6 +6,33 @@ Changelog](https://keepachangelog.com/en/1.1.0/); semver applies once
 
 ## [Unreleased — 2.2.1]
 
+### Fixed — a lifecycle hook swallowed an in-flight exception (C backend)
+
+- **A raise unwinding through a frame that destroyed a Z3 value was lost
+  on the C backend.** Nim 2.2's C backend (goto exceptions) runs a
+  `{.raises: [].}` destructor on the raise path with the error flag still
+  set: a call's result temporary (`T = f(); if (*nimErr_) { eqdestroy(T);
+  ... }`) and a local destroyed at its scope's merge label alike. Every
+  hook wrapped its body in `try: ... except CatchableError: discard`
+  (`except Exception` for the context release), and a `try` entered with
+  the flag set takes the in-flight exception as its own: it cleared the
+  flag and popped it, and the caller returned as if nothing had been
+  raised. C++ exceptions are native and were unaffected. Every `=destroy`
+  / `=copy` / `=dup` hook and the refcount helpers they call
+  (`termDestroy` / `termCopy` / `termDup`, `emitTermLifecycle`,
+  `emitRefcountLifecycle`, `Z3ContextOwn`, `Z3Pattern`,
+  `Z3ConstructorDeclOwn`, `Z3FuncDeclOwn`, `Z3FuncInterpOwn`,
+  `Z3FixedpointOwn`, `FixedpointCtxBoxObj`, `Z3RcfNum`) is now raise-free
+  by construction: no `try`, the raw C entry point through softlink's
+  `<sym>Ptr()` accessor instead of the `SoftlinkError`-raising wrapper
+  (a nil entry, libz3 not loaded, skips the release as before), and
+  `{.raises: [], quirky.}`. `quirky` drops the flag checks after calls, so
+  a hook entered on the raise path runs its whole body (dec_ref and
+  context release) instead of stopping at its first call. Regression
+  test: `tests/thook_raise_path.nim` (one case per hook body, both
+  backends; a whole-body check under `-d:z3CtxDestroyCount`; a source
+  audit of every hook's declaration).
+
 ### Fixed — sort lifetime across sort-consuming calls
 
 - **`sortOf(Z3Array[K, V])` built the array sort over a dangling sort.**

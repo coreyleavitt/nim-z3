@@ -72,10 +72,10 @@ when not defined(z3WithoutSets):
   # from the reinterpreted object.
   # ============================================================================
 
-  proc `=destroy`*[E](s: Z3Set[E]) {.raises: [].} =
+  proc `=destroy`*[E](s: Z3Set[E]) {.raises: [], quirky.} =
     termDestroy(Z3Array[E, Z3Bool](s), Z3_dec_ref)
 
-  proc `=copy`*[E](dst: var Z3Set[E], src: Z3Set[E]) {.raises: [].} =
+  proc `=copy`*[E](dst: var Z3Set[E], src: Z3Set[E]) {.raises: [], quirky.} =
     # Cannot call termCopy with `Z3Array[E,Z3Bool](dst)` because the cast
     # produces an rvalue — writes through the cast don't land on `dst`.
     # Instead, reach through to the underlying fields directly using a
@@ -85,7 +85,7 @@ when not defined(z3WithoutSets):
     let dstArr = cast[ptr Z3Array[E, Z3Bool]](addr dst)
     termCopy(dstArr[], Z3Array[E, Z3Bool](src), Z3_dec_ref, Z3_inc_ref)
 
-  proc `=dup`*[E](src: Z3Set[E]): Z3Set[E] {.raises: [].} =
+  proc `=dup`*[E](src: Z3Set[E]): Z3Set[E] {.raises: [], quirky.} =
     var arr: Z3Array[E, Z3Bool]
     termDup(arr, Z3Array[E, Z3Bool](src), Z3_inc_ref)
     Z3Set[E](arr)

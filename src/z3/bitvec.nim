@@ -53,13 +53,13 @@ type
 # Lifecycle hooks (parallel Z3Ast[S])
 # ============================================================================
 
-proc `=destroy`[W: static int](a: Z3BitVec[W]) {.raises: [].} =
+proc `=destroy`[W: static int](a: Z3BitVec[W]) {.raises: [], quirky.} =
   termDestroy(a, Z3_dec_ref)
 
-proc `=copy`[W: static int](dst: var Z3BitVec[W], src: Z3BitVec[W]) {.raises: [].} =
+proc `=copy`[W: static int](dst: var Z3BitVec[W], src: Z3BitVec[W]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[W: static int](src: Z3BitVec[W]): Z3BitVec[W] {.raises: [].} =
+proc `=dup`[W: static int](src: Z3BitVec[W]): Z3BitVec[W] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # ============================================================================

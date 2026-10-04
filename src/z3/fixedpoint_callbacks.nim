@@ -193,9 +193,8 @@ when not defined(z3WithoutFixedpointCallbacks):
   # --- =destroy hook on the underlying object type ---------------------------
   #
   # Nim 2's hook signatures require the underlying object type, not the
-  # ref alias. {.raises: [].} + try/except CatchableError: discard because
-  # softlink-wrapped procs can raise SoftlinkError (e.g. if libz3 was
-  # unloaded mid-program); =destroy can't propagate exceptions. Mirrors
+  # ref alias. Raise-free by construction (the hook discipline in
+  # `z3/lifecycle`): `{.raises: [], quirky.}` and no `try`. Mirrors
   # `Z3ContextOwn.=destroy` in `src/z3/context.nim`.
 
   when defined(z3FpBoxDestroyCount):
@@ -209,31 +208,16 @@ when not defined(z3WithoutFixedpointCallbacks):
       ## RootObj` is reclaimed deterministically on scope exit under
       ## `--mm:orc`).
 
-  proc `=destroy`(b: var FixedpointCtxBoxObj) {.raises: [].} =
+  proc `=destroy`(b: var FixedpointCtxBoxObj) {.raises: [], quirky.} =
     when defined(z3FpBoxDestroyCount):
       inc z3FpBoxDestroyCounter
     # Release both GC-managed fields this box holds — a custom
     # `=destroy` replaces field-wise destruction under ORC
     # (ADR-FC-0011), so `ctx` and `handlers` would otherwise each leak
     # one strong ref (the closures' captured environments, for
-    # `handlers`). `handlers` is a plain closure-record value (no
-    # `Z3Context` involved), so its destroy can't raise bare
-    # `Exception` — narrow `CatchableError`, matching
-    # `datatypes.nim`'s treatment of its non-ctx fields (`accessorsFD`/
-    # `cname`). `except Exception` (not `CatchableError`) is kept ONLY
-    # for the `ctx` release below, matching `lifecycle.nim`'s
-    # `emitRefcountLifecycle` ctx-release block — releasing a
-    # `Z3Context` ref triggers an unlisted-`Exception` effect warning
-    # under `{.raises: [].}` that the narrower `CatchableError` catch
-    # doesn't silence.
-    try:
-      `=destroy`(b.handlers)
-    except CatchableError:
-      discard
-    try:
-      `=destroy`(b.ctx)
-    except Exception:
-      discard
+    # `handlers`).
+    `=destroy`(b.handlers)
+    `=destroy`(b.ctx)
 
   # ==========================================================================
   # newLemma — C-ABI shim (ADR-FC-0001 exception wall, ADR-FC-0007)

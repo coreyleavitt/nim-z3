@@ -214,7 +214,7 @@ template withInQuery*(fp: Z3Fixedpoint, body: untyped) =
     if exportActivateHook != nil: exportActivateHook(fp)
     body
 
-proc `=destroy`(v: var Z3FixedpointOwn) {.raises: [].} =
+proc `=destroy`(v: var Z3FixedpointOwn) {.raises: [], quirky.} =
   ## Hand-written (ADR-FC-0002): a custom `=destroy` replaces
   ## `emitRefcountLifecycle`'s field-wise destruction, so it must
   ## explicitly release `cbBox` too or it leaks. Order matters —
@@ -224,20 +224,16 @@ proc `=destroy`(v: var Z3FixedpointOwn) {.raises: [].} =
   ## 2. Drop `cbBox` — releases the `RootRef`; ORC collects the box.
   ## 3. Release the `ctx` ARC ref — only after both of the above are
   ##    done with it.
-  try:
-    if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
-      Z3_fixedpoint_dec_ref(v.ctx.raw, v.raw)
-  except CatchableError:
-    discard
-  try:
-    `=destroy`(v.cbBox)
-  except CatchableError:
-    discard
-  try:
-    if v.ctx != nil:
-      `=destroy`(v.ctx)
-  except Exception:
-    discard
+  ##
+  ## Raise-free by construction (the hook discipline in `z3/lifecycle`):
+  ## no `try`, and the raw C entry point rather than the softlink wrapper.
+  let decRef = Z3_fixedpoint_dec_refPtr()
+  if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil and
+      decRef != nil:
+    decRef(v.ctx.raw, v.raw)
+  `=destroy`(v.cbBox)
+  if v.ctx != nil:
+    `=destroy`(v.ctx)
 
 proc newFixedpoint*(ctx: Z3Context): Z3Fixedpoint =
   ## Fresh CHC solver bound to `ctx`.

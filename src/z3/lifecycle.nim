@@ -103,52 +103,91 @@ type Z3Term* = concept x
 # meaningful generic-type discipline.
 # ============================================================================
 
+# ----------------------------------------------------------------------------
+# Hook discipline: raise-free by construction
+# ----------------------------------------------------------------------------
+#
+# Nim 2.2's C backend (goto exceptions) runs a destructor on the raise path
+# with the error flag still set, and saves and clears the flag around it
+# only when it takes the destructor as able to raise. A `{.raises: [].}`
+# hook, or a generated seq / ref hook over one, therefore runs with an
+# exception IN FLIGHT: a call's result temporary (`T = f(); if (*nimErr_)
+# { eqdestroy(T); goto ...; }`) and a local's destroy at its scope's merge
+# label alike. Two consequences shape every hook in this package:
+#
+# - **No `try`.** A `try` entered with the flag set cannot tell the
+#   in-flight exception from one of its own: its first checked call jumps
+#   to its handler, which matches the in-flight exception, clears the flag
+#   and pops it, so the caller returns as if nothing had been raised. The
+#   hooks used to wrap their bodies in `try: ... except CatchableError:
+#   discard`, which lost any raise unwinding through a frame that destroyed
+#   a Z3 value (C only; C++ exceptions are native and unaffected).
+# - **`quirky`.** Without `--panics:on` the compiler checks the flag after
+#   every call and leaves the routine when it is set, so even a try-free
+#   hook entered on the raise path would stop at its first call and leak
+#   the rest of its body (the dec_ref, the context release). `{.quirky.}`
+#   (the pragma `system/arc`'s `nimDestroyAndDispose` uses for the same
+#   reason) drops those checks: the whole body runs, and the in-flight
+#   exception is untouched.
+#
+# A hook body therefore calls nothing that can raise: the raw C entry point
+# through softlink's `<sym>Ptr()` accessor (`{.cdecl, raises: [].}`, nil
+# when libz3 is not loaded), never the `<sym>` wrapper, which raises
+# `SoftlinkError` on a nil entry; nil handles are checked first; and
+# `{.raises: [].}` makes the compiler prove it. Every hook is declared
+# `{.raises: [], quirky.}`; `tests/thook_raise_path.nim` pins both the
+# propagation and the whole-body run, and audits the declarations.
+
+template rawEntry*(sym: untyped): untyped =
+  ## softlink's raw C entry point for the Z3 function `sym`: typed
+  ## `{.cdecl, raises: [].}`, nil when libz3 is not loaded. For lifecycle
+  ## hooks only (see the hook discipline above).
+  `sym Ptr`()
+
 template termDestroy*(v: untyped, decRefSym: untyped) =
   ## Body of `=destroy` for a Z3-Term-shaped value. `decRefSym` is the
-  ## Z3 dec_ref proc that releases the underlying raw handle (e.g.
-  ## `Z3_dec_ref` for ASTs).
-  try:
-    if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
-      decRefSym(v.ctx.raw, v.raw)
-  except CatchableError:
-    discard
-  # v.ctx must stay alive through the dec_ref above (it needs
-  # v.ctx.raw); only release it after. Slice D3 (ADR-FC-0012): same
-  # ADR-FC-0011 omission as `emitRefcountLifecycle` above, but for
-  # every value-typed family (Z3Ast, Z3BitVec, Z3Fp, Z3Array, Z3Seq,
-  # Z3Set, Z3Regex, Z3UninterpretedVal, Z3RcfNum, ...) that shares this
-  # body. Without this, every value teardown leaks its `ctx` ref.
-  try:
-    if v.ctx != nil:
-      `=destroy`(v.ctx)
-  except Exception:
-    discard
+  ## Z3 dec_ref function that releases the underlying raw handle (e.g.
+  ## `Z3_dec_ref` for ASTs), called through its raw entry point. The
+  ## enclosing hook must be `{.raises: [], quirky.}`.
+  if v.ctx != nil:
+    let decRef = rawEntry(decRefSym)
+    if not v.raw.isNil and not v.ctx.raw.isNil and decRef != nil:
+      decRef(v.ctx.raw, v.raw)
+    # v.ctx must stay alive through the dec_ref above (it needs
+    # v.ctx.raw); only release it after. Slice D3 (ADR-FC-0012): same
+    # ADR-FC-0011 omission as `emitRefcountLifecycle` below, but for
+    # every value-typed family (Z3Ast, Z3BitVec, Z3Fp, Z3Array, Z3Seq,
+    # Z3Set, Z3Regex, Z3UninterpretedVal, ...) that shares this body.
+    # Without this, every value teardown leaks its `ctx` ref.
+    `=destroy`(v.ctx)
 
 template termCopy*(dst: untyped, src: untyped,
                    decRefSym: untyped, incRefSym: untyped) =
   ## Body of `=copy`. Decrements the destination's old handle (if any)
   ## before adopting the source's, then increments the new reference.
+  ## The enclosing hook must be `{.raises: [], quirky.}`.
   if dst.raw != src.raw:
-    try:
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        decRefSym(dst.ctx.raw, dst.raw)
-      dst.raw = src.raw
-      dst.ctx = src.ctx
-      if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil:
-        incRefSym(dst.ctx.raw, dst.raw)
-    except CatchableError:
-      discard
+    let decRef = rawEntry(decRefSym)
+    let incRef = rawEntry(incRefSym)
+    if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil and
+        decRef != nil:
+      decRef(dst.ctx.raw, dst.raw)
+    dst.raw = src.raw
+    dst.ctx = src.ctx
+    if not dst.raw.isNil and dst.ctx != nil and not dst.ctx.raw.isNil and
+        incRef != nil:
+      incRef(dst.ctx.raw, dst.raw)
 
 template termDup*(result: untyped, src: untyped, incRefSym: untyped) =
   ## Body of `=dup`. Copies the source's fields into `result` and
-  ## inc_refs the underlying handle.
+  ## inc_refs the underlying handle. The enclosing hook must be
+  ## `{.raises: [], quirky.}`.
   result.raw = src.raw
   result.ctx = src.ctx
-  if not result.raw.isNil and result.ctx != nil and not result.ctx.raw.isNil:
-    try:
-      incRefSym(result.ctx.raw, result.raw)
-    except CatchableError:
-      discard
+  let incRef = rawEntry(incRefSym)
+  if not result.raw.isNil and result.ctx != nil and
+      not result.ctx.raw.isNil and incRef != nil:
+    incRef(result.ctx.raw, result.raw)
 
 # ============================================================================
 # Whole-hook stampers — for non-generic value types and ref-typed handles
@@ -160,11 +199,11 @@ template emitTermLifecycle*(T: typedesc,
                             incRefSym: untyped) =
   ## Emit `=destroy` / `=copy` / `=dup` for a non-generic value type `T`
   ## whose lifecycle follows the standard inc_ref / dec_ref pair.
-  proc `=destroy`(v: T) {.raises: [].} =
+  proc `=destroy`(v: T) {.raises: [], quirky.} =
     termDestroy(v, decRefSym)
-  proc `=copy`(dst: var T, src: T) {.raises: [].} =
+  proc `=copy`(dst: var T, src: T) {.raises: [], quirky.} =
     termCopy(dst, src, decRefSym, incRefSym)
-  proc `=dup`(src: T): T {.raises: [].} =
+  proc `=dup`(src: T): T {.raises: [], quirky.} =
     termDup(result, src, incRefSym)
 
 template emitRefcountLifecycle*(OwnT: typedesc, decRefSym: untyped) =
@@ -185,7 +224,7 @@ template emitRefcountLifecycle*(OwnT: typedesc, decRefSym: untyped) =
   ## (teaching `emitRefcountLifecycle` to hand-release arbitrary
   ## extra fields automatically) is a separate, later slice — this is
   ## a discipline reminder, not a guarantee this template enforces.
-  proc `=destroy`(v: OwnT) {.raises: [].} =
+  proc `=destroy`(v: OwnT) {.raises: [], quirky.} =
     # Borrowed handles (opt-in via a `borrowed: bool` field on `OwnT`)
     # are owned by Z3 itself — the originating context frees them at
     # `Z3_del_context`, so we must NOT dec_ref the raw handle or we race
@@ -193,26 +232,22 @@ template emitRefcountLifecycle*(OwnT: typedesc, decRefSym: untyped) =
     # analogue of `Z3ContextOwn.borrowed`; see `wrapAstVectorBorrowed`
     # in `z3/astvector` and the upstream Z3 `Z3_model_get_sort_universe`
     # lifetime-coupling bug that mandates it (ADR-FC-0012, slice D3).
-    try:
+    if v.ctx != nil:
       when compiles(v.borrowed):
         let skipRaw = v.borrowed
       else:
         const skipRaw = false
-      if not skipRaw and not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil:
-        decRefSym(v.ctx.raw, v.raw)
-    except CatchableError:
-      discard
-    # D3 (ADR-FC-0012): release the `ctx: Z3Context` ARC ref AFTER the
-    # raw dec_ref above (which needs `v.ctx.raw` live) — the ref-handle
-    # analogue of the value-type release in `termDestroy`. Without it,
-    # every ref-handle teardown leaks one strong ref to the owning
-    # context (and its config + registry tables). The raw dec_ref keeps
-    # the context alive until this point; only then may we drop it.
-    try:
-      if v.ctx != nil:
-        `=destroy`(v.ctx)
-    except Exception:
-      discard
+      let decRef = rawEntry(decRefSym)
+      if not skipRaw and not v.raw.isNil and not v.ctx.raw.isNil and
+          decRef != nil:
+        decRef(v.ctx.raw, v.raw)
+      # D3 (ADR-FC-0012): release the `ctx: Z3Context` ARC ref AFTER the
+      # raw dec_ref above (which needs `v.ctx.raw` live) — the ref-handle
+      # analogue of the value-type release in `termDestroy`. Without it,
+      # every ref-handle teardown leaks one strong ref to the owning
+      # context (and its config + registry tables). The raw dec_ref keeps
+      # the context alive until this point; only then may we drop it.
+      `=destroy`(v.ctx)
 
 # ============================================================================
 # Unified `wrap[T]` — single dispatch surface

@@ -29,11 +29,11 @@ type
     raw*: RawZ3Ast
     ctx*: Z3Context
 
-proc `=destroy`[E](s: Z3Seq[E]) {.raises: [].} =
+proc `=destroy`[E](s: Z3Seq[E]) {.raises: [], quirky.} =
   termDestroy(s, Z3_dec_ref)
-proc `=copy`[E](dst: var Z3Seq[E], src: Z3Seq[E]) {.raises: [].} =
+proc `=copy`[E](dst: var Z3Seq[E], src: Z3Seq[E]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
-proc `=dup`[E](src: Z3Seq[E]): Z3Seq[E] {.raises: [].} =
+proc `=dup`[E](src: Z3Seq[E]): Z3Seq[E] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # Step 9 sortOf overload — recurses via `sortOfType[E]` (template with

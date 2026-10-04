@@ -505,9 +505,12 @@ type
 # `emitRefcountLifecycle` doesn't unify across the two phantom
 # parameters, so spell the lifecycle hooks out per-instantiation.
 proc `=destroy`[ArgsTup: tuple, Ret](v: Z3FuncInterpOwn[ArgsTup, Ret])
-    {.raises: [].} =
-  if not v.raw.isNil and v.ctx != nil:
-    Z3_func_interp_dec_ref(v.ctx.raw, v.raw)
+    {.raises: [], quirky.} =
+  # Hook discipline (`z3/lifecycle`): raw C entry point, no `try`.
+  let decRef = Z3_func_interp_dec_refPtr()
+  if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil and
+      decRef != nil:
+    decRef(v.ctx.raw, v.raw)
 
 proc raw*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]):
     RawZ3FuncInterp {.inline.} = fi.raw

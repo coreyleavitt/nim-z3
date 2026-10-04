@@ -60,13 +60,13 @@ type
 # Lifecycle hooks
 # ============================================================================
 
-proc `=destroy`[S: static SortTag](a: Z3Ast[S]) {.raises: [].} =
+proc `=destroy`[S: static SortTag](a: Z3Ast[S]) {.raises: [], quirky.} =
   termDestroy(a, Z3_dec_ref)
 
-proc `=copy`[S: static SortTag](dst: var Z3Ast[S], src: Z3Ast[S]) {.raises: [].} =
+proc `=copy`[S: static SortTag](dst: var Z3Ast[S], src: Z3Ast[S]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [].} =
+proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [], quirky.} =
   ## Nim 2's preferred copy hook (used for `let y = expr`-style
   ## bindings and return-value paths where `=copy` would otherwise
   ## require an out-param). If only `=copy` is defined, modern Nim

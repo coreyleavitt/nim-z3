@@ -154,24 +154,26 @@ type
 # Lifecycle hooks
 # ============================================================================
 
-proc decRefFuncDecl(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
-  try:
-    if not fd.isNil and ctx != nil and not ctx.raw.isNil:
-      let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-      Z3_dec_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+# The func_decl refcount pair runs inside the hooks below, so it follows
+# the hook discipline (`z3/lifecycle`): `{.raises: [], quirky.}`, no `try`,
+# raw C entry points only.
 
-proc incRefFuncDecl(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
-  try:
-    if not fd.isNil and ctx != nil and not ctx.raw.isNil:
-      let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-      Z3_inc_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+proc decRefFuncDecl(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [], quirky.} =
+  let toAst = Z3_func_decl_to_astPtr()
+  let decRef = Z3_dec_refPtr()
+  if not fd.isNil and ctx != nil and not ctx.raw.isNil and
+      toAst != nil and decRef != nil:
+    decRef(ctx.raw, toAst(ctx.raw, fd))
+
+proc incRefFuncDecl(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [], quirky.} =
+  let toAst = Z3_func_decl_to_astPtr()
+  let incRef = Z3_inc_refPtr()
+  if not fd.isNil and ctx != nil and not ctx.raw.isNil and
+      toAst != nil and incRef != nil:
+    incRef(ctx.raw, toAst(ctx.raw, fd))
 
 proc `=destroy`[T](
-    c: var Z3ConstructorDeclOwn[T]) {.raises: [].} =
+    c: var Z3ConstructorDeclOwn[T]) {.raises: [], quirky.} =
   decRefFuncDecl(c.ctx, c.constructorFD)
   decRefFuncDecl(c.ctx, c.recognizerFD)
   for (_, fd) in c.accessorsFD:
@@ -185,10 +187,7 @@ proc `=destroy`[T](
   # as valgrind "definitely lost", same as the `ctx` leak below).
   `=destroy`(c.accessorsFD)
   `=destroy`(c.cname)
-  try:
-    `=destroy`(c.ctx)
-  except Exception:
-    discard
+  `=destroy`(c.ctx)
 
 # Z3DatatypeDeclOwn has no explicit =destroy — the default suffices.
 # Its `cons` seq carries Z3ConstructorDeclRef[T] refs; ORC will
@@ -197,14 +196,14 @@ proc `=destroy`[T](
 # Z3_mk_datatype's sort registers with the context and is freed when
 # the context goes away, so no per-decl sort cleanup is needed.
 
-proc `=destroy`[T](v: Z3DatatypeValue[T]) {.raises: [].} =
+proc `=destroy`[T](v: Z3DatatypeValue[T]) {.raises: [], quirky.} =
   termDestroy(v, Z3_dec_ref)
 
 proc `=copy`[T](dst: var Z3DatatypeValue[T],
-                src: Z3DatatypeValue[T]) {.raises: [].} =
+                src: Z3DatatypeValue[T]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 
-proc `=dup`[T](src: Z3DatatypeValue[T]): Z3DatatypeValue[T] {.raises: [].} =
+proc `=dup`[T](src: Z3DatatypeValue[T]): Z3DatatypeValue[T] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # `wrapValue` removed v0.3 step 1 — call sites use the unified

@@ -50,11 +50,11 @@ type
     raw*: RawZ3Ast
     ctx*: Z3Context
 
-proc `=destroy`[Basis](r: Z3Regex[Basis]) {.raises: [].} =
+proc `=destroy`[Basis](r: Z3Regex[Basis]) {.raises: [], quirky.} =
   termDestroy(r, Z3_dec_ref)
-proc `=copy`[Basis](dst: var Z3Regex[Basis], src: Z3Regex[Basis]) {.raises: [].} =
+proc `=copy`[Basis](dst: var Z3Regex[Basis], src: Z3Regex[Basis]) {.raises: [], quirky.} =
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
-proc `=dup`[Basis](src: Z3Regex[Basis]): Z3Regex[Basis] {.raises: [].} =
+proc `=dup`[Basis](src: Z3Regex[Basis]): Z3Regex[Basis] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
 
 # ============================================================================

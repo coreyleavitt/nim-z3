@@ -38,27 +38,30 @@ type
 # Z3 refcounts func_decls through `Z3_func_decl_to_ast` + the AST
 # refcount pair, same pattern datatypes.nim already uses.
 
-proc decRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [].} =
+proc decRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) {.raises: [], quirky.} =
+  ## Runs inside `Z3FuncDeclOwn`'s `=destroy`, so it follows the hook
+  ## discipline (`z3/lifecycle`): no `try`, raw C entry points only.
   if fd.isNil or ctx == nil or ctx.raw.isNil: return
-  try:
-    let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
-    if not asAst.isNil:
-      Z3_dec_ref(ctx.raw, asAst)
-  except CatchableError:
-    discard
+  let toAst = Z3_func_decl_to_astPtr()
+  let decRef = Z3_dec_refPtr()
+  if toAst == nil or decRef == nil: return
+  let asAst = toAst(ctx.raw, fd)
+  if not asAst.isNil:
+    decRef(ctx.raw, asAst)
 
 proc incRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) =
   ## Increment the Z3 refcount for `fd`. Errors propagate — this proc runs
   ## on the construction path where an error indicates a real problem and
-  ## should not be silenced. (Compare `decRefFD`, which swallows errors
-  ## because it runs from `=destroy` and cannot propagate.)
+  ## should not be silenced. (Compare `decRefFD`, which runs from
+  ## `=destroy`: it cannot raise, and skips the release when libz3 is not
+  ## loaded.)
   if fd.isNil or ctx == nil or ctx.raw.isNil: return
   let asAst = Z3_func_decl_to_ast(ctx.raw, fd)
   if not asAst.isNil:
     Z3_inc_ref(ctx.raw, asAst)
 
 proc `=destroy`*[ArgsTup: tuple, Ret](v: Z3FuncDeclOwn[ArgsTup, Ret])
-    {.raises: [].} =
+    {.raises: [], quirky.} =
   decRefFD(v.ctx, v.raw)
 
 # ============================================================================

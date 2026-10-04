@@ -72,15 +72,17 @@ when not defined(z3WithoutRcf):
       raw*: RawZ3RcfNum
       ctx*: Z3Context
 
-  proc `=destroy`(a: Z3RcfNum) {.raises: [].} =
+  proc `=destroy`(a: Z3RcfNum) {.raises: [], quirky.} =
     ## Release the underlying RCF numeral. Guards against double-free by
     ## checking that `raw` is not nil (moved-from values are zero-initialised
     ## by Nim's move optimiser, so their `raw` field is nil).
-    try:
-      if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil:
-        Z3_rcf_del(a.ctx.raw, a.raw)
-    except CatchableError:
-      discard  # softlink may raise SoftlinkError; silently ignore in destructor
+    ##
+    ## Raise-free by construction (the hook discipline in `z3/lifecycle`):
+    ## no `try`, and the raw C entry point rather than the softlink wrapper.
+    let del = Z3_rcf_delPtr()
+    if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil and
+        del != nil:
+      del(a.ctx.raw, a.raw)
 
   proc `=copy`(dst: var Z3RcfNum, src: Z3RcfNum) {.
       error: "Z3RcfNum is move-only; re-derive via arithmetic (e.g. `a + mkSmallInt(ctx, 0)`)".}

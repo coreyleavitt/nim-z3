@@ -20,10 +20,10 @@
 ##   `Z3Ast[S]`, the underlying object type IS `Z3Ast[S]` (value type,
 ##   not `ref`), so the hook signature is `[S: static SortTag](a: Z3Ast[S])`.
 ##
-## All hooks carry `{.raises: [].}` plus a `try/except CatchableError`
-## guard because softlink-wrapped FFI procs can raise `SoftlinkError`
-## (e.g. if libz3 was unloaded mid-program); destructors can't
-## propagate exceptions.
+## All hooks are raise-free by construction: `{.raises: [], quirky.}`, no
+## `try`, and the raw C entry points rather than the softlink wrappers (which
+## raise `SoftlinkError` when libz3 is not loaded). See the hook discipline
+## in `z3/lifecycle`: a hook can run with an exception in flight.
 ##
 ## ## `wrap` helper
 ##

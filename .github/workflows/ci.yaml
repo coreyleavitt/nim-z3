@@ -312,7 +312,8 @@ jobs:
         run: milpa fetch
 
       - name: destroy-count proofs (ADR-FC-0002/0012/0013, probe FACT B)
-        # td3_ctx_release and thandle_ctx_release under -d:z3CtxDestroyCount,
+        # td3_ctx_release, thandle_ctx_release and thook_raise_path under
+        # -d:z3CtxDestroyCount,
         # tterm_hooks_bound under -d:z3TermHookCount,
         # tfixedpoint_ctxbox under -d:z3FpBoxDestroyCount, c and cpp.
         run: bash run-tests.sh counting

@@ -160,6 +160,42 @@ when defined(z3CtxDestroyCount):
       check reaches(run)
       check z3CtxDestroyCounter - before == 1
 
+  suite "a generated seq hook on the raise path releases every element":
+    # The seq's destroy is compiler-generated and not `quirky`: it loops
+    # over the elements, calling each one's hook. Were it to stop after
+    # the first element with the flag set, the rest would keep their
+    # contexts alive. Each element sits on its own sole context, so the
+    # count is the number of elements released.
+    const K = 4
+    template released(name: string; T: typedesc; build: untyped) =
+      test name:
+        proc many(): seq[T] =
+          for i in 0 ..< K:
+            let ctx {.inject.} = soleCtx()
+            result.add build
+        let before = z3CtxDestroyCounter
+        proc run() =
+          let r = many()
+          if r.len > 0: fault()
+        check reaches(run)
+        check z3CtxDestroyCounter - before == K
+
+    released("Z3BitVec terms", Z3BitVec[8]):
+      mkBitVec[8](ctx, 1)
+    released("Z3Int terms", Z3Int):
+      mkInt(ctx, 1)
+    released("Z3Char terms", Z3Char):
+      mkChar(ctx, 'a')
+    released("solvers", Z3Solver):
+      newSolver(ctx)
+    released("patterns", Z3Pattern):
+      mkPattern(mkIntVar(ctx, "p") + mkInt(ctx, 1))
+    released("function declarations", Z3FuncDecl[(Z3Int, ), Z3Int]):
+      mkFuncDecl[(Z3Int, ), Z3Int](ctx, "f")
+    when not defined(z3WithoutRcf):
+      released("RCF numerals", Z3RcfNum):
+        mkSmallInt(ctx, 3)
+
 # ----------------------------------------------------------------------------
 # Source audit: every hook, and every helper a hook calls, follows the
 # discipline. A body is the declaration's following lines indented deeper

@@ -172,6 +172,7 @@ VALGRIND=(
 COUNTING_CTX=(
   tests/td3_ctx_release.nim
   tests/thandle_ctx_release.nim
+  tests/thook_raise_path.nim
 )
 COUNTING_TERM=(
   tests/tterm_hooks_bound.nim

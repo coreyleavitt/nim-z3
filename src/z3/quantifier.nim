@@ -67,6 +67,9 @@ proc incRefPattern(ctx: Z3Context, raw: RawZ3Pattern) {.raises: [], quirky.} =
 
 proc `=destroy`(p: Z3Pattern) {.raises: [], quirky.} =
   decRefPattern(p.ctx, p.raw)
+  # Field-wise destruction is replaced (ADR-FC-0011): release `ctx` by
+  # hand, after the dec_ref that needs it.
+  `=destroy`(p.ctx)
 
 proc `=copy`(dst: var Z3Pattern, src: Z3Pattern) {.raises: [], quirky.} =
   if dst.raw != src.raw:

@@ -62,7 +62,10 @@ proc incRefFD*(ctx: Z3Context, fd: RawZ3FuncDecl) =
 
 proc `=destroy`*[ArgsTup: tuple, Ret](v: Z3FuncDeclOwn[ArgsTup, Ret])
     {.raises: [], quirky.} =
+  # A custom `=destroy` replaces field-wise destruction (ADR-FC-0011):
+  # release the `ctx` ref by hand, after the dec_ref that needs it.
   decRefFD(v.ctx, v.raw)
+  `=destroy`(v.ctx)
 
 # ============================================================================
 # wrapFuncDecl — typed constructor for externally-created raw handles

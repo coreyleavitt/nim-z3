@@ -511,6 +511,9 @@ proc `=destroy`[ArgsTup: tuple, Ret](v: Z3FuncInterpOwn[ArgsTup, Ret])
   if not v.raw.isNil and v.ctx != nil and not v.ctx.raw.isNil and
       decRef != nil:
     decRef(v.ctx.raw, v.raw)
+  # Field-wise destruction is replaced (ADR-FC-0011): release `ctx` by
+  # hand, after the dec_ref that needs it.
+  `=destroy`(v.ctx)
 
 proc raw*[ArgsTup: tuple, Ret](fi: Z3FuncInterp[ArgsTup, Ret]):
     RawZ3FuncInterp {.inline.} = fi.raw

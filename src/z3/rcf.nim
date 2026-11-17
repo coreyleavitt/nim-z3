@@ -83,6 +83,9 @@ when not defined(z3WithoutRcf):
     if not a.raw.isNil and a.ctx != nil and not a.ctx.raw.isNil and
         del != nil:
       del(a.ctx.raw, a.raw)
+    # Field-wise destruction is replaced (ADR-FC-0011): release `ctx` by
+    # hand, after the delete that needs it.
+    `=destroy`(a.ctx)
 
   proc `=copy`(dst: var Z3RcfNum, src: Z3RcfNum) {.
       error: "Z3RcfNum is move-only; re-derive via arithmetic (e.g. `a + mkSmallInt(ctx, 0)`)".}

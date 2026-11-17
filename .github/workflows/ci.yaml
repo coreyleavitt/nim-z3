@@ -311,12 +311,7 @@ jobs:
       - name: milpa fetch
         run: milpa fetch
 
-      - name: FixedpointCtxBox destroy-count proof (ADR-FC-0002, probe FACT B)
-        run: |
-          nim c   -r --threads:on --hints:off -d:useMalloc -d:z3FpBoxDestroyCount tests/tfixedpoint_ctxbox.nim
-          nim cpp -r --threads:on --hints:off -d:useMalloc -d:z3FpBoxDestroyCount tests/tfixedpoint_ctxbox.nim
-
-      - name: Z3ContextOwn destroy-count proof (ADR-FC-0012/0013, probe FACT B)
-        run: |
-          nim c   -r --threads:on --hints:off -d:useMalloc -d:z3CtxDestroyCount tests/td3_ctx_release.nim
-          nim cpp -r --threads:on --hints:off -d:useMalloc -d:z3CtxDestroyCount tests/td3_ctx_release.nim
+      - name: destroy-count proofs (ADR-FC-0002/0012/0013, probe FACT B)
+        # td3_ctx_release and thandle_ctx_release under -d:z3CtxDestroyCount,
+        # tfixedpoint_ctxbox under -d:z3FpBoxDestroyCount, c and cpp.
+        run: bash run-tests.sh counting

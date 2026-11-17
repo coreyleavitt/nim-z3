@@ -13,6 +13,7 @@
 #   tests/run.sh examples    [file...]   # every example, both backends
 #   tests/run.sh minimal                 # tminimal.nim under the canonical z3WithoutX flags
 #   tests/run.sh valgrind    [file...]   # memory-safety subset, gate: `definitely lost: 0 bytes`
+#   tests/run.sh counting                # destroy-count proofs, both backends
 #
 # An optional explicit file list overrides the curated list for `test` /
 # `examples` / `valgrind` (handy for running one file locally).
@@ -28,7 +29,7 @@ TESTS=(
   # Core / always-on
   tests/tffi.nim tests/tffi_opaque.nim
   tests/tcontext.nim tests/tcontext_registry.nim
-  tests/td3_ctx_release.nim
+  tests/td3_ctx_release.nim tests/thandle_ctx_release.nim
   tests/thook_raise_path.nim
   tests/tsort.nim
   tests/tast.nim tests/tast_introspect.nim
@@ -166,6 +167,16 @@ VALGRIND=(
   tests/tprobe.nim tests/tparity.nim
 )
 
+# Destroy-count proofs: each file needs its counter's define (`-d:z3CtxDestroyCount`
+# / `-d:z3FpBoxDestroyCount`), so they run here rather than under `test`.
+COUNTING_CTX=(
+  tests/td3_ctx_release.nim
+  tests/thandle_ctx_release.nim
+)
+COUNTING_FPBOX=(
+  tests/tfixedpoint_ctxbox.nim
+)
+
 # Canonical minimal config — all gateable theories off (cascades disable Probe).
 MINIMAL_FLAGS=(
   -d:z3WithoutFP -d:z3WithoutSeq -d:z3WithoutStrings
@@ -201,6 +212,11 @@ case "$cmd" in
     run_both tests/tminimal.nim "${MINIMAL_FLAGS[@]}"
     echo "minimal-build verification: scope-hiding invariants confirmed under the canonical full-flag config"
     ;;
+  counting)
+    for f in "${COUNTING_CTX[@]}"; do run_both "$f" -d:useMalloc -d:z3CtxDestroyCount; done
+    for f in "${COUNTING_FPBOX[@]}"; do run_both "$f" -d:useMalloc -d:z3FpBoxDestroyCount; done
+    echo "counting: $(( ${#COUNTING_CTX[@]} + ${#COUNTING_FPBOX[@]} )) destroy-count proof(s) passed on both backends"
+    ;;
   valgrind)
     # Gate: the leak summary MUST contain 'definitely lost: 0 bytes'. Z3's
     # program-lifetime allocations show as still-reachable/possibly-lost and
@@ -216,7 +232,7 @@ case "$cmd" in
     echo "valgrind audit: all subset tests reported 'definitely lost: 0 bytes'"
     ;;
   *)
-    echo "usage: tests/run.sh {test|examples|minimal|valgrind} [file...]" >&2
+    echo "usage: tests/run.sh {test|examples|minimal|counting|valgrind} [file...]" >&2
     exit 2
     ;;
 esac

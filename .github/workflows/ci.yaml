@@ -21,6 +21,12 @@ on:
 # - milpa: installed from the impls/python subdirectory (the repo root has no
 #   pyproject.toml since milpa went multi-impl).
 
+# The container's /bin/sh is dash, which rejects `set -o pipefail`; every
+# run step assumes bash.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # ============================================================================
   # Multi-version matrix — Z3 4.13.x → 4.16.x, both Nim backends. The Z3

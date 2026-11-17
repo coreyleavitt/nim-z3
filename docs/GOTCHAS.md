@@ -41,6 +41,7 @@
 22. [`clearHandlers` doesn't deregister at the Z3 level — it just goes dormant](#22-clearhandlers-doesnt-deregister-at-the-z3-level--it-just-goes-dormant)
 23. [Interrupting from inside a fixedpoint handler cancels the query gracefully](#23-interrupting-from-inside-a-fixedpoint-handler-cancels-the-query-gracefully)
 24. [`indexOfRe(...) == -1` does not mean "no match" unless you bound the length](#24-indexofre--1-does-not-mean-no-match-unless-you-bound-the-length)
+25. [A second Spacer query on one fixedpoint reads freed memory inside Z3](#25-a-second-spacer-query-on-one-fixedpoint-reads-freed-memory-inside-z3)
 
 ---
 
@@ -852,3 +853,38 @@ even for fully concrete inputs, with no bound that fixes it. Don't
 reach for `replaceRe`/`replaceReAll` expecting `smtValid`/`check()` to
 decide anything about the result; they're for term construction / SMT-
 LIB export only. See GOTCHAS #19 and RFC-regex-index.md §7.
+
+## 25. A second Spacer query on one fixedpoint reads freed memory inside Z3
+
+**Symptom.** Under valgrind, `tests/tfixedpoint.nim`,
+`tfixedpoint_newlemma` and `tfixedpoint_typed_callbacks` each report one
+`Invalid read of size 1`. Verdicts are correct and the exit code is 0.
+
+**Cause.** An upstream Z3 defect, not a wrapper one. Calling
+`Z3_fixedpoint_query` twice on the same `Z3_fixedpoint` with the Spacer
+engine makes the second call read, in `spacer::pob_queue::reset()`, a
+`pob` that the same call's `spacer::context::solve_core` freed just
+before. No nim-z3 hook is on the allocation or free stack; the only Nim
+frames are the query's call chain. It reduces to a four-line input with
+no rules beyond one fact:
+
+```
+(declare-rel Q ())
+(rule Q)
+(query Q)
+(query Q)
+```
+
+run by a C driver that parses the file with `Z3_fixedpoint_from_file` on
+an `engine=spacer` fixedpoint and queries each `(query ...)` in turn. It
+reproduces on Z3 4.13.4, 5.1.0 and the 2026-11-07 master nightly. Filed
+as [Z3Prover/z3#11601](https://github.com/Z3Prover/z3/issues/11601) and
+fixed upstream by commit `b2daca7f` (2026-11-09); the driver and input
+are in nelli's `docs/rfc/0016-research/UPS-03.md`.
+
+**What you should do.** Nothing in wrapper code. The valgrind gate
+(`bash run-tests.sh valgrind`) suppresses exactly this read
+(`tests/valgrind.supp`, `ups03-spacer-pob-queue-reset`: a one-byte read
+inside libz3 under `Z3_fixedpoint_query`) and fails on any other invalid
+access. Drop the suppression once the supported Z3 range starts at a
+release carrying `b2daca7f`.

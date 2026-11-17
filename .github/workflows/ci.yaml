@@ -86,6 +86,12 @@ jobs:
         # row's libz3; a row whose libz3 fails to load fails inside that probe.
         run: bash run-tests.sh test
 
+      - name: examples
+        # Every example on both backends. They are user-facing code that
+        # nothing else compiles; examples/properties.nim went uncompilable
+        # unnoticed while CI ran only the test suite.
+        run: bash run-tests.sh examples
+
   # ============================================================================
   # Gate-flag matrix — z3WithoutX umbrella gates under a representative set of
   # compile-time flag combinations. Each row compiles + runs tminimal.nim on

@@ -27,7 +27,7 @@ proc soundnessRoundTrip(): Report[int] =
       let s = newSolver()
       s.add x == mkInt(k)
       ensure s.check() == zsSat
-      ensure s.model()[x].toInt == k)
+      ensure s.model()[x].toInt64 == int64(k))
 
 proc bvWraparound(): Report[(int, int)] =
   let ctx = newContext()

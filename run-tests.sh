@@ -9,14 +9,17 @@
 # project-wide convention (milpa / nkdl / intonaco / fresco).
 #
 # Usage (run from the repo root):
-#   tests/run.sh test        [file...]   # the curated suite, both backends (default)
-#   tests/run.sh examples    [file...]   # every example, both backends
-#   tests/run.sh minimal                 # tminimal.nim under the canonical z3WithoutX flags
-#   tests/run.sh valgrind    [file...]   # memory-safety subset, gate: `definitely lost: 0 bytes`
-#   tests/run.sh counting                # destroy-count proofs, both backends
+#   bash run-tests.sh test          [file...]  # the curated suite, both backends (default)
+#   bash run-tests.sh examples      [file...]  # every example, both backends
+#   bash run-tests.sh minimal                  # tminimal.nim under the canonical z3WithoutX flags
+#   bash run-tests.sh counting                 # destroy-count proofs, both backends
+#   bash run-tests.sh asan          [file...]  # lifecycle subset under ASan + LSan (CI gate)
+#   bash run-tests.sh asan-canary              # the asan gate must catch tgate_canary's planted defect
+#   bash run-tests.sh valgrind      [file...]  # lifecycle subset under valgrind (local gate)
+#   bash run-tests.sh valgrind-canary          # the valgrind gate must catch the same plant
 #
 # An optional explicit file list overrides the curated list for `test` /
-# `examples` / `valgrind` (handy for running one file locally).
+# `examples` / `asan` / `valgrind` (handy for running one file locally).
 
 set -euo pipefail
 cd "$(dirname "$0")"   # repo root, regardless of caller's cwd
@@ -31,6 +34,7 @@ TESTS=(
   tests/tcontext.nim tests/tcontext_registry.nim
   tests/td3_ctx_release.nim tests/thandle_ctx_release.nim
   tests/thook_raise_path.nim tests/tterm_hooks_bound.nim
+  tests/tgate_canary.nim
   tests/tsort.nim
   tests/tast.nim tests/tast_introspect.nim
   tests/tast_print_mode.nim
@@ -167,6 +171,47 @@ VALGRIND=(
   tests/tprobe.nim tests/tparity.nim
 )
 
+# asan subset: the lifecycle-critical files (the former inline CI list) plus
+# every family with a hand-written hook.
+ASAN=(
+  tests/tcontext.nim tests/tast.nim tests/tboolean.nim
+  tests/tarith.nim tests/tsolver.nim tests/tmodel.nim
+  tests/tbitvec.nim tests/tversion.nim
+  tests/tfixedpoint_ctxbox.nim tests/tcontext_registry.nim
+  tests/td3_ctx_release.nim tests/tfixedpoint_typed_callbacks.nim
+  tests/tfuncdecl.nim tests/tfuncinterp.nim tests/trcf.nim
+  tests/tquantifier.nim tests/tdatatypes.nim tests/tfp.nim
+  tests/thandle_ctx_release.nim tests/thook_raise_path.nim
+  tests/tterm_hooks_bound.nim
+)
+
+# Both memory gates fail on any invalid read, write or free, and on any leak
+# they can attribute. Suppressions name Z3-internal frames only, each with
+# its reason; see the files.
+ASAN_FLAGS=(
+  -d:useMalloc --passC:-fsanitize=address --passL:-fsanitize=address
+  # libz3 is C++ and throws internally; without libstdc++ loaded at startup
+  # ASan's __cxa_throw interceptor finds no real symbol
+  # ("CHECK failed: real___cxa_throw != 0").
+  --passL:-lstdc++ --debugger:native
+)
+VALGRIND_FLAGS=(-d:debug -d:useMalloc --debugger:native --opt:none)
+
+asan_env() {
+  export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=1:halt_on_error=1}"
+  export LSAN_OPTIONS="${LSAN_OPTIONS:-suppressions=$PWD/tests/lsan.supp:print_suppressions=0}"
+}
+
+run_valgrind() {
+  # Fails on any valgrind error (--error-exitcode) and on any definite leak.
+  local f="$1"; shift
+  local bin="${f%.nim}"; local log="${bin}.valgrind.log"
+  nim c --threads:on --hints:off "${VALGRIND_FLAGS[@]}" "$@" "$f"
+  valgrind --leak-check=full --errors-for-leak-kinds=definite \
+    --suppressions=tests/valgrind.supp --error-exitcode=1 \
+    --log-file="$log" "$bin"
+}
+
 # Destroy-count proofs: each file needs its counter's define (`-d:z3CtxDestroyCount`,
 # `-d:z3TermHookCount`, `-d:z3FpBoxDestroyCount`), so they run here rather than under `test`.
 COUNTING_CTX=(
@@ -222,22 +267,48 @@ case "$cmd" in
     for f in "${COUNTING_FPBOX[@]}"; do run_both "$f" -d:useMalloc -d:z3FpBoxDestroyCount; done
     echo "counting: $(( ${#COUNTING_CTX[@]} + ${#COUNTING_TERM[@]} + ${#COUNTING_FPBOX[@]} )) destroy-count proof(s) passed on both backends"
     ;;
+  asan)
+    files=("$@"); [ ${#files[@]} -eq 0 ] && files=("${ASAN[@]}")
+    asan_env
+    for f in "${files[@]}"; do
+      echo "=== ASan: $f ==="
+      nim c -r --threads:on --hints:off "${ASAN_FLAGS[@]}" "$f"
+    done
+    echo "asan: ${#files[@]} file(s) clean under ASan + LSan"
+    ;;
+  asan-canary)
+    asan_env
+    log=tests/tgate_canary.asan.log
+    if nim c -r --threads:on --hints:off "${ASAN_FLAGS[@]}" -d:z3GateCanary \
+        tests/tgate_canary.nim >"$log" 2>&1; then
+      echo "asan-canary: the planted defect ran clean; the gate cannot fail" >&2
+      exit 1
+    fi
+    grep -F 'ERROR: AddressSanitizer: heap-use-after-free' "$log" || {
+      echo "asan-canary: the run failed without an ASan report:" >&2
+      tail -20 "$log" >&2; exit 1; }
+    echo "asan-canary: the gate caught the planted bad release"
+    ;;
   valgrind)
-    # Gate: the leak summary MUST contain 'definitely lost: 0 bytes'. Z3's
-    # program-lifetime allocations show as still-reachable/possibly-lost and
-    # libz3 itself triggers non-leak valgrind errors — none are wrapper bugs.
     files=("$@"); [ ${#files[@]} -eq 0 ] && files=("${VALGRIND[@]}")
     for f in "${files[@]}"; do
-      bin="${f%.nim}"; log="${bin}.valgrind.log"
-      nim c --threads:on --hints:off -d:debug -d:useMalloc --debugger:native --opt:none "$f"
-      valgrind --leak-check=full --error-exitcode=0 --log-file="$log" "$bin"
-      grep -F 'definitely lost: 0 bytes' "$log"
-      echo "  OK — 'definitely lost: 0 bytes' confirmed for $f"
+      run_valgrind "$f"
+      echo "  OK — no valgrind error and no definite leak in $f"
     done
-    echo "valgrind audit: all subset tests reported 'definitely lost: 0 bytes'"
+    echo "valgrind audit: ${#files[@]} file(s) clean"
+    ;;
+  valgrind-canary)
+    if run_valgrind tests/tgate_canary.nim -d:z3GateCanary; then
+      echo "valgrind-canary: the planted defect ran clean; the gate cannot fail" >&2
+      exit 1
+    fi
+    grep -F 'Invalid read' tests/tgate_canary.valgrind.log || {
+      echo "valgrind-canary: the run failed without an invalid-read report" >&2
+      exit 1; }
+    echo "valgrind-canary: the gate caught the planted bad release"
     ;;
   *)
-    echo "usage: tests/run.sh {test|examples|minimal|counting|valgrind} [file...]" >&2
+    echo "usage: bash run-tests.sh {test|examples|minimal|counting|asan|asan-canary|valgrind|valgrind-canary} [file...]" >&2
     exit 2
     ;;
 esac

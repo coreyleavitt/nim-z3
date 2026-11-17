@@ -211,10 +211,11 @@ jobs:
           nim cpp -r --threads:on --hints:off -d:z3WithoutFixedpointCallbacks ${{ matrix.file }}
 
   # ============================================================================
-  # AddressSanitizer — lifecycle bug catcher (use-after-free in =destroy,
-  # double dec_ref, etc.). -d:useMalloc makes Nim's heap visible to ASAN.
-  # Restricted to the lifecycle-critical tests + the box/ctx-registry/ctx-
-  # release regressions (ADR-FC-0002/0011/0012/0013).
+  # AddressSanitizer + LeakSanitizer — lifecycle bug catcher (use-after-free
+  # in =destroy, a premature release, an unreleased handle). -d:useMalloc
+  # makes Nim's heap visible to ASan. The list (run-tests.sh ASAN) is the
+  # lifecycle-critical tests, the box/ctx-registry/ctx-release regressions
+  # (ADR-FC-0002/0011/0012/0013) and every family with a hand-written hook.
   # ============================================================================
   asan:
     runs-on: ubuntu-latest
@@ -252,28 +253,18 @@ jobs:
       - name: milpa fetch
         run: milpa fetch
 
-      - name: run lifecycle tests under ASAN
-        env:
-          # Z3 has intentional internal leaks (static caches, singleton config);
-          # turn off leak detection so we report only actionable classes —
-          # use-after-free, buffer overflow, double-free.
-          ASAN_OPTIONS: "detect_leaks=0:abort_on_error=0:halt_on_error=0"
-        run: |
-          set -e
-          for t in tests/tcontext.nim tests/tast.nim tests/tboolean.nim \
-                   tests/tarith.nim tests/tsolver.nim tests/tmodel.nim \
-                   tests/tbitvec.nim tests/tversion.nim \
-                   tests/tfixedpoint_ctxbox.nim tests/tcontext_registry.nim \
-                   tests/td3_ctx_release.nim tests/tfixedpoint_typed_callbacks.nim; do
-            echo "=== ASAN: $t ==="
-            # -lstdc++: the C backend produces a C binary, but libz3 is C++ and
-            # throws internally. Without libstdc++ loaded at startup, ASAN's
-            # __cxa_throw interceptor sees a NULL real symbol on the first throw
-            # ("CHECK failed: real___cxa_throw != 0"). Linking it fixes that.
-            nim c -r --threads:on --hints:off -d:useMalloc \
-              --passC:-fsanitize=address --passL:-fsanitize=address \
-              --passL:-lstdc++ --debugger:native "$t"
-          done
+      - name: lifecycle tests under ASan + LSan
+        # run-tests.sh asan: halt_on_error, so any invalid read, write or free
+        # fails the run, and detect_leaks, so any unreachable block does too.
+        # tests/lsan.supp may name Z3-internal frames only, each with its
+        # reason. -lstdc++ and the other flags live in run-tests.sh.
+        run: bash run-tests.sh asan
+
+      - name: the gate catches a planted bad release
+        # tgate_canary under -d:z3GateCanary over-releases a context
+        # reference; this step passes only if ASan reports the
+        # heap-use-after-free, so a gate that cannot fail is caught here.
+        run: bash run-tests.sh asan-canary
 
   # ============================================================================
   # Counting-hook proofs — destructor-firing-count regressions (RFC probe FACT

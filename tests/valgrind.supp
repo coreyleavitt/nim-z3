@@ -1,0 +1,21 @@
+# valgrind suppressions for `bash run-tests.sh valgrind`.
+#
+# Only Z3-internal frames belong here, each with a sourced reason. A
+# suppression must never cover a frame in src/z3: a wrapper defect has to
+# fail the gate.
+
+# UPS-03: an invalid read of size 1 in spacer::pob_queue::reset(), inside
+# libz3, on a second Z3_fixedpoint_query against the same Spacer
+# fixedpoint. The block was freed earlier in the same
+# spacer::context::solve_core; no nim-z3 hook is on the alloc or free stack.
+# Reduced to a 4-line input and filed as Z3Prover/z3#11601 (reproduces on
+# 4.13.4, 5.1.0 and the 2026-11-07 master nightly; fixed upstream by
+# b2daca7f). See docs/GOTCHAS.md section 25. libz3 5.1 ships stripped, so
+# the read is matched by object, size and the exported entry point.
+{
+   ups03-spacer-pob-queue-reset
+   Memcheck:Addr1
+   obj:*libz3.so*
+   ...
+   fun:Z3_fixedpoint_query
+}

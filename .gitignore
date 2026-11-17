@@ -8,6 +8,7 @@ spike/inspect2.sh
 # `nim c -r` deposits next to them.
 tests/*
 !tests/*.nim
+!tests/*.supp
 tests/*.so
 tests/*.dylib
 tests/*.dll

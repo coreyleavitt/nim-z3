@@ -1,0 +1,6 @@
+# LeakSanitizer suppressions for `bash run-tests.sh asan`.
+#
+# Only Z3-internal frames belong here, each with a sourced reason. A
+# suppression must never cover a frame in src/z3: a wrapper leak has to
+# fail the gate. (LSan reports only unreachable blocks; Z3's live globals
+# and caches are reachable and need no entry.)

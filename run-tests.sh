@@ -181,6 +181,7 @@ ASAN=(
   tests/td3_ctx_release.nim tests/tfixedpoint_typed_callbacks.nim
   tests/tfuncdecl.nim tests/tfuncinterp.nim tests/trcf.nim
   tests/tquantifier.nim tests/tdatatypes.nim tests/tfp.nim
+  tests/tdatatypes_mutual.nim tests/tdatatypes_nary.nim tests/tdatatype_sortof.nim
   tests/thandle_ctx_release.nim tests/thook_raise_path.nim
   tests/tterm_hooks_bound.nim
 )

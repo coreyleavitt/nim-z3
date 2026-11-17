@@ -42,9 +42,24 @@
 ##     >= 4.15.5 is expected-for-that-version, not a warning — see
 ##     `z3/ffi.nim`'s `z3LoadIsHealthy` docstring for the exact rule).
 
-import std/[unittest, strutils]
+import std/[unittest, strutils, json, os]
 import z3  # z3Compat() + the softlink compat types (MissingReason/mrDriftRefused,
           # CompatReport, Attestation) are re-exported through the umbrella
+
+const corpus = block:
+  ## The manifest's harvested corpus, read from the committed manifest so
+  ## the attestation check below tracks it without a second copy.
+  var vs: seq[string]
+  for e in parseJson(staticRead(currentSourcePath().parentDir.parentDir /
+                                "src" / "z3" / "z3.compat.json"))["corpus"]:
+    vs.add e["version"].getStr
+  vs
+
+proc inCorpus(runtime: string): bool =
+  ## softlink attests by exact string membership; the runtime reports a
+  ## four-part version (`4.13.4.0`) and the corpus three-part ones.
+  for v in corpus:
+    if runtime == v or runtime.startsWith(v & "."): return true
 
 proc postApiShuffle(): bool =
   ## True on z3 >= 4.15.5, the patch release that shuffled three API symbols
@@ -58,7 +73,7 @@ proc postApiShuffle(): bool =
   let v = z3Version()
   (v.major, v.minor, v.build) >= (4, 15, 5)
 
-suite "multi-version load — 4.15 / 4.16":
+suite "multi-version load — 4.13 to 5.x":
   test "context creation + trivial sat check succeeds regardless of Z3 minor version":
     let ctx = newContext()
     check ctx != nil
@@ -73,7 +88,7 @@ suite "multi-version load — 4.15 / 4.16":
 
     let report = z3Compat()
     check report.runtimeVersion.len > 0
-    check report.runtimeVersion.startsWith("4.")
+    check report.runtimeVersion.startsWith($z3Version().major & ".")
 
     var fpaSignDrifted = false
     for (symbol, reason, _) in report.missingReasons:
@@ -91,14 +106,19 @@ suite "multi-version load — 4.15 / 4.16":
       check not fpaSignDrifted
       check Z3_fpa_get_numeral_signAvailable()
 
-  test "z3Compat() attestation is atAttested on the harness runtimes":
+  test "z3Compat() attests a corpus runtime and marks any other out of corpus":
     ## The committed manifest's corpus is {4.13.3, 4.13.4, 4.14.1, 4.15.0,
-    ## 4.15.4, 4.15.5, 4.15.8, 4.16.0} — every CI matrix / harness runtime
-    ## (4.13.4, 4.14.1, 4.15.8, 4.16.0) falls inside it, so the load must be
-    ## attested rather than merely probed.
+    ## 4.15.4, 4.15.5, 4.15.8, 4.16.0} — every CI matrix runtime (4.13.4,
+    ## 4.14.1, 4.15.8, 4.16.0) falls inside it, so there the load must be
+    ## attested rather than merely probed. A runtime outside it (nelli's
+    ## Z3 5.1) loads as atOutOfCorpus.
     discard newContext()
     let report = z3Compat()
-    check report.attestation == atAttested
+    checkpoint "runtime " & report.runtimeVersion
+    if inCorpus(report.runtimeVersion):
+      check report.attestation == atAttested
+    else:
+      check report.attestation == atOutOfCorpus
 
   test "Z3_mk_set_has_size classifies as mrExpected, removed at 4.15.5":
     discard newContext()

@@ -7,16 +7,15 @@
 ## We assert the *minimum supported version* (Z3 4.10) and validate
 ## the version-string format. Any matrix row whose libz3 advertises
 ## itself as below 4.10 or refuses to load the symbols at all fails
-## here.
+## here. Nothing caps the major version: Z3 5.x passes as 4.x does.
 
 import std/[unittest, strutils]
 import z3
 
 suite "z3Version":
-  test "z3Version() returns (major, minor, build, revision) with major == 4":
+  test "z3Version() returns (major, minor, build, revision) at or above 4.10":
     let v = z3Version()
-    check v.major == 4
-    check v.minor >= 10
+    check (int(v.major), int(v.minor)) >= (4, 10)
     # build / revision are vendor-controlled; we don't assert their
     # values, only that they're cuints (already enforced by the
     # return type).
@@ -27,8 +26,10 @@ suite "z3Version":
     check '.' in s
     let parts = s.split('.')
     check parts.len >= 3      # major.minor.build at minimum
-    check parts[0] == "4"
-    check parts[1].parseInt >= 10
+    check (parts[0].parseInt, parts[1].parseInt) >= (4, 10)
+    let v = z3Version()
+    check parts[0] == $v.major
+    check parts[1] == $v.minor
 
   test "Z3_finalize_memory completes cleanly after context churn":
     # Allocate, exercise, and drop a context; Z3's own leak tally

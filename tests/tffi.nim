@@ -34,14 +34,18 @@ suite "z3/ffi — softlink loads libz3":
     check z3Loaded()
 
 suite "z3/ffi — version":
-  test "Z3_get_full_version returns a 4.x version string":
+  test "Z3_get_full_version returns a version string at or above 4.x":
     discard loadZ3()
     let v = $Z3_get_full_version()
     check v.len > 0
     # Z3_get_full_version() is documented to return a "Z3 <maj>.<min>.<build>.<rev>"
     # string (note the "Z3 " prefix); the version tuple sits inside it, so match
-    # on containment rather than a bare prefix. CI may swing across 4.13–4.16.x.
-    check "4." in v
+    # on containment rather than a bare prefix. CI swings across 4.13–4.16.x and
+    # nelli runs 5.x, so the major is read back, not assumed.
+    var major, minor, build, rev: cuint
+    Z3_get_version(addr major, addr minor, addr build, addr rev)
+    check major >= 4
+    check ($major & ".") in v
 
   test "Z3_get_version components agree with the string form":
     discard loadZ3()

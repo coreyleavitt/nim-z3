@@ -82,7 +82,7 @@ jobs:
 
       - name: test suite
         # Both backends (c + cpp), via run-tests.sh (milpa resolves deps + emits
-        # nim.cfg; no nimble). tversion.nim asserts major==4 && minor>=10 on the
+        # nim.cfg; no nimble). tversion.nim asserts (major, minor) >= (4, 10) on the
         # row's libz3; a row whose libz3 fails to load fails inside that probe.
         run: bash run-tests.sh test
 

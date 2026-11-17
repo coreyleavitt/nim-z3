@@ -141,6 +141,27 @@ proc `=destroy`(c: var Z3ContextOwn) {.raises: [], quirky.} =
 
 var currentZ3Ctx {.threadvar.}: Z3Context
 
+when compileOption("threads"):
+  var exitHookArmed {.threadvar.}: bool
+
+  proc clearCurrentAtExit() {.gcsafe, raises: [].} =
+    currentZ3Ctx = nil
+
+proc setSlot(ctx: Z3Context) =
+  ## Every write of the current-context threadvar goes through here.
+  ## Nim does not destroy threadvars when a thread ends, so a context
+  ## left in the slot would outlive its thread and leak, with the native
+  ## Z3 context it owns. The first write on a thread registers a
+  ## thread-exit handler that clears the slot, releasing that reference.
+  ## Only threads Nim created run the handler; a foreign thread that
+  ## registered itself must clear the slot with `setCurrentContext(nil)`
+  ## before it ends.
+  when compileOption("threads"):
+    if not exitHookArmed and ctx != nil:
+      exitHookArmed = true
+      onThreadDestruction(clearCurrentAtExit)
+  currentZ3Ctx = ctx
+
 proc currentContext*(): Z3Context =
   ## The current context for this thread, or `nil` if none is set.
   ## Idiomatic builders called without an explicit context resolve
@@ -153,7 +174,7 @@ proc setCurrentContext*(ctx: Z3Context) =
   ## this — `newContext` and `withContext` handle the common cases —
   ## but it's exposed for advanced uses (e.g. installing a shared
   ## context that survives `withContext` blocks).
-  currentZ3Ctx = ctx
+  setSlot(ctx)
 
 proc requireCurrentContext*(): Z3Context =
   ## `currentContext()` with a clear failure mode for builders that
@@ -261,7 +282,7 @@ proc newContext*(params: varargs[(string, string)]): Z3Context =
   # be inspected after each call rather than terminating the process.
   Z3_set_error_handler(raw, nimNoopErrorHandler)
   result = Z3Context(raw: raw, cfg: cfg)
-  currentZ3Ctx = result
+  setSlot(result)
 
 template withContext*(ctx: Z3Context, body: untyped) =
   ## Temporarily install `ctx` as the current context for the duration
@@ -281,11 +302,11 @@ template withContext*(ctx: Z3Context, body: untyped) =
   ## The restore happens via `finally` so an exception thrown inside
   ## `body` still leaves the caller's current context intact.
   let prev = currentZ3Ctx
-  currentZ3Ctx = ctx
+  setSlot(ctx)
   try:
     body
   finally:
-    currentZ3Ctx = prev
+    setSlot(prev)
 
 # ============================================================================
 # Raw-handle accessors (for the FFI-facing layer)

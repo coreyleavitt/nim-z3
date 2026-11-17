@@ -24,6 +24,14 @@ scopes it for the duration of `body` and restores it via `finally`.
 Each thread's slot is independent — thread A's `withContext` block
 doesn't affect thread B's `currentContext()`.
 
+Nim does not destroy threadvars when a thread ends, so the wrapper
+registers an `onThreadDestruction` handler on the first write to a
+thread's slot that clears it at thread exit; otherwise every worker
+thread would leak the last context it made, native Z3 context and all.
+Nim runs those handlers only for threads it created. A foreign thread
+(one created outside Nim that calls into the wrapper) must call
+`setCurrentContext(nil)` before it ends.
+
 The per-context `datatypeRegistry` (v0.4 step 3 — runtime
 declarations of `Z3DatatypeValue[T]` sorts) is per-context, so
 declaring a datatype in one thread doesn't pollute another thread's
@@ -291,12 +299,18 @@ before sharing any handles. The concurrent-decref mode applies
 
 ## Memory-safety verification
 
-The memory side of "safety" is covered by the `nimble valgrind`
-task (v0.5 step 5B). It runs a representative subset of tests under
-valgrind and gates on `definitely lost: 0 bytes`. Z3's program-
-lifetime allocations show as "still reachable" (not a leak); Nim's
-GC arena shows as "possibly lost" (not a leak); libz3 itself
-triggers thousands of non-leak "Invalid read" warnings from its
-hash-cons internals (benign in single-threaded use). The audit
-runs ~3 minutes locally; full-suite coverage takes ~15 minutes and
-is deferred to CI (currently blocked behind issue #1).
+Two gates cover the memory side of "safety", both on the lifecycle
+subset in `run-tests.sh`:
+
+- `bash run-tests.sh asan` (CI) runs it under AddressSanitizer with
+  LeakSanitizer on and `halt_on_error`, so any invalid read, write or
+  free, and any unreachable block, fails the run.
+- `bash run-tests.sh valgrind` (local) fails on any valgrind error and
+  on any definite leak.
+
+Each has a canary (`asan-canary`, `valgrind-canary`) that plants an
+extra context release and passes only if the gate reports it, so a gate
+that cannot fail is caught. Suppressions (`tests/lsan.supp`,
+`tests/valgrind.supp`) may name Z3-internal frames only, each with its
+reason; the one current entry is the Spacer read in GOTCHAS #25.
+Z3's program-lifetime allocations are reachable and are not reported.

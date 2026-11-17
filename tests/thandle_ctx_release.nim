@@ -89,3 +89,21 @@ else:
         let p = mkPattern(f(x))
         check p.ctx == ctx
       check drops == 2 * N
+
+  suite "a thread's current context is released at thread exit":
+    # `newContext()` stores the context in the current-context threadvar,
+    # and Nim does not destroy threadvars when a thread ends. Unless the
+    # wrapper clears the slot at thread exit, every worker thread that
+    # makes a context leaks the last one it made.
+    proc worker() {.thread.} =
+      {.cast(gcsafe).}:
+        block:
+          let ctx = newContext()
+          check not ctx.raw.isNil
+
+    test "one worker, one context, one destroy":
+      let before = z3CtxDestroyCounter
+      var th: Thread[void]
+      createThread(th, worker)
+      joinThread(th)
+      check z3CtxDestroyCounter - before == 1

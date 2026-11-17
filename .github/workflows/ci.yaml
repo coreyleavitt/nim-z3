@@ -10,22 +10,22 @@ on:
 # ==============================================================================
 # Shared conventions across jobs
 # ==============================================================================
-# - Container: nimlang/nim:2.2.10 (Debian trixie, glibc 2.41). nim-z3 targets
-#   Nim 2.2.10; 2.2.0 rejects funcdecl.nim's typed tuples ("Mixing types and
-#   values in tuples is not allowed"), so the container version is load-bearing.
+# - Runner: ubuntu-24.04 (glibc 2.39), no container. The former container,
+#   nimlang/nim:2.2.10, is Debian bookworm (glibc 2.36), and Z3 4.15 and later
+#   publish only glibc-2.39 Linux builds, so every 4.15+/4.16 job failed to
+#   load libz3. Its /bin/sh was also dash, which rejects `set -o pipefail`.
+# - Nim: the patched 2.2.10 toolchain, pulled as an OCI artifact and pinned by
+#   digest (.github/actions/setup-nim-artifact, vendored from nelli). nim-z3
+#   targets Nim 2.2.10; 2.2.0 rejects funcdecl.nim's typed tuples ("Mixing
+#   types and values in tuples is not allowed"), so the version is
+#   load-bearing. The artifact ships Nim alone: gcc/g++ come from apt and the
+#   C compiler is pinned in nim.cfg.
 # - Z3: every job downloads a pinned upstream release into /opt/z3 rather than
-#   apt's libz3 (which lags nim-z3's supported floor). The glibc suffix varies
-#   by version — 4.13.x/4.14.x ship x64-glibc-2.35, 4.15.x/4.16.x ship
-#   x64-glibc-2.39; the container's glibc 2.41 runs both. softlink's dynlib
+#   apt's libz3 (which lags nim-z3's supported floor). softlink's dynlib
 #   pattern finds the unsuffixed libz3.so symlink in the tarball.
 # - milpa: installed from the impls/python subdirectory (the repo root has no
 #   pyproject.toml since milpa went multi-impl).
-
-# The container's /bin/sh is dash, which rejects `set -o pipefail`; every
-# run step assumes bash.
-defaults:
-  run:
-    shell: bash
+# - All of the above is .github/actions/setup-ci, shared by every job.
 
 jobs:
   # ============================================================================
@@ -34,8 +34,7 @@ jobs:
   # releases instead of a single apt libz3).
   # ============================================================================
   matrix-test:
-    runs-on: ubuntu-latest
-    container: nimlang/nim:2.2.10
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -48,44 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: trust workdir for git (container uid mismatch w/ runner)
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: install build prerequisites
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            curl unzip python3 python3-pip pipx git build-essential
-
-      - name: install Z3 ${{ matrix.z3 }} from upstream release
-        run: |
-          set -euo pipefail
-          ver="${{ matrix.z3 }}"
-          # 4.13.x/4.14.x → glibc-2.35; 4.15.x/4.16.x → glibc-2.39. Container
-          # glibc (2.41) is newer than both, so either binary loads.
-          case "$ver" in
-            4.13.*|4.14.*) g=2.35 ;;
-            *)             g=2.39 ;;
-          esac
-          base="z3-${ver}-x64-glibc-${g}"
-          curl -fsSL -o /tmp/z3.zip \
-            "https://github.com/Z3Prover/z3/releases/download/z3-${ver}/${base}.zip"
-          unzip -q /tmp/z3.zip -d /opt
-          mv "/opt/${base}" /opt/z3
-          /opt/z3/bin/z3 --version
-          echo "/opt/z3/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
-          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-          echo "CPLUS_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-
-      - name: install milpa (Nim dep resolver)
-        run: |
-          pipx install --include-deps \
-            "git+https://github.com/coreyleavitt/milpa.git#subdirectory=impls/python"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: milpa fetch (resolve softlink + proptest, emit nim.cfg)
-        run: milpa fetch
+      - uses: ./.github/actions/setup-ci
+        with:
+          z3: ${{ matrix.z3 }}
 
       - name: test suite
         # Both backends (c + cpp), via run-tests.sh (milpa resolves deps + emits
@@ -105,8 +69,7 @@ jobs:
   # both backends: core surface still works, gated families are hidden.
   # ============================================================================
   gate-flags:
-    runs-on: ubuntu-latest
-    container: nimlang/nim:2.2.10
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -127,35 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: trust workdir for git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: install build prerequisites
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            curl unzip python3 python3-pip pipx git build-essential
-
-      - name: install Z3 (supported release)
-        run: |
-          set -euo pipefail
-          base="z3-4.16.0-x64-glibc-2.39"
-          curl -fsSL -o /tmp/z3.zip \
-            "https://github.com/Z3Prover/z3/releases/download/z3-4.16.0/${base}.zip"
-          unzip -q /tmp/z3.zip -d /opt && mv "/opt/${base}" /opt/z3
-          echo "/opt/z3/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
-          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-          echo "CPLUS_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-
-      - name: install milpa
-        run: |
-          pipx install --include-deps \
-            "git+https://github.com/coreyleavitt/milpa.git#subdirectory=impls/python"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: milpa fetch
-        run: milpa fetch
+      - uses: ./.github/actions/setup-ci
 
       - name: compile + run tminimal under flags "${{ matrix.flags }}"
         run: |
@@ -169,8 +104,7 @@ jobs:
   # scope-hiding checks; this closes the gap for the real test files).
   # ============================================================================
   gate-fixedpoint-callbacks-skip-suite:
-    runs-on: ubuntu-latest
-    container: nimlang/nim:2.2.10
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -182,35 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: trust workdir for git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: install build prerequisites
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            curl unzip python3 python3-pip pipx git build-essential
-
-      - name: install Z3 (supported release)
-        run: |
-          set -euo pipefail
-          base="z3-4.16.0-x64-glibc-2.39"
-          curl -fsSL -o /tmp/z3.zip \
-            "https://github.com/Z3Prover/z3/releases/download/z3-4.16.0/${base}.zip"
-          unzip -q /tmp/z3.zip -d /opt && mv "/opt/${base}" /opt/z3
-          echo "/opt/z3/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
-          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-          echo "CPLUS_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-
-      - name: install milpa
-        run: |
-          pipx install --include-deps \
-            "git+https://github.com/coreyleavitt/milpa.git#subdirectory=impls/python"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: milpa fetch
-        run: milpa fetch
+      - uses: ./.github/actions/setup-ci
 
       - name: compile + run ${{ matrix.file }} under -d:z3WithoutFixedpointCallbacks
         run: |
@@ -225,40 +131,18 @@ jobs:
   # (ADR-FC-0002/0011/0012/0013) and every family with a hand-written hook.
   # ============================================================================
   asan:
-    runs-on: ubuntu-latest
-    container: nimlang/nim:2.2.10
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
-      - name: trust workdir for git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: ./.github/actions/setup-ci
 
-      - name: install build prerequisites
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            curl unzip python3 python3-pip pipx git build-essential
-
-      - name: install Z3 (supported release)
-        run: |
-          set -euo pipefail
-          base="z3-4.16.0-x64-glibc-2.39"
-          curl -fsSL -o /tmp/z3.zip \
-            "https://github.com/Z3Prover/z3/releases/download/z3-4.16.0/${base}.zip"
-          unzip -q /tmp/z3.zip -d /opt && mv "/opt/${base}" /opt/z3
-          echo "/opt/z3/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
-          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-          echo "CPLUS_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-
-      - name: install milpa
-        run: |
-          pipx install --include-deps \
-            "git+https://github.com/coreyleavitt/milpa.git#subdirectory=impls/python"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: milpa fetch
-        run: milpa fetch
+      - name: lower mmap ASLR entropy for ASan
+        # The ubuntu-24.04 runner kernel uses vm.mmap_rnd_bits=32, which
+        # places mappings where ASan's shadow memory expects to be and
+        # crashes instrumented binaries at startup with an endless
+        # AddressSanitizer:DEADLYSIGNAL loop.
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
 
       - name: lifecycle tests under ASan + LSan
         # run-tests.sh asan: halt_on_error, so any invalid read, write or free
@@ -280,40 +164,11 @@ jobs:
   # -d:z3FpBoxDestroyCount / -d:z3CtxDestroyCount.
   # ============================================================================
   counting-hooks:
-    runs-on: ubuntu-latest
-    container: nimlang/nim:2.2.10
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
-      - name: trust workdir for git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - name: install build prerequisites
-        run: |
-          apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            curl unzip python3 python3-pip pipx git build-essential
-
-      - name: install Z3 (supported release)
-        run: |
-          set -euo pipefail
-          base="z3-4.16.0-x64-glibc-2.39"
-          curl -fsSL -o /tmp/z3.zip \
-            "https://github.com/Z3Prover/z3/releases/download/z3-4.16.0/${base}.zip"
-          unzip -q /tmp/z3.zip -d /opt && mv "/opt/${base}" /opt/z3
-          echo "/opt/z3/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=/opt/z3/bin" >> "$GITHUB_ENV"
-          echo "C_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-          echo "CPLUS_INCLUDE_PATH=/opt/z3/include" >> "$GITHUB_ENV"
-
-      - name: install milpa
-        run: |
-          pipx install --include-deps \
-            "git+https://github.com/coreyleavitt/milpa.git#subdirectory=impls/python"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: milpa fetch
-        run: milpa fetch
+      - uses: ./.github/actions/setup-ci
 
       - name: destroy-count proofs (ADR-FC-0002/0012/0013, probe FACT B)
         # td3_ctx_release, thandle_ctx_release and thook_raise_path under

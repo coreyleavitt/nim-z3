@@ -1,0 +1,118 @@
+name: "Setup patched Nim from an OCI artifact"
+description: >
+  Fetch the patched Nim toolchain published as an OCI artifact (not a
+  container image), verify it against a pinned manifest digest, and put it on
+  PATH.
+
+# Vendored from nelli's `.github/actions/setup-nim-artifact` rather than
+# referenced: nim-z3 is a dependency of nelli, so pointing this repo's CI at
+# nelli's would make the two repos' CI depend on each other. nelli's copy is
+# PowerShell because its legs are Windows; nim-z3 runs on Linux only, so this
+# one is bash. The protocol is the same.
+#
+# The toolchain is published as
+#
+#   ghcr.io/coreyleavitt/nim:2.2.10-linux-x64   (application/x-nim-toolchain)
+#     └─ layer application/x-xz  nim-2.2.10-patched-linux-x64.tar.xz
+#
+# The OCI distribution API is plain HTTP and the package is public, so an
+# anonymous pull token plus GETs is the whole protocol; no `oras`.
+#
+# PINNED BY DIGEST. The tag is republished whenever the toolchain is rebuilt,
+# and one such rebuild (2026-11-08) shipped a `bin/nim` that needed a newer
+# glibc than the runners have. The manifest is therefore fetched by its
+# digest, and both the manifest and the blob are checked against their
+# content addresses. Moving to a new toolchain build is an explicit edit of
+# `digest`.
+#
+# The artifact ships Nim ALONE. The C compiler comes from the runner, and the
+# caller pins `--cc:` explicitly.
+
+inputs:
+  tag:
+    description: "Artifact tag, e.g. 2.2.10-linux-x64 (informational once a digest is pinned)"
+    required: true
+  digest:
+    description: "Manifest digest (sha256:...) the tag is pinned to"
+    required: true
+  package:
+    description: "GHCR package path"
+    required: false
+    default: "coreyleavitt/nim"
+
+outputs:
+  nim-dir:
+    description: "Directory containing bin/nim"
+    value: ${{ steps.unpack.outputs.nim-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch and unpack the Nim toolchain artifact
+      id: unpack
+      shell: bash
+      env:
+        PKG: ${{ inputs.package }}
+        TAG: ${{ inputs.tag }}
+        DIGEST: ${{ inputs.digest }}
+      run: |
+        set -euo pipefail
+
+        echo "=== anonymous pull token for $PKG ==="
+        tok=$(curl -fsS "https://ghcr.io/token?scope=repository:${PKG}:pull&service=ghcr.io" | jq -r .token)
+        [ -n "$tok" ] && [ "$tok" != null ] || { echo "could not obtain a pull token for $PKG" >&2; exit 1; }
+
+        work="$RUNNER_TEMP/nim-artifact"; mkdir -p "$work"
+
+        echo "=== manifest ${PKG}@${DIGEST} (tag ${TAG}) ==="
+        curl -fsS -H "Authorization: Bearer $tok" \
+          -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+          "https://ghcr.io/v2/$PKG/manifests/$DIGEST" -o "$work/manifest.json"
+        got="sha256:$(sha256sum "$work/manifest.json" | cut -d' ' -f1)"
+        [ "$got" = "$DIGEST" ] || { echo "manifest digest mismatch: pinned $DIGEST, got $got" >&2; exit 1; }
+
+        # Informational only: say so when the tag has moved past the pin.
+        live=$(curl -fsSI -H "Authorization: Bearer $tok" \
+          -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+          "https://ghcr.io/v2/$PKG/manifests/$TAG" | tr -d '\r' \
+          | awk 'tolower($1)=="docker-content-digest:"{print $2}') || true
+        if [ -n "${live:-}" ] && [ "$live" != "$DIGEST" ]; then
+          echo "::notice::tag $TAG now points at $live; this job uses the pinned $DIGEST"
+        fi
+
+        atype=$(jq -r .artifactType "$work/manifest.json")
+        [ "$atype" = application/x-nim-toolchain ] || {
+          echo "unexpected artifactType '$atype' -- expected application/x-nim-toolchain" >&2; exit 1; }
+        blob=$(jq -r '.layers[0].digest' "$work/manifest.json")
+        title=$(jq -r '.layers[0].annotations["org.opencontainers.image.title"]' "$work/manifest.json")
+        echo "layer: $title  $blob"
+        echo "patches: $(jq -r '.annotations["dev.leavitt.nim.patches"]' "$work/manifest.json")"
+
+        echo "=== download blob ==="
+        out="$work/$title"
+        curl -fsSL -H "Authorization: Bearer $tok" "https://ghcr.io/v2/$PKG/blobs/$blob" -o "$out"
+        # Content-addressed: the blob's name IS its sha256.
+        got="sha256:$(sha256sum "$out" | cut -d' ' -f1)"
+        [ "$got" = "$blob" ] || { echo "blob digest mismatch: manifest says $blob, download is $got" >&2; exit 1; }
+        echo "digest verified: $got"
+
+        echo "=== unpack ==="
+        dest="$RUNNER_TEMP/nim-toolchain"; mkdir -p "$dest"
+        case "$title" in
+          *.tar.xz) tar -xJf "$out" -C "$dest" ;;
+          *) echo "unhandled artifact archive form: $title" >&2; exit 1 ;;
+        esac
+
+        # The archive carries one top-level `nim-<version>-patched/` directory.
+        root=$(find "$dest" -mindepth 1 -maxdepth 1 -type d | head -1)
+        [ -n "$root" ] || { echo "archive did not unpack to a directory" >&2; exit 1; }
+        [ -x "$root/bin/nim" ] || { echo "no nim binary under $root/bin" >&2; exit 1; }
+        [ -f "$root/lib/system.nim" ] || { echo "toolchain has no stdlib at $root/lib" >&2; exit 1; }
+
+        echo "$root/bin" >> "$GITHUB_PATH"
+        echo "nim-dir=$root" >> "$GITHUB_OUTPUT"
+        echo "toolchain ready: $root"
+
+    - name: Verify the toolchain runs
+      shell: bash
+      run: nim --version

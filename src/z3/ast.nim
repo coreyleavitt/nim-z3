@@ -48,14 +48,6 @@ type
     raw*: RawZ3Ast
     ctx*: Z3Context
 
-  Z3Int*  = Z3Ast[stInt]
-    ## Convenience alias for `Z3Ast[stInt]`. Aliases live here so the
-    ## type system + the operator overload modules (`z3/arith.nim`,
-    ## `z3/boolean.nim`) can reference them without depending on
-    ## `z3/builder.nim`.
-  Z3Real* = Z3Ast[stReal]
-  Z3Bool* = Z3Ast[stBool]
-
 # ============================================================================
 # Lifecycle hooks
 # ============================================================================
@@ -75,6 +67,20 @@ proc `=dup`[S: static SortTag](src: Z3Ast[S]): Z3Ast[S] {.raises: [], quirky.} =
   ## https://nim-lang.org/docs/destructors.html#move-semantics on
   ## `=dup` vs `=copy`. Defining both is the safe story.
   termDup(result, src, Z3_inc_ref)
+
+# The aliases must follow the hooks. Nim binds a generic hook only to
+# instantiations made after it is declared; an alias in `Z3Ast`'s own type
+# section instantiates `Z3Ast[stInt]` first, and that instance silently got
+# compiler-generated hooks (no dec_ref on destroy, no inc_ref on copy).
+# Pinned by `tests/tterm_hooks_bound.nim`.
+type
+  Z3Int*  = Z3Ast[stInt]
+    ## Convenience alias for `Z3Ast[stInt]`. Aliases live here so the
+    ## type system + the operator overload modules (`z3/arith.nim`,
+    ## `z3/boolean.nim`) can reference them without depending on
+    ## `z3/builder.nim`.
+  Z3Real* = Z3Ast[stReal]
+  Z3Bool* = Z3Ast[stBool]
 
 # ============================================================================
 # `wrap` — the refcount-discipline entry point now lives in z3/lifecycle

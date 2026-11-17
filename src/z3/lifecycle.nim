@@ -138,6 +138,16 @@ type Z3Term* = concept x
 # `{.raises: [], quirky.}`; `tests/thook_raise_path.nim` pins both the
 # propagation and the whole-body run, and audits the declarations.
 
+when defined(z3TermHookCount):
+  var z3TermDestroyCounter*: int
+    ## Test-only instrument, compiled in only under `-d:z3TermHookCount`:
+    ## incremented once per `termDestroy` body run. A value family whose
+    ## declared hooks are not bound to one of its instantiations gets a
+    ## compiler-generated field-wise destroy instead, which never
+    ## dec_refs; this counter tells the two apart.
+  var z3TermCopyCounter*: int
+    ## As `z3TermDestroyCounter`, for the `termCopy` and `termDup` bodies.
+
 template rawEntry*(sym: untyped): untyped =
   ## softlink's raw C entry point for the Z3 function `sym`: typed
   ## `{.cdecl, raises: [].}`, nil when libz3 is not loaded. For lifecycle
@@ -149,6 +159,8 @@ template termDestroy*(v: untyped, decRefSym: untyped) =
   ## Z3 dec_ref function that releases the underlying raw handle (e.g.
   ## `Z3_dec_ref` for ASTs), called through its raw entry point. The
   ## enclosing hook must be `{.raises: [], quirky.}`.
+  when defined(z3TermHookCount):
+    inc z3TermDestroyCounter
   if v.ctx != nil:
     let decRef = rawEntry(decRefSym)
     if not v.raw.isNil and not v.ctx.raw.isNil and decRef != nil:
@@ -166,6 +178,8 @@ template termCopy*(dst: untyped, src: untyped,
   ## Body of `=copy`. Decrements the destination's old handle (if any)
   ## before adopting the source's, then increments the new reference.
   ## The enclosing hook must be `{.raises: [], quirky.}`.
+  when defined(z3TermHookCount):
+    inc z3TermCopyCounter
   if dst.raw != src.raw:
     let decRef = rawEntry(decRefSym)
     let incRef = rawEntry(incRefSym)
@@ -182,6 +196,8 @@ template termDup*(result: untyped, src: untyped, incRefSym: untyped) =
   ## Body of `=dup`. Copies the source's fields into `result` and
   ## inc_refs the underlying handle. The enclosing hook must be
   ## `{.raises: [], quirky.}`.
+  when defined(z3TermHookCount):
+    inc z3TermCopyCounter
   result.raw = src.raw
   result.ctx = src.ctx
   let incRef = rawEntry(incRefSym)

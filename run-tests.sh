@@ -30,7 +30,7 @@ TESTS=(
   tests/tffi.nim tests/tffi_opaque.nim
   tests/tcontext.nim tests/tcontext_registry.nim
   tests/td3_ctx_release.nim tests/thandle_ctx_release.nim
-  tests/thook_raise_path.nim
+  tests/thook_raise_path.nim tests/tterm_hooks_bound.nim
   tests/tsort.nim
   tests/tast.nim tests/tast_introspect.nim
   tests/tast_print_mode.nim
@@ -167,11 +167,14 @@ VALGRIND=(
   tests/tprobe.nim tests/tparity.nim
 )
 
-# Destroy-count proofs: each file needs its counter's define (`-d:z3CtxDestroyCount`
-# / `-d:z3FpBoxDestroyCount`), so they run here rather than under `test`.
+# Destroy-count proofs: each file needs its counter's define (`-d:z3CtxDestroyCount`,
+# `-d:z3TermHookCount`, `-d:z3FpBoxDestroyCount`), so they run here rather than under `test`.
 COUNTING_CTX=(
   tests/td3_ctx_release.nim
   tests/thandle_ctx_release.nim
+)
+COUNTING_TERM=(
+  tests/tterm_hooks_bound.nim
 )
 COUNTING_FPBOX=(
   tests/tfixedpoint_ctxbox.nim
@@ -214,8 +217,9 @@ case "$cmd" in
     ;;
   counting)
     for f in "${COUNTING_CTX[@]}"; do run_both "$f" -d:useMalloc -d:z3CtxDestroyCount; done
+    for f in "${COUNTING_TERM[@]}"; do run_both "$f" -d:useMalloc -d:z3TermHookCount; done
     for f in "${COUNTING_FPBOX[@]}"; do run_both "$f" -d:useMalloc -d:z3FpBoxDestroyCount; done
-    echo "counting: $(( ${#COUNTING_CTX[@]} + ${#COUNTING_FPBOX[@]} )) destroy-count proof(s) passed on both backends"
+    echo "counting: $(( ${#COUNTING_CTX[@]} + ${#COUNTING_TERM[@]} + ${#COUNTING_FPBOX[@]} )) destroy-count proof(s) passed on both backends"
     ;;
   valgrind)
     # Gate: the leak summary MUST contain 'definitely lost: 0 bytes'. Z3's

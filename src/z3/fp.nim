@@ -68,10 +68,6 @@ type
     raw*: RawZ3Ast
     ctx*: Z3Context
 
-  Z3Float16*  = Z3Fp[5, 11]
-  Z3Float32*  = Z3Fp[8, 24]
-  Z3Float64*  = Z3Fp[11, 53]
-  Z3Float128* = Z3Fp[15, 113]
 
 proc `=destroy`[E, S: static int](v: Z3Fp[E, S]) {.raises: [], quirky.} =
   termDestroy(v, Z3_dec_ref)
@@ -79,6 +75,15 @@ proc `=copy`[E, S: static int](dst: var Z3Fp[E, S], src: Z3Fp[E, S]) {.raises: [
   termCopy(dst, src, Z3_dec_ref, Z3_inc_ref)
 proc `=dup`[E, S: static int](src: Z3Fp[E, S]): Z3Fp[E, S] {.raises: [], quirky.} =
   termDup(result, src, Z3_inc_ref)
+
+# The aliases follow the hooks: an instantiation made before the hooks
+# are declared gets compiler-generated ones instead (see `Z3Int` in
+# `z3/ast`; pinned by `tests/tterm_hooks_bound.nim`).
+type
+  Z3Float16*  = Z3Fp[5, 11]
+  Z3Float32*  = Z3Fp[8, 24]
+  Z3Float64*  = Z3Fp[11, 53]
+  Z3Float128* = Z3Fp[15, 113]
 
 # Step 9 sortOf overload — participates in z3/sortdispatch's resolution.
 proc sortOf*[E, S: static int](_: typedesc[Z3Fp[E, S]],

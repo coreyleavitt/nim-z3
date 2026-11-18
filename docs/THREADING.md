@@ -28,9 +28,17 @@ Nim does not destroy threadvars when a thread ends, so the wrapper
 registers an `onThreadDestruction` handler on the first write to a
 thread's slot that clears it at thread exit; otherwise every worker
 thread would leak the last context it made, native Z3 context and all.
+Clearing the slot, at thread exit or with `setCurrentContext(nil)`,
+removes that handler again and frees Nim's per-thread handler list once
+it is empty; Nim never frees that list itself, so a leftover entry would
+leak it. A later context on the same thread registers the handler anew.
 Nim runs those handlers only for threads it created. A foreign thread
 (one created outside Nim that calls into the wrapper) must call
-`setCurrentContext(nil)` before it ends.
+`setCurrentContext(nil)` before it ends. Nim's own allocator does no
+setup for a thread it did not create and can crash in one, so a program
+that calls the wrapper from foreign threads must build with
+`-d:useMalloc`. Tests:
+`tests/tthread_exit_hook.nim`.
 
 The per-context `datatypeRegistry` (v0.4 step 3 — runtime
 declarations of `Z3DatatypeValue[T]` sorts) is per-context, so

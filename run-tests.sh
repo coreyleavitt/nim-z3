@@ -26,7 +26,7 @@ cd "$(dirname "$0")"   # repo root, regardless of caller's cwd
 
 # --- curated lists (ported verbatim from the former z3.nimble tasks) --------
 
-# `test`: 144 files. tminimal.nim is intentionally excluded — it needs the
+# `test`: 145 files. tminimal.nim is intentionally excluded — it needs the
 # z3WithoutX flags at compile time; run it via the `minimal` subcommand.
 TESTS=(
   # Core / always-on
@@ -122,6 +122,7 @@ TESTS=(
   tests/tonclause.nim
   # Concurrency / global params / interrupts
   tests/tconcurrency.nim tests/tconcurrency_logging.nim
+  tests/tthread_exit_hook.nim
   tests/tglobalparams.nim
   tests/tinterrupt.nim
   tests/tpseudo_boolean.nim
@@ -184,6 +185,7 @@ ASAN=(
   tests/tdatatypes_mutual.nim tests/tdatatypes_nary.nim tests/tdatatype_sortof.nim
   tests/thandle_ctx_release.nim tests/thook_raise_path.nim
   tests/tterm_hooks_bound.nim
+  tests/tthread_exit_hook.nim
 )
 
 # Both memory gates fail on any invalid read, write or free, and on any leak

@@ -144,22 +144,46 @@ var currentZ3Ctx {.threadvar.}: Z3Context
 when compileOption("threads"):
   var exitHookArmed {.threadvar.}: bool
 
+  proc clearCurrentAtExit() {.gcsafe, raises: [].}
+
+  proc disarmExitHook() {.gcsafe, raises: [].} =
+    ## Removes this module's thread-exit handler, if registered, and
+    ## frees the thread's handler list once it is empty. Safe to call
+    ## from inside the handler: Nim walks the list from the end, so
+    ## removing the running entry skips nothing, and an empty list
+    ## leaves no entry still to run.
+    if exitHookArmed:
+      exitHookArmed = false
+      {.cast(gcsafe).}:
+        for i in countdown(nimThreadDestructionHandlers.len - 1, 0):
+          if rawProc(nimThreadDestructionHandlers[i]) ==
+             cast[pointer](clearCurrentAtExit):
+            nimThreadDestructionHandlers.delete(i)
+            break
+        if nimThreadDestructionHandlers.len == 0:
+          nimThreadDestructionHandlers = @[]
+
   proc clearCurrentAtExit() {.gcsafe, raises: [].} =
+    disarmExitHook()
     currentZ3Ctx = nil
 
 proc setSlot(ctx: Z3Context) =
   ## Every write of the current-context threadvar goes through here.
   ## Nim does not destroy threadvars when a thread ends, so a context
   ## left in the slot would outlive its thread and leak, with the native
-  ## Z3 context it owns. The first write on a thread registers a
+  ## Z3 context it owns. Setting a context while none is armed registers a
   ## thread-exit handler that clears the slot, releasing that reference.
-  ## Only threads Nim created run the handler; a foreign thread that
-  ## registered itself must clear the slot with `setCurrentContext(nil)`
-  ## before it ends.
+  ## Clearing the slot removes the handler again (`disarmExitHook`), so
+  ## no entry is left behind in Nim's handler list, which Nim never
+  ## frees. Only threads Nim created run the handler; a foreign thread
+  ## must clear the slot with `setCurrentContext(nil)` before it ends,
+  ## which releases both the context and the list.
   when compileOption("threads"):
     if not exitHookArmed and ctx != nil:
       exitHookArmed = true
       onThreadDestruction(clearCurrentAtExit)
+    elif ctx == nil:
+      disarmExitHook()
   currentZ3Ctx = ctx
 
 proc currentContext*(): Z3Context =
